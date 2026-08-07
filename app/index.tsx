@@ -39,6 +39,7 @@ export default function Index() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isMfaVerifying, setIsMfaVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +64,19 @@ export default function Index() {
           setError(finalizeError.message);
         }
       } else if (signIn.status === "needs_client_trust") {
-        setError("Verifikasi keamanan sedang diproses...");
+        const emailCodeFactor = signIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "email_code",
+        );
+        if (emailCodeFactor) {
+          const { error: sendError } = await signIn.mfa.sendEmailCode();
+          if (sendError) {
+            setError(sendError.message);
+            return;
+          }
+          setIsMfaVerifying(true);
+        } else {
+          setError("Tidak ada metode verifikasi email yang tersedia.");
+        }
       } else {
         setError("Masuk gagal. Periksa kembali email dan password.");
       }
@@ -116,23 +129,102 @@ export default function Index() {
     }
   };
 
+  const handleMfaVerify = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const { error } = await signIn.mfa.verifyEmailCode({ code });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      if (signIn.status === "complete") {
+        const { error: finalizeError } = await signIn.finalize();
+        if (finalizeError) {
+          setError(finalizeError.message);
+        }
+      } else {
+        setError("Verifikasi belum selesai. Silakan coba lagi.");
+      }
+    } catch {
+      setError("Terjadi kesalahan jaringan. Coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGoogle = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
-        redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
-      });
+      const { createdSessionId, setActive, signIn: ssoSignIn, signUp: ssoSignUp } =
+        await startSSOFlow({
+          strategy: "oauth_google",
+          redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
+        });
       if (createdSessionId) {
         await setActive?.({ session: createdSessionId });
+        return;
       }
+      if (ssoSignIn?.status === "needs_client_trust") {
+        const emailCodeFactor = ssoSignIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "email_code",
+        );
+        if (emailCodeFactor) {
+          const { error: sendError } = await signIn.mfa.sendEmailCode();
+          if (sendError) {
+            setError(sendError.message);
+            return;
+          }
+          setIsMfaVerifying(true);
+          return;
+        }
+      }
+      if (ssoSignUp?.status === "missing_requirements") {
+        setIsVerifying(true);
+        return;
+      }
+      setError("Login Google gagal. Silakan coba lagi.");
     } catch {
       setError("Login Google gagal. Coba lagi.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isMfaVerifying) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Verifikasi Keamanan</Text>
+        <Text style={styles.subtitle}>
+          Masukkan kode verifikasi yang dikirim ke email Anda.
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={code}
+          placeholder="Kode verifikasi"
+          onChangeText={setCode}
+          keyboardType="numeric"
+        />
+        {error && <Text style={styles.error}>{error}</Text>}
+        <Button
+          title="Verifikasi"
+          onPress={handleMfaVerify}
+          disabled={isLoading}
+        />
+        <Text
+          style={styles.link}
+          onPress={() => {
+            setIsMfaVerifying(false);
+            setCode("");
+            setError(null);
+          }}
+        >
+          Kembali
+        </Text>
+      </View>
+    );
+  }
 
   if (isVerifying) {
     return (
@@ -224,6 +316,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,

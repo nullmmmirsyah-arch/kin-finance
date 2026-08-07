@@ -78,7 +78,7 @@ The unique token identifier (`identity.tokenIdentifier`) is the natural key for 
 
 #### `convex/users.ts`
 
-- `store` (mutation, `args: {}`): reads `ctx.auth.getUserIdentity()`. If `null`, throw `new ConvexError("Unauthenticated")`. Otherwise upsert the `users` row matching `tokenIdentifier` with `clerkUserId`, `name`, `email`, `imageUrl` from the identity. Return the stored user.
+- `store` (mutation, `args: {}`): reads `ctx.auth.getUserIdentity()`. If `null`, throw `new ConvexError("Unauthenticated")`. Otherwise upsert the `users` row matching `tokenIdentifier` with `clerkUserId`, `name`, `email`, `imageUrl` from the identity. Returns void.
 - `getMe` (query, `args: {}`): reads identity; returns the matching `users` row, or `null` if unauthenticated / not yet stored.
 
 Both functions require `ctx.auth` (auth-aware); `store` is idempotent so repeated app loads do not duplicate rows.

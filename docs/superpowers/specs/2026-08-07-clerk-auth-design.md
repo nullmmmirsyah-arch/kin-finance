@@ -52,8 +52,8 @@ Single screen with two modes toggled by the user:
 - **Sign-in mode**
   - Email field (`autoCapitalize="none"`, `keyboardType="email-address"`).
   - Password field (`secureTextEntry`).
-  - "Sign in" button → `useSignIn().signIn.password({ identifier, password })`.
-  - "Continue with Google" button → `useOAuth({ strategy: 'oauth_google' })` → `startOAuthFlow()`.
+  - "Sign in" button → `useSignIn().signIn.password({ emailAddress, password })`.
+  - "Continue with Google" button → `useSSO({ strategy: 'oauth_google' })` → `startSSOFlow()`.
   - Link to switch to sign-up mode.
 - **Sign-up mode**
   - Email + password fields.
@@ -73,8 +73,8 @@ Single screen with two modes toggled by the user:
 ## Data Flow
 
 1. **Sign up (email + password):** `signUp.password(...)` creates the sign-up attempt → `sendEmailCode()` emails a verification code → `verifyEmailCode({ code })` verifies it → `finalize()` creates an active session. `useAuth()` then reports `isSignedIn: true`.
-2. **Sign in (email + password):** `signIn.password({ identifier, password })` creates a session directly.
-3. **Google:** `startOAuthFlow()` opens the redirect browser; on success Clerk creates the session. If `createdSessionId` is absent but the user exists, fall back to `setActive({ session: createdSessionId })` if needed.
+2. **Sign in (email + password):** `signIn.password({ emailAddress, password })` creates a session directly.
+3. **Google:** `startSSOFlow()` opens the redirect browser; on success Clerk creates the session. If `createdSessionId` is present, call `setActive({ session: createdSessionId })`. If `createdSessionId` is absent (e.g., the user exists but no new session was created), show an error to the user.
 
 ## Error Handling
 

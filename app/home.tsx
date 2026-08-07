@@ -1,7 +1,7 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, StyleSheet, Text, View } from "react-native";
 
 export default function Home() {
@@ -9,10 +9,20 @@ export default function Home() {
   const { user } = useUser();
   const store = useMutation(api.users.store);
   const me = useQuery(api.users.getMe);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const sync = useCallback(async () => {
+    setSyncError(null);
+    try {
+      await store();
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : "Gagal menyinkronkan user.");
+    }
+  }, [store]);
 
   useEffect(() => {
-    void store();
-  }, [store]);
+    void sync();
+  }, [sync]);
 
   return (
     <View style={styles.container}>
@@ -21,8 +31,13 @@ export default function Home() {
         Halo, {me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "Pengguna"}!
       </Text>
       <Text style={styles.note}>
-        {me ? `Convex: ${me.name ?? me.email ?? me._id}` : "Menyinkronkan user ke Convex..."}
+        {syncError
+          ? syncError
+          : me
+            ? `Convex: ${me.name ?? me.email ?? me._id}`
+            : "Menyinkronkan user ke Convex..."}
       </Text>
+      {syncError && <Button title="Coba Lagi" onPress={() => void sync()} />}
       <Button
         title="Keluar"
         onPress={() => {

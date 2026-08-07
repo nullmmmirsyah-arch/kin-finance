@@ -1,4 +1,4 @@
-import { ClerkLoaded, ClerkLoading, ClerkProvider, Show, useAuth } from "@clerk/expo";
+import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
@@ -20,6 +20,30 @@ const convex = new ConvexReactClient(convexUrl, {
   unsavedChangesWarning: false,
 });
 
+function SignedInRoutes() {
+  const { isSignedIn } = useAuth();
+
+  return (
+    <Stack.Protected guard={!!isSignedIn}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="home" />
+      </Stack>
+    </Stack.Protected>
+  );
+}
+
+function SignedOutRoutes() {
+  const { isSignedIn } = useAuth();
+
+  return (
+    <Stack.Protected guard={!isSignedIn}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+      </Stack>
+    </Stack.Protected>
+  );
+}
+
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
@@ -32,16 +56,8 @@ export default function RootLayout() {
           </View>
         </ClerkLoading>
         <ClerkLoaded>
-          <Show when="signed-in">
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="home" />
-            </Stack>
-          </Show>
-          <Show when="signed-out">
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-            </Stack>
-          </Show>
+          <SignedInRoutes />
+          <SignedOutRoutes />
         </ClerkLoaded>
       </ConvexProviderWithClerk>
     </ClerkProvider>

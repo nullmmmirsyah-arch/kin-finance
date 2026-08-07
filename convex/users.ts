@@ -8,16 +8,6 @@ export const store = mutation({
     if (identity === null) {
       throw new ConvexError("Unauthenticated");
     }
-    console.log("STORE_IDENTITY", JSON.stringify({
-      tokenIdentifier: identity.tokenIdentifier,
-      issuer: identity.issuer,
-      subject: identity.subject,
-      name: identity.name,
-      email: identity.email,
-      pictureUrl: identity.pictureUrl,
-      sid: (identity as Record<string, unknown>).sid,
-      allKeys: Object.keys(identity),
-    }));
     const data = {
       tokenIdentifier: identity.tokenIdentifier,
       clerkUserId: identity.subject,

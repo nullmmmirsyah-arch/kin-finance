@@ -4,7 +4,7 @@
 
 **Goal:** Add Clerk authentication (email + password sign-up/sign-in, Google OAuth) to the kin-finance Expo app using the custom flow, with route guarding between the auth screen and a home screen.
 
-**Architecture:** `ClerkProvider` wraps the root layout with the publishable key and `tokenCache` (session persisted in `expo-secure-store`). `SignedIn`/`SignedOut` from `@clerk/expo` swap which screen the `Stack` exposes: signed-out users see only the auth screen (`app/index.tsx`), signed-in users see only the home screen (`app/home.tsx`). Auth uses Clerk's `useSignIn`, `useSignUp`, and `useOAuth` hooks; Google OAuth runs via a redirect browser (works in Expo Go, no dev build).
+**Architecture:** `ClerkProvider` wraps the root layout with the publishable key and `tokenCache` (session persisted in `expo-secure-store`). `SignedIn`/`SignedOut` from `@clerk/expo` swap which screen the `Stack` exposes: signed-out users see only the auth screen (`app/index.tsx`), signed-in users see only the home screen (`app/home.tsx`). Auth uses Clerk's `useSignIn`, `useSignUp`, and `useSSO` hooks; Google OAuth runs via a redirect browser (works in Expo Go, no dev build).
 
 **Tech Stack:** Expo SDK 54, expo-router, React Native, TypeScript, Clerk `@clerk/expo` 4.x, `expo-secure-store`, `expo-auth-session`, `expo-crypto`, `expo-web-browser`, `expo-linking`.
 
@@ -148,7 +148,7 @@ Expected: no errors.
 - Modify: `app/index.tsx` (replace entire file, 15 lines)
 
 **Interfaces:**
-- Consumes: `useSignIn`, `useSignUp`, `useOAuth` from `@clerk/expo`; `expo-linking`; `expo-web-browser`; `Linking.createURL("/", { scheme: "kinfinance" })`.
+- Consumes: `useSignIn`, `useSignUp`, `useSSO` from `@clerk/expo`; `expo-linking`; `expo-web-browser`; `Linking.createURL("/", { scheme: "kinfinance" })`.
 - Produces: The auth screen at route `/`. When a session becomes active, `SignedIn` in the root layout (Task 2) swaps the stack to `home`. Exposes `signUp.verifications.verifyEmailCode({ code })` then `signUp.finalize()` for the verify step.
 
 - [ ] **Step 1: Replace `app/index.tsx`**
@@ -156,7 +156,7 @@ Expected: no errors.
 Replace the whole file with:
 
 ```tsx
-import { useOAuth, useSignIn, useSignUp } from "@clerk/expo";
+import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
@@ -187,7 +187,7 @@ export default function Index() {
 
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { startSSOFlow } = useSSO({ strategy: "oauth_google" });
 
   const [mode, setMode] = useState<Mode>("sign-in");
   const [emailAddress, setEmailAddress] = useState("");
@@ -258,7 +258,7 @@ export default function Index() {
     setError(null);
     setIsLoading(true);
     try {
-      const { createdSessionId, setActive } = await startOAuthFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
       });
       if (createdSessionId) {
