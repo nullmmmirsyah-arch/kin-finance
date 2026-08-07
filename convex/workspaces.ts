@@ -7,7 +7,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
-      throw new ConvexError("Unauthenticated");
+      throw new ConvexError("Anda belum masuk");
     }
 
     const trimmedName = args.name.trim();
@@ -33,6 +33,15 @@ export const create = mutation({
       throw new ConvexError("User tidak ditemukan");
     }
 
+    const existingMembership = await ctx.db
+      .query("workspaceMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (existingMembership) {
+      throw new ConvexError("Anda sudah memiliki workspace");
+    }
+
     const now = Date.now();
     const workspaceId = await ctx.db.insert("workspaces", {
       name: trimmedName,
@@ -46,7 +55,7 @@ export const create = mutation({
       role: "owner",
     });
 
-    return workspaceId;
+    return await ctx.db.get(workspaceId);
   },
 });
 
@@ -88,7 +97,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
-      throw new ConvexError("Unauthenticated");
+      throw new ConvexError("Anda belum masuk");
     }
 
     const user = await ctx.db
@@ -113,6 +122,11 @@ export const update = mutation({
 
     if (membership === undefined || membership.role !== "owner") {
       throw new ConvexError("Anda bukan owner workspace ini");
+    }
+
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) {
+      throw new ConvexError("Workspace tidak ditemukan");
     }
 
     const trimmedName = args.name.trim();

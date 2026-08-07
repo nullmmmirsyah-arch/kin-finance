@@ -33,12 +33,16 @@ export default function Home() {
     }
   }, [workspace, router]);
 
-  if (workspace === undefined || workspace === null) {
+  if (workspace === undefined) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
       </View>
     );
+  }
+
+  if (workspace === null) {
+    return null;
   }
 
   return (
