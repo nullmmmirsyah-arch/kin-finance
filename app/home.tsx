@@ -28,21 +28,17 @@ export default function Home() {
   }, [sync]);
 
   useEffect(() => {
-    if (workspace === null) {
+    if (workspace !== undefined && workspace === null) {
       router.replace("/onboarding");
     }
   }, [workspace, router]);
 
-  if (workspace === undefined) {
+  if (workspace === undefined || workspace === null) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
       </View>
     );
-  }
-
-  if (workspace === null) {
-    return null;
   }
 
   return (
