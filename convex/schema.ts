@@ -9,4 +9,18 @@ export default defineSchema({
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
+
+  workspaces: defineTable({
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  workspaceMemberships: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("member")),
+  })
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_userId", ["userId"]),
 });
