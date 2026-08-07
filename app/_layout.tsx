@@ -27,6 +27,7 @@ function SignedInRoutes() {
     <Stack.Protected guard={!!isSignedIn}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="home" />
+        <Stack.Screen name="onboarding" />
       </Stack>
     </Stack.Protected>
   );
