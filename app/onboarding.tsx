@@ -13,7 +13,7 @@ import {
 
 export default function Onboarding() {
   const router = useRouter();
-  const createWorkspace = useMutation(api.workspaces.create);
+  const createHousehold = useMutation(api.households.create);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +22,11 @@ export default function Onboarding() {
     setError(null);
     setIsLoading(true);
     try {
-      await createWorkspace({ name });
+      await createHousehold({ name });
       router.replace("/home");
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Workspace gagal dibuat. Silakan coba lagi.",
+        e instanceof Error ? e.message : "Failed to create household. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -35,14 +35,14 @@ export default function Onboarding() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Selamat datang di Kin Finance</Text>
+      <Text style={styles.title}>Welcome to Kin Finance</Text>
       <Text style={styles.subtitle}>
-        Buat Workspace pertama untuk mulai mengelola keuangan Anda.
+        Create your Household to start managing your family{"'"}s finances.
       </Text>
       <TextInput
         style={styles.input}
         value={name}
-        placeholder="Nama Workspace"
+        placeholder="Household name"
         onChangeText={setName}
         maxLength={50}
       />
@@ -51,7 +51,7 @@ export default function Onboarding() {
         <ActivityIndicator size="large" />
       ) : (
         <Button
-          title="Buat Workspace"
+          title="Create Household"
           onPress={handleCreate}
           disabled={name.trim().length < 3}
         />

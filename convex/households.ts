@@ -1,5 +1,4 @@
-import { v } from "convex/values";
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const create = mutation({
@@ -7,19 +6,19 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
-      throw new ConvexError("Anda belum masuk");
+      throw new ConvexError("You are not signed in.");
     }
 
     const trimmedName = args.name.trim();
 
     if (trimmedName.length === 0) {
-      throw new ConvexError("Nama workspace wajib diisi");
+      throw new ConvexError("Household name is required.");
     }
     if (trimmedName.length < 3) {
-      throw new ConvexError("Nama workspace minimal 3 karakter");
+      throw new ConvexError("Household name must be at least 3 characters.");
     }
     if (trimmedName.length > 50) {
-      throw new ConvexError("Nama workspace maksimal 50 karakter");
+      throw new ConvexError("Household name must be at most 50 characters.");
     }
 
     const user = await ctx.db
@@ -30,32 +29,32 @@ export const create = mutation({
       .unique();
 
     if (user === null) {
-      throw new ConvexError("User tidak ditemukan");
+      throw new ConvexError("User not found.");
     }
 
     const existingMembership = await ctx.db
-      .query("workspaceMemberships")
+      .query("householdMemberships")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .first();
 
     if (existingMembership) {
-      throw new ConvexError("Anda sudah memiliki workspace");
+      throw new ConvexError("You already have a household.");
     }
 
     const now = Date.now();
-    const workspaceId = await ctx.db.insert("workspaces", {
+    const householdId = await ctx.db.insert("households", {
       name: trimmedName,
       createdAt: now,
       updatedAt: now,
     });
 
-    await ctx.db.insert("workspaceMemberships", {
-      workspaceId,
+    await ctx.db.insert("householdMemberships", {
+      householdId,
       userId: user._id,
       role: "owner",
     });
 
-    return await ctx.db.get(workspaceId);
+    return await ctx.db.get(householdId);
   },
 });
 
@@ -79,7 +78,7 @@ export const getActive = query({
     }
 
     const membership = await ctx.db
-      .query("workspaceMemberships")
+      .query("householdMemberships")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .first();
 
@@ -87,17 +86,17 @@ export const getActive = query({
       return null;
     }
 
-    const workspace = await ctx.db.get(membership.workspaceId);
-    return workspace;
+    const household = await ctx.db.get(membership.householdId);
+    return household;
   },
 });
 
 export const update = mutation({
-  args: { workspaceId: v.id("workspaces"), name: v.string() },
+  args: { householdId: v.id("households"), name: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
-      throw new ConvexError("Anda belum masuk");
+      throw new ConvexError("You are not signed in.");
     }
 
     const user = await ctx.db
@@ -108,44 +107,44 @@ export const update = mutation({
       .unique();
 
     if (user === null) {
-      throw new ConvexError("User tidak ditemukan");
+      throw new ConvexError("User not found.");
     }
 
     const memberships = await ctx.db
-      .query("workspaceMemberships")
+      .query("householdMemberships")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
 
     const membership = memberships.find(
-      (m) => m.workspaceId === args.workspaceId,
+      (m) => m.householdId === args.householdId,
     );
 
     if (membership === undefined || membership.role !== "owner") {
-      throw new ConvexError("Anda bukan owner workspace ini");
+      throw new ConvexError("You are not the owner of this household.");
     }
 
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace) {
-      throw new ConvexError("Workspace tidak ditemukan");
+    const household = await ctx.db.get(args.householdId);
+    if (!household) {
+      throw new ConvexError("Household not found.");
     }
 
     const trimmedName = args.name.trim();
 
     if (trimmedName.length === 0) {
-      throw new ConvexError("Nama workspace wajib diisi");
+      throw new ConvexError("Household name is required.");
     }
     if (trimmedName.length < 3) {
-      throw new ConvexError("Nama workspace minimal 3 karakter");
+      throw new ConvexError("Household name must be at least 3 characters.");
     }
     if (trimmedName.length > 50) {
-      throw new ConvexError("Nama workspace maksimal 50 karakter");
+      throw new ConvexError("Household name must be at most 50 characters.");
     }
 
-    await ctx.db.patch(args.workspaceId, {
+    await ctx.db.patch(args.householdId, {
       name: trimmedName,
       updatedAt: Date.now(),
     });
 
-    return await ctx.db.get(args.workspaceId);
+    return await ctx.db.get(args.householdId);
   },
 });

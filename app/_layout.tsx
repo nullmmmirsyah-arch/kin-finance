@@ -20,28 +20,19 @@ const convex = new ConvexReactClient(convexUrl, {
   unsavedChangesWarning: false,
 });
 
-function SignedInRoutes() {
+function RootNavigator() {
   const { isSignedIn } = useAuth();
 
   return (
-    <Stack.Protected guard={!!isSignedIn}>
-      <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!isSignedIn}>
         <Stack.Screen name="home" />
         <Stack.Screen name="onboarding" />
-      </Stack>
-    </Stack.Protected>
-  );
-}
-
-function SignedOutRoutes() {
-  const { isSignedIn } = useAuth();
-
-  return (
-    <Stack.Protected guard={!isSignedIn}>
-      <Stack screenOptions={{ headerShown: false }}>
+      </Stack.Protected>
+      <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="index" />
-      </Stack>
-    </Stack.Protected>
+      </Stack.Protected>
+    </Stack>
   );
 }
 
@@ -57,8 +48,7 @@ export default function RootLayout() {
           </View>
         </ClerkLoading>
         <ClerkLoaded>
-          <SignedInRoutes />
-          <SignedOutRoutes />
+          <RootNavigator />
         </ClerkLoaded>
       </ConvexProviderWithClerk>
     </ClerkProvider>

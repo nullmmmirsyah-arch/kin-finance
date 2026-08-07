@@ -11,7 +11,7 @@ export default function Home() {
   const router = useRouter();
   const store = useMutation(api.users.store);
   const me = useQuery(api.users.getMe);
-  const workspace = useQuery(api.workspaces.getActive);
+  const household = useQuery(api.households.getActive);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const sync = useCallback(async () => {
@@ -19,7 +19,7 @@ export default function Home() {
     try {
       await store();
     } catch (e) {
-      setSyncError(e instanceof Error ? e.message : "Gagal menyinkronkan user.");
+      setSyncError(e instanceof Error ? e.message : "Failed to sync user.");
     }
   }, [store]);
 
@@ -28,12 +28,12 @@ export default function Home() {
   }, [sync]);
 
   useEffect(() => {
-    if (workspace !== undefined && workspace === null) {
+    if (household !== undefined && household === null) {
       router.replace("/onboarding");
     }
-  }, [workspace, router]);
+  }, [household, router]);
 
-  if (workspace === undefined || workspace === null) {
+  if (household === undefined || household === null) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
@@ -45,13 +45,13 @@ export default function Home() {
     <View style={styles.container}>
       <Text style={styles.title}>Kin Finance</Text>
       <Text style={styles.subtitle}>
-        Halo, {me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "Pengguna"}!
+        Hello, {me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "User"}!
       </Text>
-      <Text style={styles.workspace}>Workspace: {workspace.name}</Text>
+      <Text style={styles.household}>Household: {household.name}</Text>
       {syncError && <Text style={styles.error}>{syncError}</Text>}
-      {syncError && <Button title="Coba Lagi" onPress={() => void sync()} />}
+      {syncError && <Button title="Try Again" onPress={() => void sync()} />}
       <Button
-        title="Keluar"
+        title="Sign Out"
         onPress={() => {
           void signOut();
         }}
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
   },
-  workspace: {
+  household: {
     fontSize: 14,
     color: "#555",
   },

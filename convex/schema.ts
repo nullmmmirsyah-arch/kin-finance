@@ -10,17 +10,17 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
-  workspaces: defineTable({
+  households: defineTable({
     name: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),
 
-  workspaceMemberships: defineTable({
-    workspaceId: v.id("workspaces"),
+  householdMemberships: defineTable({
+    householdId: v.id("households"),
     userId: v.id("users"),
     role: v.union(v.literal("owner"), v.literal("member")),
   })
-    .index("by_workspaceId", ["workspaceId"])
+    .index("by_householdId", ["householdId"])
     .index("by_userId", ["userId"]),
 });

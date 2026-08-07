@@ -1,0 +1,250 @@
+# Workspace
+
+> Status: Ready
+> Priority: P0
+> Depends On: Authentication
+> Next Feature: Account
+
+---
+
+# Overview
+
+Workspace adalah root entity dari seluruh data di Kin Finance.
+
+Setiap data finansial harus dimiliki oleh tepat satu Workspace. Workspace dapat digunakan oleh satu orang (personal) maupun banyak anggota (family).
+
+Pada MVP, setiap user hanya memiliki satu Workspace.
+
+---
+
+# Goals
+
+- Menyediakan root untuk seluruh data finansial.
+- Menghubungkan seluruh feature ke Workspace.
+- Menjadikan user pertama sebagai Owner.
+- Menjadi dasar sistem permission.
+
+---
+
+# Scope
+
+## In Scope
+
+- Membuat Workspace pertama.
+- Mengambil Workspace aktif.
+- Mengubah nama Workspace.
+
+## Out of Scope
+
+- Multiple Workspace.
+- Workspace Switching.
+- Workspace Archive.
+- Workspace Delete.
+- Invite Member.
+- Transfer Ownership.
+
+---
+
+# User Stories
+
+### Create Workspace
+
+Sebagai pengguna baru,
+
+Saya ingin membuat Workspace pertama,
+
+Sehingga saya dapat mulai menggunakan Kin Finance.
+
+---
+
+### Rename Workspace
+
+Sebagai Owner,
+
+Saya ingin mengubah nama Workspace,
+
+Sehingga nama Workspace sesuai kebutuhan saya.
+
+---
+
+# User Flow
+
+## First Login
+
+```text
+Login
+
+↓
+
+Workspace belum ada
+
+↓
+
+Create Workspace
+
+↓
+
+Workspace berhasil dibuat
+
+↓
+
+Dashboard
+```
+
+---
+
+## Returning User
+
+```text
+Login
+
+↓
+
+Workspace ditemukan
+
+↓
+
+Dashboard
+```
+
+---
+
+# Business Rules
+
+## Workspace
+
+- Workspace adalah root seluruh data.
+- Semua entity wajib memiliki `workspaceId`.
+- Workspace selalu memiliki minimal satu Owner.
+
+---
+
+## Owner
+
+User yang membuat Workspace otomatis menjadi Owner pertama.
+
+---
+
+## Access
+
+User hanya boleh mengakses Workspace yang menjadi anggotanya.
+
+---
+
+## Initialization
+
+Workspace hanya dibuat sekali saat onboarding.
+
+---
+
+# Functional Requirements
+
+## Create Workspace
+
+User dapat membuat Workspace dengan memasukkan:
+
+- Workspace Name
+
+Setelah berhasil:
+
+- Workspace dibuat.
+- User menjadi Owner.
+- Workspace menjadi Workspace aktif.
+
+---
+
+## Get Active Workspace
+
+Aplikasi dapat mengambil Workspace aktif milik user.
+
+---
+
+## Update Workspace
+
+Owner dapat mengubah nama Workspace.
+
+---
+
+# Validation
+
+## Workspace Name
+
+- Wajib diisi.
+- Minimal 3 karakter.
+- Maksimal 50 karakter.
+- Trim whitespace sebelum disimpan.
+
+---
+
+# Permission
+
+| Action           | Owner | Member |
+| ---------------- | :---: | :----: |
+| View Workspace   |  ✅   |   ✅   |
+| Rename Workspace |  ✅   |   ❌   |
+
+---
+
+# Empty State
+
+## Workspace belum ada
+
+Title
+
+> Selamat datang di Kin Finance
+
+Description
+
+> Buat Workspace pertama untuk mulai mengelola keuangan Anda.
+
+Primary Action
+
+> Buat Workspace
+
+---
+
+# Error State
+
+Tampilkan pesan yang mudah dipahami.
+
+Contoh:
+
+- Workspace gagal dibuat.
+- Nama Workspace tidak valid.
+- Silakan coba lagi.
+
+Jangan tampilkan error teknis dari backend.
+
+---
+
+# Success Criteria
+
+Feature dianggap selesai apabila:
+
+- User dapat membuat Workspace.
+- Workspace otomatis menjadi Workspace aktif.
+- User otomatis menjadi Owner.
+- Owner dapat mengubah nama Workspace.
+- User tidak dapat mengakses Workspace lain.
+- Validasi berjalan dengan benar.
+- Empty State tersedia.
+- Error State tersedia.
+
+---
+
+# Notes
+
+Implementasi teknis (database, Convex schema, query, mutation, UI, folder structure, dan library) merupakan keputusan engineering dan tidak ditentukan oleh dokumen ini.
+
+Business rule dalam dokumen ini tidak boleh diubah tanpa persetujuan pemilik proyek.
+
+---
+
+# Future Improvements
+
+- Multiple Workspace.
+- Workspace Switching.
+- Invite Member.
+- Transfer Ownership.
+- Archive Workspace.
+- Delete Workspace.
