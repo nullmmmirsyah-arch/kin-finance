@@ -1,0 +1,360 @@
+# Budgets
+
+> Status: Ready
+> Priority: P0
+> Depends On: Categories
+> Next Feature: Multi-Member
+
+---
+
+# Overview
+
+Budgets help users plan and control their spending in Kin Finance.
+
+A Budget is a spending limit set for a specific Category over a monthly period. Users can track how much they have spent versus their budgeted amount.
+
+In MVP, Budgets are monthly per Category with no rollover. Both Owner and Member can create, edit, and delete Budgets. Budgets for hidden Categories are visible to Members.
+
+---
+
+# Goals
+
+- Allow users to set monthly spending limits per Category.
+- Help users track spending against their budget.
+- Make Budgets fully accessible to all Household members.
+
+---
+
+# Scope
+
+## In Scope
+
+- Create a Budget for a Category.
+- Edit a Budget amount.
+- Delete a Budget.
+- List all Budgets for the Household.
+- Show budget vs actual spending per Category.
+
+## Out of Scope
+
+- Budget rollover (future).
+- Weekly or yearly budgets (future).
+- Shared budgets across Categories (future).
+- Budget notifications/alerts (future).
+- Budget suggestions based on history (future).
+
+---
+
+# User Stories
+
+### Create Budget
+
+As a user (Owner or Member),
+
+I want to set a spending limit for a Category,
+
+So that I can control my spending in that area.
+
+---
+
+### Edit Budget
+
+As a user (Owner or Member),
+
+I want to change a Budget amount,
+
+So that it better fits my needs.
+
+---
+
+### Delete Budget
+
+As a user (Owner or Member),
+
+I want to remove a Budget I no longer need,
+
+So that my budget list stays clean.
+
+---
+
+### View Budgets
+
+As a user (Owner or Member),
+
+I want to see all my Budgets and how much I've spent,
+
+So that I can track my financial discipline.
+
+---
+
+# User Flow
+
+## Create Budget
+
+```text
+Budgets Screen
+
+↓
+
+Tap "+" button
+
+↓
+
+Create Budget Screen
+
+↓
+
+Select Category, enter amount
+
+↓
+
+Tap "Set Budget"
+
+↓
+
+Budget created
+
+↓
+
+Return to Budgets Screen
+```
+
+---
+
+## Edit Budget
+
+```text
+Budgets Screen
+
+↓
+
+Tap on Budget row
+
+↓
+
+Edit Budget Screen (pre-filled)
+
+↓
+
+Update amount
+
+↓
+
+Tap "Save Changes"
+
+↓
+
+Budget updated
+
+↓
+
+Return to Budgets Screen
+```
+
+---
+
+## Delete Budget
+
+```text
+Budgets Screen
+
+↓
+
+Swipe left on Budget → Tap "Delete"
+
+↓
+
+Confirmation dialog
+
+↓
+
+Tap "Delete"
+
+↓
+
+Budget deleted
+
+↓
+
+Return to Budgets Screen
+```
+
+---
+
+# Business Rules
+
+## Budget
+
+- Every Budget belongs to exactly one Household.
+- Every Budget is linked to exactly one Category.
+- Every Budget has a period: "monthly" (MVP only).
+- Every Budget has an amount (spending limit for the period).
+
+---
+
+## Spending Calculation
+
+- Actual spending for a Budget = sum of expense Transactions in the linked Category during the current month.
+- Budget progress = actual spending / budget amount.
+- If actual spending exceeds budget amount, the budget is "over budget".
+
+---
+
+## Visibility
+
+- Budgets for hidden Categories are visible to Members.
+- Members can create, edit, and delete Budgets for any Category (visible or hidden).
+
+---
+
+## Period
+
+- MVP only supports "monthly" budgets.
+- Monthly budget starts on the 1st and ends on the last day of the month.
+
+---
+
+# Functional Requirements
+
+## Create Budget
+
+User can create a Budget by selecting:
+
+- Category (from all Categories, including hidden)
+- Amount (monthly spending limit)
+
+After success:
+
+- Budget is created for the current month.
+- Budget appears in the Budgets list with spending progress.
+
+---
+
+## Edit Budget
+
+User can edit a Budget by changing:
+
+- Amount
+
+After success:
+
+- Budget is updated.
+- Changes take effect immediately.
+
+---
+
+## Delete Budget
+
+User can delete a Budget.
+
+After success:
+
+- Budget is removed from the list.
+- Transactions are NOT affected.
+
+---
+
+## List Budgets
+
+The application retrieves all Budgets for the Household for the current month.
+
+- Each Budget shows: category name, budget amount, actual spent amount, progress bar.
+- User can navigate between months (previous/next).
+
+---
+
+# Validation
+
+## Amount
+
+- Required.
+- Must be a positive number.
+- Minimum 1.
+- No maximum.
+
+---
+
+## Category
+
+- Required.
+- Must be a Category in the same Household.
+- One Budget per Category per period.
+
+---
+
+# Permission
+
+| Action | Owner | Member |
+| ------------------ | :---: | :----: |
+| View Budget |  ✅   |   ✅   |
+| Create Budget |  ✅   |   ✅   |
+| Edit Budget |  ✅   |   ✅   |
+| Delete Budget |  ✅   |   ✅   |
+
+---
+
+# Empty State
+
+## No Budgets yet
+
+Title
+
+> No budgets yet
+
+Description
+
+> Set budgets to control your spending.
+
+Primary Action
+
+> Set Budget
+
+---
+
+# Error State
+
+Show messages that are easy to understand.
+
+Examples:
+
+- Failed to create budget.
+- Budget already exists for this category.
+- Amount is required.
+- Please try again.
+
+Do not show technical backend errors.
+
+---
+
+# Success Criteria
+
+Feature is considered complete when:
+
+- User can create a Budget for a Category.
+- User can edit a Budget amount.
+- User can delete a Budget.
+- Budgets show actual spending vs budgeted amount.
+- Budgets for hidden Categories are visible to Members.
+- Members can fully manage Budgets.
+- Validation works correctly.
+- Empty State is available.
+- Error State is available.
+
+---
+
+# Notes
+
+Technical implementation (database, Convex schema, query, mutation, UI, folder structure, and library) is an engineering decision and is not determined by this document.
+
+Business rules in this document cannot be changed without project owner approval.
+
+---
+
+# Future Improvements
+
+- Budget rollover (carry over unused amount).
+- Weekly and yearly budgets.
+- Shared budgets across Categories.
+- Budget notifications/alerts (e.g., "You've spent 80% of your Food budget").
+- Budget suggestions based on history.
+- Budget templates.

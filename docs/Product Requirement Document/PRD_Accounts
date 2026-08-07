@@ -1,0 +1,396 @@
+# Accounts
+
+> Status: Ready
+> Priority: P0
+> Depends On: Household
+> Next Feature: Transactions
+
+---
+
+# Overview
+
+Accounts represent financial places where money is held in Kin Finance.
+
+Each Account has a name, type, and balance. Accounts help users track where their money lives — cash on hand, bank accounts, e-wallets, or credit cards.
+
+In MVP, each Household has its own set of Accounts. Accounts are created and managed by the Owner. Members can view and use only accounts that are visible to them.
+
+---
+
+# Goals
+
+- Allow users to track multiple financial accounts.
+- Support opening balances with automatic initial transaction recording.
+- Give Owner control over which accounts Members can see.
+
+---
+
+# Scope
+
+## In Scope
+
+- Create an Account with optional opening balance.
+- Edit an Account (name, type).
+- Delete an Account.
+- List all Accounts visible to the current user.
+- Toggle Account visibility for Members.
+- Auto-record opening balance as "initial balance" transaction.
+
+## Out of Scope
+
+- Account icons (future).
+- Account colors (future).
+- Multi-currency (future).
+- Account archiving (future).
+- Account merging (future).
+
+---
+
+# User Stories
+
+### Create Account
+
+As an Owner,
+
+I want to create a new Account with an optional opening balance,
+
+So that I can start tracking my money in that account.
+
+---
+
+### Edit Account
+
+As an Owner,
+
+I want to change an Account's name or type,
+
+So that it better reflects the real account.
+
+---
+
+### Toggle Account Visibility
+
+As an Owner,
+
+I want to show or hide an Account from Members,
+
+So that Members only see relevant accounts.
+
+---
+
+### Delete Account
+
+As an Owner,
+
+I want to remove an Account I no longer use,
+
+So that my account list stays clean.
+
+---
+
+# User Flow
+
+## Create Account
+
+```text
+Accounts Screen
+
+↓
+
+Tap "+" button
+
+↓
+
+Create Account Screen
+
+↓
+
+Enter name, select type, optionally enter opening balance
+
+↓
+
+Tap "Create Account"
+
+↓
+
+Account created
+
+↓
+
+Initial balance transaction auto-recorded (if opening balance > 0)
+
+↓
+
+Return to Accounts Screen
+```
+
+---
+
+## Edit Account
+
+```text
+Accounts Screen
+
+↓
+
+Swipe left on Account → Tap "Edit"
+
+↓
+
+Edit Account Screen (pre-filled)
+
+↓
+
+Update name or type
+
+↓
+
+Tap "Save Changes"
+
+↓
+
+Account updated
+
+↓
+
+Return to Accounts Screen
+```
+
+---
+
+## Delete Account
+
+```text
+Accounts Screen
+
+↓
+
+Swipe left on Account → Tap "Delete"
+
+↓
+
+Confirmation dialog
+
+↓
+
+Tap "Delete"
+
+↓
+
+Account deleted
+
+↓
+
+Return to Accounts Screen
+```
+
+---
+
+# Business Rules
+
+## Account
+
+- Every Account belongs to exactly one Household.
+- Every Account has a type: "cash", "bank", "ewallet", or "credit_card".
+- Account balance is automatically updated when transactions are created, updated, or deleted.
+
+---
+
+## Opening Balance
+
+- Opening balance is optional when creating an Account.
+- If opening balance is provided:
+  - Account balance is set to the opening balance.
+  - An "initial balance" transaction is automatically recorded.
+  - The transaction type matches the opening balance sign (positive = income, negative = expense).
+  - The transaction note is "Initial balance".
+
+---
+
+## Owner
+
+- Only the Owner can create, edit, and delete Accounts.
+- Only the Owner can toggle Account visibility.
+
+---
+
+## Member
+
+- Members can only see and use Accounts that are visible to them.
+- Members cannot create, edit, delete, or toggle visibility of Accounts.
+- Members CAN view, create, edit, and delete Transactions on visible Accounts — even if the Account balance is hidden.
+
+---
+
+## Visibility
+
+- An Account's default visibility is "visible" (hidden = false).
+- When an Account is hidden from Members:
+  - Members cannot see the Account name or balance in any list.
+  - Members CAN still see Transactions belonging to that Account.
+  - Members CAN still create, edit, and delete Transactions on that Account.
+  - Members cannot select the Account when creating a new Transaction (only visible Accounts can be selected).
+
+---
+
+# Functional Requirements
+
+## Create Account
+
+Owner can create an Account by entering:
+
+- Account Name
+- Account Type (Cash, Bank, E-Wallet, Credit Card)
+- Opening Balance (optional, default 0)
+
+After success:
+
+- Account is created in the Household.
+- If opening balance > 0, an "initial balance" transaction is auto-recorded.
+- Account appears in the Account list.
+
+---
+
+## Edit Account
+
+Owner can edit an Account by changing:
+
+- Account Name
+- Account Type
+
+After success:
+
+- Account is updated.
+- Changes take effect immediately.
+
+---
+
+## Delete Account
+
+Owner can delete an Account.
+
+After success:
+
+- Account is removed from the list.
+- Transactions belonging to this Account are NOT deleted (they remain in the system).
+
+---
+
+## List Accounts
+
+The application retrieves all Accounts visible to the current user.
+
+- Owner sees all Accounts.
+- Member sees only visible Accounts.
+
+---
+
+# Validation
+
+## Account Name
+
+- Required.
+- Minimum 2 characters.
+- Maximum 30 characters.
+- Trim whitespace before saving.
+- Must be unique within the same Household.
+
+---
+
+## Account Type
+
+- Required.
+- Must be one of: "cash", "bank", "ewallet", "credit_card".
+
+---
+
+## Opening Balance
+
+- Optional.
+- Must be a number.
+- No sign required (always treated as the account's starting value).
+
+---
+
+# Permission
+
+| Action | Owner | Member |
+| ------------------ | :---: | :----: |
+| View Account |  ✅   |   ✅ (visible only)   |
+| View Account Balance |  ✅   |   ✅ (visible only)   |
+| Create Account |  ✅   |   ❌   |
+| Edit Account |  ✅   |   ❌   |
+| Delete Account |  ✅   |   ❌   |
+| Toggle Visibility |  ✅   |   ❌   |
+| Create Transaction on Account |  ✅   |   ✅ (visible only)   |
+
+---
+
+# Empty State
+
+## No Accounts yet
+
+Title
+
+> No accounts yet
+
+Description
+
+> Add your first account to start tracking your money.
+
+Primary Action
+
+> Add Account
+
+---
+
+# Error State
+
+Show messages that are easy to understand.
+
+Examples:
+
+- Failed to create account.
+- Account name already exists.
+- Account name is too short.
+- Please try again.
+
+Do not show technical backend errors.
+
+---
+
+# Success Criteria
+
+Feature is considered complete when:
+
+- Owner can create an Account.
+- Owner can edit an Account name and type.
+- Owner can delete an Account.
+- Owner can toggle Account visibility.
+- Member can only see visible Accounts.
+- Member cannot create, edit, delete, or toggle visibility.
+- Opening balance is recorded as "initial balance" transaction.
+- Account balance auto-updates on transaction changes.
+- Member can create transactions on visible Accounts even if balance is hidden.
+- Validation works correctly.
+- Empty State is available.
+- Error State is available.
+
+---
+
+# Notes
+
+Technical implementation (database, Convex schema, query, mutation, UI, folder structure, and library) is an engineering decision and is not determined by this document.
+
+Business rules in this document cannot be changed without project owner approval.
+
+---
+
+# Future Improvements
+
+- Account icons.
+- Account colors.
+- Multi-currency support.
+- Account archiving.
+- Account merging.
+- Credit card due date tracking.
