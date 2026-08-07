@@ -31,7 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
 
 # typescript
 *.tsbuildinfo
@@ -43,5 +44,5 @@ app-example
 /android
 
 #AI Related
-.cluade
+/.claude
 CLAUDE.md
