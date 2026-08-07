@@ -9,4 +9,18 @@ export default defineSchema({
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
+
+  households: defineTable({
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  householdMemberships: defineTable({
+    householdId: v.id("households"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("member")),
+  })
+    .index("by_householdId", ["householdId"])
+    .index("by_userId", ["userId"]),
 });
