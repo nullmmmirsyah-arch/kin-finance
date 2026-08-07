@@ -1,7 +1,7 @@
 # Household Feature — Design Spec
 
 > Date: 2026-08-07
-> PRD: docs/Product Requirement Document/PRD_Workspace
+> PRD: docs/Product Requirement Document/PRD_Household
 > Status: Approved
 > Supersedes: 2026-08-07-workspace-design.md
 
@@ -70,7 +70,7 @@ Rename "Workspace" to "Household" across the entire codebase — database, Conve
 
 ### `households` table
 
-```
+```text
 name: string        // 3-50 chars, trimmed whitespace
 createdAt: number   // auto-generated timestamp
 updatedAt: number   // auto-generated timestamp
@@ -78,7 +78,7 @@ updatedAt: number   // auto-generated timestamp
 
 ### `householdMemberships` table
 
-```
+```text
 householdId: id<households>
 userId: id<users>
 role: v.union(v.literal("owner"), v.literal("member"))

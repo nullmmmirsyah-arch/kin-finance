@@ -1,4 +1,4 @@
-# Workspace
+# Household
 
 > Status: Ready
 > Priority: P0
@@ -9,20 +9,20 @@
 
 # Overview
 
-Workspace adalah root entity dari seluruh data di Kin Finance.
+Household is the root entity for all financial data in Kin Finance.
 
-Setiap data finansial harus dimiliki oleh tepat satu Workspace. Workspace dapat digunakan oleh satu orang (personal) maupun banyak anggota (family).
+Every financial data must belong to exactly one Household. A Household can be used by one person (personal) or many members (family).
 
-Pada MVP, setiap user hanya memiliki satu Workspace.
+In MVP, each user only has one Household.
 
 ---
 
 # Goals
 
-- Menyediakan root untuk seluruh data finansial.
-- Menghubungkan seluruh feature ke Workspace.
-- Menjadikan user pertama sebagai Owner.
-- Menjadi dasar sistem permission.
+- Provide a root for all financial data.
+- Connect all features to Household.
+- Make the first user the Owner.
+- Foundation for the permission system.
 
 ---
 
@@ -30,16 +30,16 @@ Pada MVP, setiap user hanya memiliki satu Workspace.
 
 ## In Scope
 
-- Membuat Workspace pertama.
-- Mengambil Workspace aktif.
-- Mengubah nama Workspace.
+- Create the first Household.
+- Get active Household.
+- Rename Household.
 
 ## Out of Scope
 
-- Multiple Workspace.
-- Workspace Switching.
-- Workspace Archive.
-- Workspace Delete.
+- Multiple Households.
+- Household Switching.
+- Household Archive.
+- Household Delete.
 - Invite Member.
 - Transfer Ownership.
 
@@ -47,23 +47,23 @@ Pada MVP, setiap user hanya memiliki satu Workspace.
 
 # User Stories
 
-### Create Workspace
+### Create Household
 
-Sebagai pengguna baru,
+As a new user,
 
-Saya ingin membuat Workspace pertama,
+I want to create my first Household,
 
-Sehingga saya dapat mulai menggunakan Kin Finance.
+So that I can start using Kin Finance.
 
 ---
 
-### Rename Workspace
+### Rename Household
 
-Sebagai Owner,
+As an Owner,
 
-Saya ingin mengubah nama Workspace,
+I want to change my Household name,
 
-Sehingga nama Workspace sesuai kebutuhan saya.
+So that the Household name fits my needs.
 
 ---
 
@@ -76,15 +76,15 @@ Login
 
 ↓
 
-Workspace belum ada
+No Household yet
 
 ↓
 
-Create Workspace
+Create Household
 
 ↓
 
-Workspace berhasil dibuat
+Household created successfully
 
 ↓
 
@@ -100,7 +100,7 @@ Login
 
 ↓
 
-Workspace ditemukan
+Household found
 
 ↓
 
@@ -111,140 +111,140 @@ Dashboard
 
 # Business Rules
 
-## Workspace
+## Household
 
-- Workspace adalah root seluruh data.
-- Semua entity wajib memiliki `workspaceId`.
-- Workspace selalu memiliki minimal satu Owner.
+- Household is the root of all data.
+- All entities must have `householdId`.
+- Household must always have at least one Owner.
 
 ---
 
 ## Owner
 
-User yang membuat Workspace otomatis menjadi Owner pertama.
+The user who creates the Household automatically becomes the first Owner.
 
 ---
 
 ## Access
 
-User hanya boleh mengakses Workspace yang menjadi anggotanya.
+Users may only access Households they are members of.
 
 ---
 
 ## Initialization
 
-Workspace hanya dibuat sekali saat onboarding.
+Household is only created once during onboarding.
 
 ---
 
 # Functional Requirements
 
-## Create Workspace
+## Create Household
 
-User dapat membuat Workspace dengan memasukkan:
+User can create a Household by entering:
 
-- Workspace Name
+- Household Name
 
-Setelah berhasil:
+After success:
 
-- Workspace dibuat.
-- User menjadi Owner.
-- Workspace menjadi Workspace aktif.
-
----
-
-## Get Active Workspace
-
-Aplikasi dapat mengambil Workspace aktif milik user.
+- Household is created.
+- User becomes Owner.
+- Household becomes the active Household.
 
 ---
 
-## Update Workspace
+## Get Active Household
 
-Owner dapat mengubah nama Workspace.
+The application can retrieve the active Household for the current user.
+
+---
+
+## Update Household
+
+Owner can change the Household name.
 
 ---
 
 # Validation
 
-## Workspace Name
+## Household Name
 
-- Wajib diisi.
-- Minimal 3 karakter.
-- Maksimal 50 karakter.
-- Trim whitespace sebelum disimpan.
+- Required.
+- Minimum 3 characters.
+- Maximum 50 characters.
+- Trim whitespace before saving.
 
 ---
 
 # Permission
 
-| Action           | Owner | Member |
-| ---------------- | :---: | :----: |
-| View Workspace   |  ✅   |   ✅   |
-| Rename Workspace |  ✅   |   ❌   |
+| Action            | Owner | Member |
+| ----------------- | :---: | :----: |
+| View Household    |  ✅   |   ✅   |
+| Rename Household  |  ✅   |   ❌   |
 
 ---
 
 # Empty State
 
-## Workspace belum ada
+## No Household yet
 
 Title
 
-> Selamat datang di Kin Finance
+> Welcome to Kin Finance
 
 Description
 
-> Buat Workspace pertama untuk mulai mengelola keuangan Anda.
+> Create your Household to start managing your family's finances.
 
 Primary Action
 
-> Buat Workspace
+> Create Household
 
 ---
 
 # Error State
 
-Tampilkan pesan yang mudah dipahami.
+Show messages that are easy to understand.
 
-Contoh:
+Examples:
 
-- Workspace gagal dibuat.
-- Nama Workspace tidak valid.
-- Silakan coba lagi.
+- Failed to create household.
+- Household name is invalid.
+- Please try again.
 
-Jangan tampilkan error teknis dari backend.
+Do not show technical backend errors.
 
 ---
 
 # Success Criteria
 
-Feature dianggap selesai apabila:
+Feature is considered complete when:
 
-- User dapat membuat Workspace.
-- Workspace otomatis menjadi Workspace aktif.
-- User otomatis menjadi Owner.
-- Owner dapat mengubah nama Workspace.
-- User tidak dapat mengakses Workspace lain.
-- Validasi berjalan dengan benar.
-- Empty State tersedia.
-- Error State tersedia.
+- User can create a Household.
+- Household automatically becomes the active Household.
+- User automatically becomes Owner.
+- Owner can rename the Household.
+- User cannot access other Households.
+- Validation works correctly.
+- Empty State is available.
+- Error State is available.
 
 ---
 
 # Notes
 
-Implementasi teknis (database, Convex schema, query, mutation, UI, folder structure, dan library) merupakan keputusan engineering dan tidak ditentukan oleh dokumen ini.
+Technical implementation (database, Convex schema, query, mutation, UI, folder structure, and library) is an engineering decision and is not determined by this document.
 
-Business rule dalam dokumen ini tidak boleh diubah tanpa persetujuan pemilik proyek.
+Business rules in this document cannot be changed without project owner approval.
 
 ---
 
 # Future Improvements
 
-- Multiple Workspace.
-- Workspace Switching.
+- Multiple Households.
+- Household Switching.
 - Invite Member.
 - Transfer Ownership.
-- Archive Workspace.
-- Delete Workspace.
+- Archive Household.
+- Delete Household.

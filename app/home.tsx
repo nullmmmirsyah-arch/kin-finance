@@ -12,12 +12,14 @@ export default function Home() {
   const store = useMutation(api.users.store);
   const me = useQuery(api.users.getMe);
   const household = useQuery(api.households.getActive);
+  const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const sync = useCallback(async () => {
     setSyncError(null);
     try {
       await store();
+      setSynced(true);
     } catch (e) {
       setSyncError(e instanceof Error ? e.message : "Failed to sync user.");
     }
@@ -28,12 +30,29 @@ export default function Home() {
   }, [sync]);
 
   useEffect(() => {
-    if (household !== undefined && household === null) {
+    if (synced && household !== undefined && household === null) {
       router.replace("/onboarding");
     }
-  }, [household, router]);
+  }, [synced, household, router]);
 
-  if (household === undefined || household === null) {
+  if (!synced || household === undefined) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (syncError) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.error}>{syncError}</Text>
+        <Button title="Try Again" onPress={() => void sync()} />
+      </View>
+    );
+  }
+
+  if (!household) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
@@ -48,8 +67,6 @@ export default function Home() {
         Hello, {me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "User"}!
       </Text>
       <Text style={styles.household}>Household: {household.name}</Text>
-      {syncError && <Text style={styles.error}>{syncError}</Text>}
-      {syncError && <Button title="Try Again" onPress={() => void sync()} />}
       <Button
         title="Sign Out"
         onPress={() => {

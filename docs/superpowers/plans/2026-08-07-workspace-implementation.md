@@ -1,3 +1,7 @@
+> **⚠ SUPERSEDED:** This plan is obsolete. Workspace has been renamed to Household.
+> See `docs/superpowers/specs/2026-08-07-household-design.md` for the current design.
+> All code references use `households.*`, not `workspaces.*`.
+
 # Workspace Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -96,7 +100,7 @@ git commit -m "feat: add workspaces and workspaceMemberships tables"
 - [ ] **Step 1: Create workspaces.ts with create mutation**
 
 ```typescript
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const create = mutation({
