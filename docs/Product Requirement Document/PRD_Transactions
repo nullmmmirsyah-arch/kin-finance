@@ -202,7 +202,8 @@ Return to Transactions Screen
 - Every Transaction belongs to exactly one Account.
 - Every Transaction belongs to exactly one Category.
 - Every Transaction has a type: "income" or "expense".
-- Income amounts are positive. Expense amounts are stored as negative internally (or as positive with type "expense" — implementation decision).
+- **amount is signed:** positive for income, negative for expense. The sign must agree with `type`.
+- **Category type must match transaction type:** income transactions require an income category, expense transactions require an expense category.
 
 ---
 
@@ -224,7 +225,7 @@ Return to Transactions Screen
 ## Visibility
 
 - Transactions on visible Accounts: fully visible and editable by Members.
-- Transactions on hidden Accounts: still visible and editable by Members.
+- Transactions on hidden Accounts: visible and editable by Members for existing transactions only. Member cannot create new transactions on hidden accounts or reassign existing transactions to hidden accounts.
 - Transactions on visible Categories: fully visible and editable by Members.
 - Transactions on hidden Categories: completely invisible and untouchable by Members.
 
@@ -239,13 +240,13 @@ User can create a Transaction by entering:
 - Type: Income or Expense
 - Amount (nominal, thousand separator display)
 - Account (from visible Accounts)
-- Category (from visible Categories)
+- Category (from visible Categories, must match transaction type)
 - Date (default: today)
 - Note (optional)
 
 After success:
 
-- Transaction is created.
+- Transaction is created with signed amount (positive = income, negative = expense).
 - Account balance is auto-updated.
 - Transaction appears in the list.
 
@@ -258,7 +259,7 @@ User can edit a Transaction by changing:
 - Type
 - Amount
 - Account
-- Category
+- Category (must match transaction type)
 - Date
 - Note
 
@@ -296,8 +297,9 @@ The application retrieves Transactions for the Household within a date range.
 ## Amount
 
 - Required.
-- Must be a positive number.
-- Minimum 1 (smallest unit).
+- Must be a non-zero number.
+- Positive for income, negative for expense.
+- Minimum absolute value: 1 (smallest unit).
 - No maximum (but very large numbers should be handled gracefully).
 
 ---
@@ -305,7 +307,8 @@ The application retrieves Transactions for the Household within a date range.
 ## Account
 
 - Required.
-- Must be a visible Account for the current user.
+- **Create:** Must be a visible Account for the current user.
+- **Edit:** If changing accountId, the new account must be visible. Existing transactions on hidden accounts can be edited (amount, category, date, note) without changing accountId.
 
 ---
 
@@ -313,6 +316,7 @@ The application retrieves Transactions for the Household within a date range.
 
 - Required.
 - Must be a visible Category for the current user.
+- **Type must match transaction type:** income category for income transactions, expense category for expense transactions.
 
 ---
 
@@ -320,7 +324,7 @@ The application retrieves Transactions for the Household within a date range.
 
 - Required.
 - Must be a valid date.
-- Cannot be in the future (or allow it? — TBD during implementation).
+- Cannot be in the future. Transaction dates represent actual financial events that have occurred.
 
 ---
 
@@ -336,8 +340,8 @@ The application retrieves Transactions for the Household within a date range.
 | Action | Owner | Member |
 | ------------------ | :---: | :----: |
 | View Transaction |  ✅   |   ✅ (visible categories/accounts only)   |
-| Create Transaction |  ✅   |   ✅   |
-| Edit Transaction |  ✅   |   ✅   |
+| Create Transaction |  ✅   |   ✅ (visible accounts/categories only)   |
+| Edit Transaction |  ✅   |   ✅ (cannot reassign to hidden account)   |
 | Delete Transaction |  ✅   |   ✅   |
 
 ---
@@ -370,6 +374,8 @@ Examples:
 - Amount is required.
 - Account not found.
 - Category not found.
+- Category type must match transaction type.
+- Transaction date cannot be in the future.
 - Please try again.
 
 Do not show technical backend errors.

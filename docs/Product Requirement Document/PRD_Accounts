@@ -199,11 +199,13 @@ Return to Accounts Screen
 ## Opening Balance
 
 - Opening balance is optional when creating an Account.
-- If opening balance is provided:
-  - Account balance is set to the opening balance.
-  - An "initial balance" transaction is automatically recorded.
-  - The transaction type matches the opening balance sign (positive = income, negative = expense).
-  - The transaction note is "Initial balance".
+- If opening balance is provided (non-zero, positive or negative):
+  - Account is created with `balance: 0`.
+  - An "initial balance" transaction is automatically posted via `transactions.create`.
+  - The transaction amount is signed: positive for income, negative for expense.
+  - The transaction type matches the sign: "income" if positive, "expense" if negative.
+  - The normal transaction balance update applies the amount to the account.
+  - This ensures the opening balance is applied exactly once through the standard path.
 
 ---
 
@@ -228,8 +230,9 @@ Return to Accounts Screen
 - When an Account is hidden from Members:
   - Members cannot see the Account name or balance in any list.
   - Members CAN still see Transactions belonging to that Account.
-  - Members CAN still create, edit, and delete Transactions on that Account.
-  - Members cannot select the Account when creating a new Transaction (only visible Accounts can be selected).
+  - Members CAN still edit existing Transactions that already reference that Account (amount, category, date, note).
+  - Members CANNOT select the Account when creating a new Transaction.
+  - Members CANNOT reassign an existing Transaction to a hidden Account.
 
 ---
 
@@ -245,9 +248,9 @@ Owner can create an Account by entering:
 
 After success:
 
-- Account is created in the Household.
-- If opening balance > 0, an "initial balance" transaction is auto-recorded.
-- Account appears in the Account list.
+- Account is created in the Household with zero balance.
+- If opening balance is non-zero (positive or negative), an "initial balance" transaction is auto-recorded with signed amount.
+- Account appears in the Account list with the opening balance reflected.
 
 ---
 
@@ -257,6 +260,7 @@ Owner can edit an Account by changing:
 
 - Account Name
 - Account Type
+- Visibility (hidden/visible for Members)
 
 After success:
 
@@ -269,10 +273,12 @@ After success:
 
 Owner can delete an Account.
 
+**Guard:** If any Transactions reference this Account, deletion is rejected with: "Cannot delete account — existing transactions reference this account. Delete or reassign those transactions first."
+
 After success:
 
 - Account is removed from the list.
-- Transactions belonging to this Account are NOT deleted (they remain in the system).
+- Balance is reversed from Household totals.
 
 ---
 
@@ -353,6 +359,7 @@ Examples:
 - Failed to create account.
 - Account name already exists.
 - Account name is too short.
+- Cannot delete account — existing transactions reference this account. Delete or reassign those transactions first.
 - Please try again.
 
 Do not show technical backend errors.

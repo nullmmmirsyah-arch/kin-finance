@@ -185,9 +185,13 @@ Member loses access to Household data
 ## Invite Code
 
 - An invite code is unique and generated per Household.
-- An invite code expires after 7 days (or never — TBD during implementation).
-- An invite code can only be used once (or multiple times — TBD during implementation).
+- Code is cryptographically generated (random, 8 alphanumeric characters).
+- Code is never stored in plaintext — only the SHA-256 hash is stored server-side.
+- Code expires after 7 days from creation.
+- Code is single-use by default (maxUses = 1).
+- Owner can revoke an unused code before it expires.
 - Only the Owner can generate an invite code.
+- Code input is case-normalized before hashing.
 
 ---
 
@@ -230,8 +234,11 @@ Owner can generate an invite code for their Household.
 
 After success:
 
-- A unique code is generated (format: "KIN-XXXXXX").
-- Code is displayed on screen.
+- A cryptographically random code is generated (8 alphanumeric characters).
+- Code is hashed (SHA-256) and stored server-side — plaintext is never persisted.
+- Expiry is set to 7 days from creation.
+- Max uses is set to 1 (single-use).
+- Code is displayed on screen (plaintext, shown once).
 - Owner can copy or share the code.
 
 ---
@@ -240,11 +247,26 @@ After success:
 
 User can join a Household by entering a valid invite code.
 
+Server performs atomic redemption:
+
+1. Hash the input code (case-normalized).
+2. Look up invitation by `codeHash`.
+3. Validate: not expired, not revoked, `useCount < maxUses`.
+4. Insert `householdMembership` with role "member".
+5. Increment `useCount`.
+
 After success:
 
 - User is added as a Member to the Household.
 - User gains access to all Household data (respecting visibility rules).
 - User is redirected to the Home Screen.
+
+Failure cases (user-friendly messages):
+
+- "Invalid invite code." — code not found.
+- "This invite code has expired." — past expiry date.
+- "This invite code has already been used." — useCount >= maxUses.
+- "This invite code has been revoked." — owner revoked it.
 
 ---
 
@@ -275,8 +297,9 @@ After success:
 ## Invite Code
 
 - Required.
-- Format: "KIN-" followed by 6 alphanumeric characters.
-- Case-insensitive.
+- Format: 8 alphanumeric characters (no prefix needed).
+- Case-normalized before hashing.
+- Server-side rate limiting: max 5 redemption attempts per code per minute.
 
 ---
 

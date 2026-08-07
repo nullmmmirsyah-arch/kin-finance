@@ -140,9 +140,12 @@
 2. Filter chips: All | Cash | Bank | E-Wallet | Credit Card
 3. Account list:
    - Each card: account name, type icon, balance (thousand separator)
-   - Swipe left → Edit | Delete
-4. FAB (Floating Action Button): plus icon → Create Account
-5. Empty state: illustration of empty wallet → "No accounts yet" → "Add your first account to start tracking" → [Add Account]
+   - Owner: swipe left → Edit | Delete
+   - Member: no swipe actions (read-only)
+4. FAB (Floating Action Button): plus icon → Create Account (Owner only, hidden for Member)
+5. Empty state: illustration of empty wallet → "No accounts yet" → "Add your first account to start tracking" → [Add Account] (Owner only)
+
+**Member state:** Read-only list. No create, edit, delete, or visibility toggle. Balance shown only for visible accounts.
 ```
 
 ---
@@ -152,21 +155,25 @@
 ```markdown
 ## Create Account Screen
 
-**Purpose:** Add new account
+**Purpose:** Add new account (Owner only)
 
 **Layout (top to bottom):**
 1. Header: "Create Account" (H1, left aligned)
 2. TextInput: placeholder "Account name" (full width, 48px height)
 3. Dropdown: Account type (Cash | Bank | E-Wallet | Credit Card)
-4. TextInput: placeholder "Opening balance (optional)" (number input, thousand separator)
-5. Button: "Create Account" (full width, solid primary, 48px height)
+4. TextInput: placeholder "Opening balance (optional)" (number input, thousand separator, allows negative)
+5. Toggle: "Visible to members" (default on, with description below)
+6. Button: "Create Account" (full width, solid primary, 48px height)
 
-**On Submit:** Create account → auto-create initial balance transaction → navigate to Accounts
+**On Submit:** Create account (zero balance) → if non-zero opening balance, post initial transaction → navigate to Accounts
+
+**Member state:** Screen not accessible. Navigation blocked.
 
 **Edit Account Screen:**
 - Same as Create, pre-filled with existing data
 - Header: "Edit Account"
 - Button: "Save Changes"
+- Member state: Screen not accessible. Navigation blocked.
 ```
 
 ---
@@ -224,10 +231,13 @@
 1. Header: "Categories" (H1, left aligned)
 2. Filter chips: All | Income | Expense
 3. Category list:
-   - Each row: category name, type badge (income/expense), visibility toggle (eye icon)
-   - Swipe left → Edit | Delete
-4. FAB: plus icon → Create Category
-5. Empty state: illustration of empty tags → "No categories yet" → "Create categories to organize your transactions" → [Add Category]
+   - Each row: category name, type badge (income/expense)
+   - Owner: visibility toggle (eye icon) + swipe left → Edit | Delete
+   - Member: no visibility toggle, no swipe actions (read-only)
+4. FAB: plus icon → Create Category (Owner only, hidden for Member)
+5. Empty state: illustration of empty tags → "No categories yet" → "Create categories to organize your transactions" → [Add Category] (Owner only)
+
+**Member state:** Read-only list. No create, edit, delete, or visibility toggle.
 ```
 
 ---
@@ -237,7 +247,7 @@
 ```markdown
 ## Create Category Screen
 
-**Purpose:** Add new category
+**Purpose:** Add new category (Owner only)
 
 **Layout (top to bottom):**
 1. Header: "Create Category" (H1, left aligned)
@@ -248,10 +258,13 @@
 
 **On Submit:** Create category → navigate to Categories
 
+**Member state:** Screen not accessible. Navigation blocked.
+
 **Edit Category Screen:**
 - Same as Create, pre-filled with existing data
 - Header: "Edit Category"
 - Button: "Save Changes"
+- Member state: Screen not accessible. Navigation blocked.
 ```
 
 ---
@@ -265,13 +278,18 @@
 
 **Layout (top to bottom):**
 1. Header: "Budgets" (H1, left aligned)
-2. Month selector: < August 2026 >
-3. Summary card: total budgeted vs total spent (progress bar)
-4. Budget list:
+2. Month selector: < August 2026 > — controls which month's budgets are shown
+3. Summary card: total budgeted vs total spent for selected month (progress bar)
+4. Budget list (filtered by selected month):
    - Each row: category name, progress bar, budget amount, spent amount
-   - Tap → Edit Budget
-5. FAB: plus icon → Create Budget
-6. Empty state: illustration of empty chart → "No budgets yet" → "Set budgets to control your spending" → [Set Budget]
+   - For hidden categories: category name and amounts shown, but no link to transactions
+   - Tap → Edit Budget (passes selected month)
+5. FAB: plus icon → Create Budget (defaults to selected month)
+6. Empty state: illustration of empty chart → "No budgets for this month" → "Set budgets to control your spending" → [Set Budget]
+
+**Data flow:** Month selector state → `budgets.list({ periodStart })` → render filtered list
+
+**Hidden category exception:** Budgets for hidden categories are visible to Members. Category name and budget amount are shown. Spending breakdown (transaction details) is not shown.
 ```
 
 ---
@@ -281,20 +299,21 @@
 ```markdown
 ## Create Budget Screen
 
-**Purpose:** Set budget for a category
+**Purpose:** Set budget for a category in a specific month
 
 **Layout (top to bottom):**
 1. Header: "Set Budget" (H1, left aligned)
-2. Dropdown: Select Category (list of visible categories)
-3. Amount input: large number display (28px, centered), thousand separator
-4. Period: Monthly (disabled, MVP)
+2. Month indicator: "August 2026" (read-only, from selected month)
+3. Dropdown: Select Category (list of visible categories)
+4. Amount input: large number display (28px, centered), thousand separator
 5. Button: "Set Budget" (full width, solid primary, 48px height)
 
-**On Submit:** Create budget → navigate to Budgets
+**On Submit:** Create budget for selected month → navigate to Budgets
 
 **Edit Budget Screen:**
 - Same as Create, pre-filled with existing data
 - Header: "Edit Budget"
+- Month indicator: read-only (cannot change month after creation)
 - Button: "Save Changes"
 ```
 
@@ -310,13 +329,15 @@
 **Layout (top to bottom):**
 1. Header: "Settings" (H1, left aligned)
 2. Section: "Household"
-   - Row: Household Name → Edit (owner only)
-   - Row: Members → View/Invite (owner only)
+   - Row: Household Name → Edit (Owner only, read-only for Member)
+   - Row: Members → View (Owner and Member can view; Invite is Owner only)
 3. Section: "Account"
    - Row: Profile (name, email)
    - Row: Sign Out
 4. Section: "About"
    - Row: Version
+
+**Member state:** Household Name read-only. Members row links to view-only member list (no invite section).
 ```
 
 ---
@@ -332,11 +353,13 @@
 1. Header: "Household Members" (H1, left aligned)
 2. Member list:
    - Each row: avatar, name, email, role badge (Owner/Member)
-3. Section: "Invite"
+3. Section: "Invite" (Owner only, hidden for Member)
    - Generate invite code button
    - Code display with copy button
    - Share button (native share sheet)
-4. Empty state (no other members): illustration of single person → "You're the only member" → "Invite family members to manage finances together" → [Invite Member]
+4. Empty state (no other members): illustration of single person → "You're the only member" → "Invite family members to manage finances together" → [Invite Member] (Owner only)
+
+**Member state:** Read-only member list. No invite section. No generate/revoke invite codes.
 ```
 
 ---

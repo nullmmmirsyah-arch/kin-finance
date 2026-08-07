@@ -212,7 +212,7 @@ Return to Categories Screen
   - Members cannot see the Category in any list.
   - Members cannot select the Category when creating or editing a Transaction.
   - Members cannot see, create, edit, or delete Transactions belonging to that Category.
-- Budgets for hidden Categories are still visible to Members.
+- **Exception:** Budgets for hidden Categories are still visible to Members (category name and budget amount shown, spending breakdown not shown).
 
 ---
 
@@ -241,6 +241,8 @@ Owner can edit a Category by changing:
 - Category Type
 - Visibility
 
+**Type change restriction:** Category type cannot be changed if there are existing Transactions or Budgets linked to this Category. The update is rejected with an error: "Cannot change category type — existing transactions or budgets use this category." Owner must delete or reassign those Transactions/Budgets first, or create a new Category.
+
 After success:
 
 - Category is updated.
@@ -252,10 +254,11 @@ After success:
 
 Owner can delete a Category.
 
+**Guard:** If any Transactions or Budgets reference this Category, deletion is rejected with: "Cannot delete category — existing transactions or budgets reference this category. Delete or reassign those first."
+
 After success:
 
 - Category is removed from the list.
-- Transactions belonging to this Category are NOT deleted (they become uncategorized or remain with old reference — TBD during implementation).
 
 ---
 
@@ -326,6 +329,8 @@ Examples:
 - Failed to create category.
 - Category name already exists.
 - Category name is too short.
+- Cannot change category type — existing transactions or budgets use this category.
+- Cannot delete category — existing transactions or budgets reference this category. Delete or reassign those first.
 - Please try again.
 
 Do not show technical backend errors.

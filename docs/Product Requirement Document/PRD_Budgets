@@ -186,15 +186,16 @@ Return to Budgets Screen
 ## Budget
 
 - Every Budget belongs to exactly one Household.
-- Every Budget is linked to exactly one Category.
-- Every Budget has a period: "monthly" (MVP only).
+- Every Budget is linked to exactly one **expense** Category.
+- Every Budget is identified by `(householdId, categoryId, periodStart)` — unique per household, category, and month.
+- `periodStart` is the first day of the month (epoch ms), set at creation time.
 - Every Budget has an amount (spending limit for the period).
 
 ---
 
 ## Spending Calculation
 
-- Actual spending for a Budget = sum of expense Transactions in the linked Category during the current month.
+- Actual spending for a Budget = sum of expense Transactions in the linked Category during the budget's month (matching `periodStart`).
 - Budget progress = actual spending / budget amount.
 - If actual spending exceeds budget amount, the budget is "over budget".
 
@@ -202,8 +203,11 @@ Return to Budgets Screen
 
 ## Visibility
 
-- Budgets for hidden Categories are visible to Members.
-- Members can create, edit, and delete Budgets for any Category (visible or hidden).
+- Budgets for hidden expense Categories are visible to Members (**visibility exception**).
+- Members can view budgets for hidden categories (category name and budget amount are shown).
+- Members can create, edit, and delete Budgets for any expense Category (visible or hidden).
+- Income Categories cannot be associated with Budgets.
+- **Rationale:** Budgets are household-level planning tools. Hiding a category from transactions does not remove its budget, which affects overall household financial visibility.
 
 ---
 
@@ -218,15 +222,18 @@ Return to Budgets Screen
 
 ## Create Budget
 
-User can create a Budget by selecting:
+User can create a Budget for a selected month by entering:
 
 - Category (from all Categories, including hidden)
 - Amount (monthly spending limit)
 
+The `periodStart` is derived from the selected month (first day of that month, epoch ms).
+
 After success:
 
-- Budget is created for the current month.
+- Budget is created for the selected month.
 - Budget appears in the Budgets list with spending progress.
+- If a budget already exists for the same category and month, the update is rejected with: "A budget already exists for this category in this month."
 
 ---
 
@@ -256,10 +263,12 @@ After success:
 
 ## List Budgets
 
-The application retrieves all Budgets for the Household for the current month.
+The application retrieves all Budgets for the Household for a given month.
 
+- Query takes `periodStart` (first day of month, epoch ms).
 - Each Budget shows: category name, budget amount, actual spent amount, progress bar.
-- User can navigate between months (previous/next).
+- For hidden categories: category name and budget amount are visible; spending details (transaction breakdown) are not shown.
+- User can navigate between months (previous/next), which updates the `periodStart` query parameter.
 
 ---
 
@@ -277,10 +286,17 @@ The application retrieves all Budgets for the Household for the current month.
 ## Category
 
 - Required.
-- Must be a Category in the same Household.
-- One Budget per Category per period.
+- Must be an **expense** Category in the same Household.
+- Income categories cannot be used for budgets.
+- Unique constraint: one Budget per `(householdId, categoryId, periodStart)` — no duplicate budgets for the same category in the same month.
 
 ---
+
+## Month (periodStart)
+
+- Required.
+- Must be the first day of a month (epoch ms).
+- Derived from the selected month in the UI.
 
 # Permission
 
@@ -318,7 +334,8 @@ Show messages that are easy to understand.
 Examples:
 
 - Failed to create budget.
-- Budget already exists for this category.
+- A budget already exists for this category in this month.
+- Cannot create budget for an income category.
 - Amount is required.
 - Please try again.
 
