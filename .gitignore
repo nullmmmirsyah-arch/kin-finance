@@ -42,7 +42,13 @@ app-example
 # generated native folders
 /ios
 /android
+/convex/_generated
 
 #AI Related
 /.claude
 CLAUDE.md
+convex/_generated/api.d.ts
+convex/_generated/api.js
+convex/_generated/dataModel.d.ts
+convex/_generated/server.d.ts
+convex/_generated/server.js

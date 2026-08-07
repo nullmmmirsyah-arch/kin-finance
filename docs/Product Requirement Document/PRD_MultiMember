@@ -99,7 +99,7 @@ Tap "Generate Invite Code"
 
 ↓
 
-Code displayed (e.g., "KIN-A1B2C3")
+Code displayed (e.g., "A1B2C3D4")
 
 ↓
 
@@ -186,7 +186,7 @@ Member loses access to Household data
 
 - An invite code is unique and generated per Household.
 - Code is cryptographically generated (random, 8 alphanumeric characters).
-- Code is never stored in plaintext — only the SHA-256 hash is stored server-side.
+- Code is never stored in plaintext — only a server-secret HMAC-SHA-256 digest is stored server-side.
 - Code expires after 7 days from creation.
 - Code is single-use by default (maxUses = 1).
 - Owner can revoke an unused code before it expires.
@@ -235,7 +235,7 @@ Owner can generate an invite code for their Household.
 After success:
 
 - A cryptographically random code is generated (8 alphanumeric characters).
-- Code is hashed (SHA-256) and stored server-side — plaintext is never persisted.
+- Code is hashed (HMAC-SHA-256 keyed with a server secret) and stored server-side — plaintext is never persisted.
 - Expiry is set to 7 days from creation.
 - Max uses is set to 1 (single-use).
 - Code is displayed on screen (plaintext, shown once).
@@ -249,11 +249,13 @@ User can join a Household by entering a valid invite code.
 
 Server performs atomic redemption:
 
-1. Hash the input code (case-normalized).
-2. Look up invitation by `codeHash`.
-3. Validate: not expired, not revoked, `useCount < maxUses`.
-4. Insert `householdMembership` with role "member".
-5. Increment `useCount`.
+1. Require a signed-in identity.
+2. Atomically check the user has no existing membership (by `userId`); reject with "You are already a member of a Household." if they do.
+3. Hash the input code (case-normalized).
+4. Look up invitation by `codeHash`.
+5. Validate: not expired, not revoked, `useCount < maxUses`.
+6. Insert `householdMembership` with role "member".
+7. Increment `useCount`.
 
 After success:
 
@@ -299,7 +301,7 @@ After success:
 - Required.
 - Format: 8 alphanumeric characters (no prefix needed).
 - Case-normalized before hashing.
-- Server-side rate limiting: max 5 redemption attempts per code per minute.
+- Server-side rate limiting: max 5 redemption attempts per code per minute (per-code bucket), in addition to redemption limits across actors (userId), IPs, and devices.
 
 ---
 

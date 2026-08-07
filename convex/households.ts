@@ -148,3 +148,104 @@ export const update = mutation({
     return await ctx.db.get(args.householdId);
   },
 });
+
+export const listMembers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      return null;
+    }
+
+    const membership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (membership === null) {
+      return null;
+    }
+
+    const memberships = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_householdId", (q) =>
+        q.eq("householdId", membership.householdId),
+      )
+      .collect();
+
+    const members = await Promise.all(
+      memberships.map(async (m) => {
+        const member = await ctx.db.get(m.userId);
+        return {
+          userId: m.userId,
+          name: member?.name,
+          email: member?.email,
+          imageUrl: member?.imageUrl,
+          role: m.role,
+        };
+      }),
+    );
+
+    return { householdId: membership.householdId, members };
+  },
+});
+
+export const removeMember = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new ConvexError("You are not signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      throw new ConvexError("User not found.");
+    }
+
+    const targetMembership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (targetMembership === null) {
+      throw new ConvexError("Member not found.");
+    }
+
+    const callerMemberships = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const callerMembership = callerMemberships.find(
+      (m) => m.householdId === targetMembership.householdId,
+    );
+
+    if (callerMembership === undefined || callerMembership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    if (targetMembership.role === "owner") {
+      throw new ConvexError("You cannot remove the owner of the household.");
+    }
+
+    await ctx.db.delete(targetMembership._id);
+  },
+});

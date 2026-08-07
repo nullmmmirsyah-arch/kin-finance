@@ -81,7 +81,7 @@
 
 ### `users` table
 
-```
+```text
 tokenIdentifier: string     // Clerk token ID
 clerkUserId: string         // Clerk user ID
 name: string | undefined    // display name
@@ -95,7 +95,7 @@ imageUrl: string | undefined // profile photo URL
 
 ### `households` table
 
-```
+```text
 name: string                // 3-50 chars, trimmed
 createdAt: number           // timestamp
 updatedAt: number           // timestamp
@@ -105,7 +105,7 @@ updatedAt: number           // timestamp
 
 ### `householdMemberships` table
 
-```
+```text
 householdId: id<households>
 userId: id<users>
 role: "owner" | "member"
@@ -117,9 +117,9 @@ role: "owner" | "member"
 
 ### `invitations` table
 
-```
+```text
 householdId: id<households>
-codeHash: string             // SHA-256 hash of the code, never store plaintext
+codeHash: string             // server-secret HMAC-SHA-256 digest of the code, never store plaintext
 createdBy: id<users>         // owner who generated it
 expiresAt: number            // timestamp (7 days from creation)
 maxUses: number              // 1 = single-use (MVP default)
@@ -128,13 +128,15 @@ revoked: boolean             // owner can revoke before expiry
 createdAt: number
 ```
 
-**Indexes:** `by_codeHash` on `["codeHash"]`, `by_householdId` on `["householdId"]`
+**Indexes:** `by_codeHash` on `["codeHash"]` (globally unique), `by_householdId` on `["householdId"]`
+
+**Uniqueness:** `codeHash` is globally unique across all households, not scoped per household. `invitations.redeem` requires a single unambiguous `codeHash` match and rejects redemption if more than one invitation matches. `invitations.create` retries with a newly generated hash whenever insertion hits a `codeHash` uniqueness collision.
 
 ---
 
 ### `accounts` table
 
-```
+```text
 householdId: id<households>
 name: string                // e.g. "Cash", "BCA Savings"
 type: "cash" | "bank" | "ewallet" | "credit_card"
@@ -150,7 +152,7 @@ updatedAt: number
 
 ### `categories` table
 
-```
+```text
 householdId: id<households>
 name: string                // e.g. "Food", "Transport"
 type: "income" | "expense"
@@ -165,7 +167,7 @@ updatedAt: number
 
 ### `transactions` table
 
-```
+```text
 householdId: id<households>
 accountId: id<accounts>
 categoryId: id<categories>
@@ -187,7 +189,7 @@ updatedAt: number
 
 ### `budgets` table
 
-```
+```text
 householdId: id<households>
 categoryId: id<categories>
 periodStart: number          // first day of month (epoch ms), canonical monthly identity
@@ -200,7 +202,9 @@ updatedAt: number
 
 **Indexes:** `by_householdId` on `["householdId"]`, `by_categoryId` on `["categoryId"]`, `by_household_period` on `["householdId", "periodStart"]`
 
-**Invariant:** Unique constraint on `(householdId, categoryId, periodStart)` — one budget per category per month.
+**Timezone policy:** Month boundaries follow a single app-wide policy (UTC). `periodStart` is always normalized server-side to the first day of the UTC month (epoch ms at 00:00:00 UTC), applied identically in both `budgets.create` and `budgets.list`.
+
+**Invariant:** Unique constraint on the full `(householdId, categoryId, periodStart)` identity — one budget per category per month. The `by_household_period` index is a lookup optimization only and must not be treated as sufficient for uniqueness; uniqueness checks always use the complete identity.
 
 ---
 
@@ -211,6 +215,7 @@ updatedAt: number
 | Function | Args | Returns | Notes |
 |----------|------|---------|-------|
 | `households.getActive` | - | Household \| null | Current user's household |
+| `households.listMembers` | - | `{ householdId, members: { userId, name?, email?, imageUrl?, role }[] }` \| null | Members of current user's household (owner + members); `null` if signed out or not in a household |
 | `accounts.list` | - | Account[] | Accounts visible to current user |
 | `categories.list` | - | Category[] | Categories visible to current user |
 | `transactions.list` | { startDate, endDate } | Transaction[] | Filter by date range |
@@ -226,9 +231,10 @@ updatedAt: number
 |----------|------|-------|
 | `households.create` | { name } | Onboarding, creates + assigns owner |
 | `households.update` | { householdId, name } | Owner only |
+| `households.removeMember` | { userId } | Owner only; rejects removing the owner; deletes the membership, revoking access immediately; the member's transactions and budgets are retained |
 | `invitations.create` | - | Generate code, hash it, store with 7-day expiry, single-use |
 | `invitations.revoke` | { invitationId } | Owner only, sets revoked = true |
-| `invitations.redeem` | { code } | Atomic: check hash, expiry, revoked, useCount < maxUses, insert membership, increment useCount |
+| `invitations.redeem` | { code } | Signed-in only; atomic `by_userId` check rejects existing household members, then: check hash, expiry, revoked, useCount < maxUses, insert membership, increment useCount |
 | `accounts.create` | { name, type, balance? } | Atomic: create account with zero balance → if balance != 0, post signed initial transaction via transactions.create |
 | `accounts.update` | { accountId, name?, type?, hidden? } | Owner only, toggle visibility |
 | `accounts.delete` | { accountId } | Owner only; reject if transactions reference this account |
@@ -252,10 +258,12 @@ updatedAt: number
    - Create initial transaction via `transactions.create` with:
      - `amount`: signed (positive for income, negative for expense)
      - `type`: "income" if amount > 0, "expense" if amount < 0
-     - `categoryId`: initial balance category (system-managed)
+     - `categoryId`: the reserved system-managed "Initial Balance" category matching the type
      - `note`: "Initial balance"
    - The normal `transactions.create` balance update applies the signed amount to the account.
 3. Account balance reflects the opening balance after step 2.
+
+**Opening-balance category contract:** Each household has two reserved, system-managed categories named "Initial Balance" — one of type `income` and one of type `expense` — created automatically with the household. The `categoryId` is selected by the signed opening amount: the income category when amount > 0, the expense category when amount < 0. These categories are protected and excluded from normal category management: `categories.create` cannot duplicate them, `categories.update`/`categories.delete` reject renaming, hiding, retyping, or deleting them, and they never appear in user-facing category selection screens. They are exempt from the "reject delete if referenced" guard because initial-balance transactions legitimately reference them. The transaction amount/type invariant still applies to opening transactions.
 
 This ensures the opening balance is applied exactly once and goes through the same balance update path as all other transactions.
 
@@ -263,7 +271,7 @@ This ensures the opening balance is applied exactly once and goes through the sa
 
 ## Account Balance Auto-Update Logic
 
-```
+```text
 on create:
   account.balance += amount
 
@@ -295,7 +303,7 @@ All operations within one mutation — atomic.
 | Toggle Account Visibility | ✅ | ❌ |
 | View Account Balance | ✅ | Hanya jika visible |
 | Select Account for new Transaction | ✅ | Hanya jika visible |
-| View/Create/Edit/Delete Transaction | ✅ | ✅ |
+| View/Create/Edit/Delete Transaction | ✅ | Hanya jika category visible |
 | Edit existing Transaction on hidden Account | ✅ | ✅ (existing only, cannot reassign to hidden) |
 | Create Category | ✅ | ❌ |
 | Edit Category | ✅ | ❌ |
@@ -316,13 +324,13 @@ All operations within one mutation — atomic.
 
 ## Invitation Security Model
 
-- Codes are cryptographically random (8 alphanumeric chars).
-- Only SHA-256 hashes are stored — plaintext is never persisted.
+- Codes are cryptographically random (8 alphanumeric chars, ~41 bits entropy).
+- Only server-secret HMAC-SHA-256 digests (keyed with a server secret) are stored — plaintext and unkeyed hashes are never persisted.
 - Codes expire after 7 days.
 - Codes are single-use (maxUses = 1).
 - Owner can revoke unused codes.
 - Redemption is atomic: hash → lookup → validate (expiry, revoked, useCount) → insert membership + increment useCount.
-- Rate limiting: max 5 redemption attempts per code per minute.
+- Rate limiting: max 5 redemption attempts per code per minute, plus redemption limits per actor (userId), IP, and device.
 
 ---
 
@@ -330,7 +338,7 @@ All operations within one mutation — atomic.
 
 ### Flow 1: First Login (Onboarding)
 
-```
+```text
 App Open
 ↓
 Clerk Auth Gate
@@ -346,7 +354,7 @@ Navigate to Home
 
 ### Flow 2: Returning User
 
-```
+```text
 App Open
 ↓
 Clerk Auth Gate
@@ -358,7 +366,7 @@ Home Screen (dashboard)
 
 ### Flow 3: Owner Creates Transaction
 
-```
+```text
 Home Screen
 ↓
 Select Account
@@ -374,7 +382,7 @@ Return to Home
 
 ### Flow 4: Owner Manages Category Visibility
 
-```
+```text
 Settings → Categories
 ↓
 Select Category → toggle "Visible to members"
@@ -386,12 +394,12 @@ Members can no longer see/use that category
 
 ### Flow 5: Owner Invites Member
 
-```
+```text
 Settings → Household Members
 ↓
 Tap "Generate Invite Code"
 ↓
-Server: generate random code, hash (SHA-256), store hash + expiry (7 days) + maxUses (1)
+Server: generate random code, hash (server-secret HMAC-SHA-256), store digest + expiry (7 days) + maxUses (1)
 ↓
 Display code to owner (plaintext, shown once)
 ↓
@@ -400,12 +408,12 @@ Owner shares code via copy/share
 
 ### Flow 6: Member Joins Household
 
-```
+```text
 App Open → Onboarding
 ↓
 Tap "Join with Invite Code"
 ↓
-Enter code → households.redeem
+Enter code → invitations.redeem
 ↓
 Server: hash input, lookup by codeHash
   → check: not expired
@@ -420,7 +428,7 @@ Navigate to Home (shared household)
 
 ### Flow 7: Account Opening Balance
 
-```
+```text
 Create Account → fill name, type, initial balance
 ↓
 Submit (accounts.create)
