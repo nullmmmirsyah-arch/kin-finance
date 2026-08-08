@@ -21,7 +21,7 @@ Implement the Accounts feature per PRD_Accounts: backend (Convex schema + querie
 | Reserved categories | "Initial Balance" income + expense created with the household | ARCHITECTURE.md contract; the opening-balance flow selects by sign |
 | UI scope | Full screens per DESIGN.md | Dedicated Accounts screen + Create/Edit form |
 | Navigation | Bottom tabs (Home | Accounts) | Matches DESIGN.md tab bar; other tabs deferred to their PRDs |
-| Row actions | Real swipe gesture (`ReanimatedSwipeable`) | DESIGN.md + PRD user flow specify swipe-left Edit/Delete; gesture-handler is already installed |
+| Row actions | Always-visible Edit and Delete icons on owner cards | DESIGN.md + PRD user flow require edit/delete in a single, discoverable step |
 | Balance format | Plain number, thousand separators, no symbol (e.g. `1,234,567`) | User preference |
 
 ---
@@ -96,7 +96,7 @@ updatedAt: number
   2. If signed out or no household → `{ accounts: null, isOwner: false }`.
   3. Owner → all accounts in household.
   4. Member → only `hidden === false`.
-  5. `isOwner` = membership role is `"owner"` (drives FAB + swipe actions in UI).
+  5. `isOwner` = membership role is `"owner"` (drives FAB + edit/delete icons in UI).
 
 #### `create` (mutation)
 
@@ -208,7 +208,6 @@ Tab bar (per DESIGN.md): `Home` (home icon) and `Accounts` (credit-card icon). A
 
 | Component | Spec |
 |-----------|------|
-| `components/SwipeableRow.tsx` | `ReanimatedSwipeable` wrapper; renders Edit + Delete actions revealed on left-swipe; used for owner rows |
 | `components/AccountCard.tsx` | Row: type icon (Feather), name, formatted balance; wrapped in `GradientCard` styling |
 | `components/Chip.tsx` | Filter chip (All | Cash | Bank | E-Wallet | Credit Card); active = primary fill, inactive = outlined |
 | `components/Fab.tsx` | Floating "+" button (primary, shadow, 56px), owner-only |
@@ -224,7 +223,7 @@ Tab bar (per DESIGN.md): `Home` (home icon) and `Accounts` (credit-card icon). A
 **Layout (top to bottom):**
 1. Header: "Accounts" (H1, left aligned)
 2. Filter chips: All | Cash | Bank | E-Wallet | Credit Card
-3. Account list: each row shows type icon, account name, formatted balance. Owner rows are `SwipeableRow` (swipe left → Edit | Delete). Member rows are static.
+3. Account list: each row shows type icon, account name, formatted balance. Owner rows show Edit and Delete icon buttons. Member rows are static.
 4. FAB "+" → `/account-form` (Owner only, hidden for Member).
 5. Empty state: wallet icon → "No accounts yet" → "Add your first account to start tracking your money." → [Add Account] (Owner only).
 
@@ -232,9 +231,9 @@ Tab bar (per DESIGN.md): `Home` (home icon) and `Accounts` (credit-card icon). A
 - Loads `accounts.list`; shows spinner while loading.
 - Filter chip state filters the displayed list client-side by type.
 - Delete: `Alert.alert` confirmation ("Delete Account?", `Delete "X"?`, Cancel | Delete). On confirm → `accounts.delete`. Guard rejection shows the exact PRD message inline.
-- Edit: swipe Edit → `/account-form?id=<accountId>`.
+- Edit: tap Edit icon → `/account-form?id=<accountId>`.
 
-**Member state:** read-only list of visible accounts. No FAB, no swipe actions. Empty state without action button.
+**Member state:** read-only list of visible accounts. No FAB, no edit/delete icons. Empty state without action button.
 
 ### `app/account-form.tsx` — Create/Edit Account
 
@@ -300,7 +299,6 @@ Move `app/home.tsx` → `app/(tabs)/index.tsx`. Replace the static "My Accounts"
 | `app/(tabs)/_layout.tsx` | Create — Tabs |
 | `app/(tabs)/accounts.tsx` | Create — Accounts screen |
 | `app/account-form.tsx` | Create — Create/Edit Account form |
-| `components/SwipeableRow.tsx` | Create |
 | `components/AccountCard.tsx` | Create |
 | `components/Chip.tsx` | Create |
 | `components/Fab.tsx` | Create |
@@ -319,7 +317,7 @@ Move `app/home.tsx` → `app/(tabs)/index.tsx`. Replace the static "My Accounts"
 - [ ] Owner can toggle Account visibility.
 - [ ] Member sees only visible Accounts; Member cannot create/edit/delete/toggle.
 - [ ] Accounts screen renders filter chips, empty state, and FAB (owner only).
-- [ ] Swipe-left Edit/Delete works for Owner rows.
+- [ ] Owner rows show Edit and Delete icons that navigate to edit and confirm-delete.
 - [ ] Validation works (name 2–30, unique, enum type).
 - [ ] Error states use plain English, no technical backend errors.
 - [ ] `npx tsc --noEmit` and `npm run lint` pass.

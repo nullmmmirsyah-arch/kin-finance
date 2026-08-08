@@ -140,8 +140,8 @@
 2. Filter chips: All | Cash | Bank | E-Wallet | Credit Card
 3. Account list:
    - Each card: account name, type icon, balance (thousand separator)
-   - Owner: swipe left → Edit | Delete
-   - Member: no swipe actions (read-only)
+   - Owner: Edit and Delete icons on every card
+   - Member: read-only, no icons (read-only)
 4. FAB (Floating Action Button): plus icon → Create Account (Owner only, hidden for Member)
 5. Empty state: illustration of empty wallet → "No accounts yet" → "Add your first account to start tracking" → [Add Account] (Owner only)
 

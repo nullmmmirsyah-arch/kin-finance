@@ -4,9 +4,9 @@
 
 **Goal:** Implement the Accounts feature end-to-end — Convex schema, backend functions, bottom-tab navigation, Accounts list screen, and Create/Edit Account form — per `docs/superpowers/specs/2026-08-08-accounts-design.md` and `docs/Product Requirement Document/PRD_Accounts`.
 
-**Architecture:** Add `accounts`, `categories`, and `transactions` tables to Convex. `households.create` seeds two reserved "Initial Balance" categories. A minimal `transactions.create` posts signed transactions and updates account balances atomically; `accounts.create` reuses it for opening balance. The UI restructures to an Expo Router `(tabs)` group (Home | Accounts) plus a signed-in `account-form` stack screen. Owner sees all accounts and gets swipe actions + FAB; Members see only visible accounts read-only.
+**Architecture:** Add `accounts`, `categories`, and `transactions` tables to Convex. `households.create` seeds two reserved "Initial Balance" categories. A minimal `transactions.create` posts signed transactions and updates account balances atomically; `accounts.create` reuses it for opening balance. The UI restructures to an Expo Router `(tabs)` group (Home | Accounts) plus a signed-in `account-form` stack screen. Owner sees all accounts and gets edit/delete icons + FAB; Members see only visible accounts read-only.
 
-**Tech Stack:** Expo SDK 54, React Native 0.81, expo-router 6, Convex 1.43, NativeWind, react-native-gesture-handler 2.28 (ReanimatedSwipeable), reanimated 4.1.
+**Tech Stack:** Expo SDK 54, React Native 0.81, expo-router 6, Convex 1.43, NativeWind, reanimated 4.1.
 
 ## Global Constraints
 
@@ -35,7 +35,6 @@
 | `utils/format.ts` | Create | `formatNumber` |
 | `components/Chip.tsx` | Create | Filter chip |
 | `components/Fab.tsx` | Create | Floating "+" button |
-| `components/SwipeableRow.tsx` | Create | Swipe-left wrapper for owner rows |
 | `components/AccountCard.tsx` | Create | Account row (icon, name, balance) |
 | `app/_layout.tsx` | Modify | Register `(tabs)` + `account-form`; add `GestureHandlerRootView` |
 | `app/(tabs)/_layout.tsx` | Create | Tabs navigator (Home | Accounts) |
@@ -303,7 +302,7 @@ git commit -m "feat: add transactions.create with atomic balance update"
 
 **Interfaces:**
 - Consumes: `users`, `householdMemberships`, `accounts` tables
-- Produces: `api.accounts.list` → `{ accounts: Account[] | null, isOwner: boolean }` — Owner sees all, Member sees `hidden === false`; `isOwner` drives UI (FAB, swipe)
+- Produces: `api.accounts.list` → `{ accounts: Account[] | null, isOwner: boolean }` — Owner sees all, Member sees `hidden === false`; `isOwner` drives UI (FAB, edit/delete icons)
 
 - [ ] **Step 1: Create accounts.ts with the list query and shared helpers**
 
@@ -716,19 +715,17 @@ git commit -m "feat: add account type constants and number formatting"
 
 ---
 
-### Task 8: Add Shared UI Components (Chip, Fab, SwipeableRow, AccountCard)
+### Task 8: Add Shared UI Components (Chip, Fab, AccountCard)
 
 **Files:**
 - Create: `components/Chip.tsx`
 - Create: `components/Fab.tsx`
-- Create: `components/SwipeableRow.tsx`
 - Create: `components/AccountCard.tsx`
 
 **Interfaces:**
 - `Chip({ label, active, onPress })` — filter chip
 - `Fab({ onPress, accessibilityLabel })` — floating "+"
-- `SwipeableRow({ children, rightActions })` — swipe-left wrapper using `ReanimatedSwipeable`
-- `AccountCard({ name, type, balance })` — static row content
+- `AccountCard({ name, type, balance, onEdit?, onDelete? })` — row content; renders Edit/Delete icon buttons when handlers are provided
 
 - [ ] **Step 1: Create components/Chip.tsx**
 
@@ -807,33 +804,9 @@ export function Fab({ onPress, accessibilityLabel }: Props) {
 }
 ```
 
-- [ ] **Step 3: Create components/SwipeableRow.tsx**
+- [ ] **Step 3: Note — `AccountCard` carries `onEdit`/`onDelete`**
 
-```tsx
-import { ReactNode } from "react";
-import { View } from "react-native";
-import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-
-type Props = {
-  children: ReactNode;
-  rightActions?: ReactNode;
-};
-
-export function SwipeableRow({ children, rightActions }: Props) {
-  return (
-    <ReanimatedSwipeable
-      friction={2}
-      rightThreshold={40}
-      overshootRight={false}
-      renderRightActions={
-        rightActions ? () => <View className="flex-row">{rightActions}</View> : undefined
-      }
-    >
-      {children}
-    </ReanimatedSwipeable>
-  );
-}
-```
+No swipe wrapper is created. `AccountCard` takes optional `onEdit` and `onDelete` props; when either is provided it renders Edit (Feather `edit-2`, primary) and Delete (Feather `trash-2`, error) icon buttons on the right edge of the card. The Accounts screen passes these for owner rows only; member rows stay read-only.
 
 - [ ] **Step 4: Create components/AccountCard.tsx**
 
@@ -842,15 +815,17 @@ import Feather from "@expo/vector-icons/Feather";
 import { Colors, Radius, Shadow } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { formatNumber } from "@/utils/format";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 type Props = {
   name: string;
   type: AccountType;
   balance: number;
+  onEdit?: () => void;
+  onDelete?: () => void;
 };
 
-export function AccountCard({ name, type, balance }: Props) {
+export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
   const meta = ACCOUNT_TYPES.find((t) => t.id === type) ?? ACCOUNT_TYPES[0];
 
   return (
@@ -881,6 +856,32 @@ export function AccountCard({ name, type, balance }: Props) {
         <Text className="text-base font-semibold text-text-primary">{name}</Text>
         <Text className="text-sm text-text-secondary">{meta.label}</Text>
       </View>
+      {onEdit !== undefined || onDelete !== undefined ? (
+        <View className="flex-row items-center gap-1">
+          {onEdit !== undefined ? (
+            <Pressable
+              onPress={onEdit}
+              accessibilityRole="button"
+              accessibilityLabel="Edit account"
+              style={{ width: 40, height: 40 }}
+              className="items-center justify-center"
+            >
+              <Feather name="edit-2" size={18} color={Colors.primary} />
+            </Pressable>
+          ) : null}
+          {onDelete !== undefined ? (
+            <Pressable
+              onPress={onDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              style={{ width: 40, height: 40 }}
+              className="items-center justify-center"
+            >
+              <Feather name="trash-2" size={18} color={Colors.error} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
       <Text className="text-base font-semibold text-text-primary">
         {formatNumber(balance)}
       </Text>
@@ -897,7 +898,7 @@ Expected: No errors.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add components/Chip.tsx components/Fab.tsx components/SwipeableRow.tsx components/AccountCard.tsx
+git add components/Chip.tsx components/Fab.tsx components/AccountCard.tsx
 git commit -m "feat: add shared UI components for accounts"
 ```
 
@@ -913,7 +914,7 @@ git commit -m "feat: add shared UI components for accounts"
 
 **Interfaces:**
 - Consumes: `app/index.tsx` (auth, stays at `/`), `app/onboarding.tsx`
-- Produces: `(tabs)` group at root Stack (URLs `/home`, `/accounts`) and `account-form` stack screen; `GestureHandlerRootView` wraps the app so `SwipeableRow` gestures work
+- Produces: `(tabs)` group at root Stack (URLs `/home`, `/accounts`) and `account-form` stack screen; `GestureHandlerRootView` wraps the app
 
 - [ ] **Step 1: Create app/(tabs)/_layout.tsx**
 
@@ -1032,8 +1033,8 @@ git commit -m "feat: add bottom tab navigation with home and accounts tabs"
 - Create: `app/(tabs)/accounts.tsx`
 
 **Interfaces:**
-- Consumes: `api.accounts.list`, `api.accounts.remove`, `ACCOUNT_TYPES`, `formatNumber`, `Chip`, `Fab`, `SwipeableRow`, `AccountCard`
-- Produces: `/accounts` route — filter chips, account list (owner rows swipeable), FAB (owner only), empty state
+- Consumes: `api.accounts.list`, `api.accounts.remove`, `ACCOUNT_TYPES`, `formatNumber`, `Chip`, `Fab`, `AccountCard`
+- Produces: `/accounts` route — filter chips, account list (owner rows with edit/delete icons), FAB (owner only), empty state
 
 - [ ] **Step 1: Create accounts.tsx**
 
@@ -1043,20 +1044,17 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Pressable,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Colors, Shadow } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
-import { SwipeableRow } from "@/components/SwipeableRow";
 import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -1161,43 +1159,24 @@ export default function Accounts() {
           keyExtractor={(item) => item._id}
           renderItem={({ item }) =>
             isOwner ? (
-              <SwipeableRow
-                rightActions={
-                  <>
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: "/account-form",
-                          params: { id: item._id },
-                        })
-                      }
-                      accessibilityRole="button"
-                      style={{
-                        backgroundColor: Colors.primary,
-                        borderRadius: Radius.md,
-                      }}
-                      className="ml-2 w-20 items-center justify-center"
-                    >
-                      <Feather name="edit-2" size={20} color={Colors.background} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleDelete(item)}
-                      accessibilityRole="button"
-                      style={{
-                        backgroundColor: Colors.error,
-                        borderRadius: Radius.md,
-                      }}
-                      className="ml-2 w-20 items-center justify-center"
-                    >
-                      <Feather name="trash-2" size={20} color={Colors.background} />
-                    </Pressable>
-                  </>
+              <AccountCard
+                name={item.name}
+                type={item.type}
+                balance={item.balance}
+                onEdit={() =>
+                  router.push({
+                    pathname: "/account-form",
+                    params: { id: item._id },
+                  })
                 }
-              >
-                <AccountCard name={item.name} type={item.type} balance={item.balance} />
-              </SwipeableRow>
+                onDelete={() => handleDelete(item)}
+              />
             ) : (
-              <AccountCard name={item.name} type={item.type} balance={item.balance} />
+              <AccountCard
+                name={item.name}
+                type={item.type}
+                balance={item.balance}
+              />
             )
           }
         />
@@ -1225,9 +1204,9 @@ Expected: No errors.
 
 Run: `npx expo start` (with `npx convex dev` running)
 Expected:
-1. Owner sees all accounts; swipe left on a row reveals Edit (primary) and Delete (error) actions.
+1. Owner sees all accounts; each owner row shows Edit and Delete icon buttons.
 2. Delete shows an Alert confirmation; confirming calls `accounts.remove`.
-3. Member (second account, role member) sees only visible accounts, no FAB, no swipe actions.
+3. Member (second account, role member) sees only visible accounts, no FAB, no edit/delete icons.
 4. Empty state shows for zero accounts; "Add Account" button (owner only) navigates to `/account-form`.
 5. Filter chips filter the list by type.
 
@@ -1235,7 +1214,7 @@ Expected:
 
 ```bash
 git add "app/(tabs)/accounts.tsx"
-git commit -m "feat: add accounts list screen with filters, swipe actions, and FAB"
+git commit -m "feat: add accounts list screen with filters, edit/delete icons, and FAB"
 ```
 
 ---
@@ -1471,7 +1450,7 @@ Run: `npx expo start` (with `npx convex dev` running)
 Expected:
 1. Create: FAB → form → enter name, pick type, optional opening balance → "Create Account" → back to Accounts; new account appears with balance equal to opening balance.
 2. Opening balance auto-posts an "Initial balance" transaction (verify in Convex dashboard: `transactions` table has one row, `accounts.balance` reflects it).
-3. Edit: swipe left → Edit → pre-filled name/type/visibility → change → "Save Changes" → back to Accounts; name/type/visibility updated.
+3. Edit: tap the Edit icon → pre-filled name/type/visibility → change → "Save Changes" → back to Accounts; name/type/visibility updated.
 4. Visibility toggle off → member no longer sees the account.
 5. Validation: name < 2 chars shows error; duplicate name shows "Account name already exists."
 6. Negative opening balance creates an expense-type initial transaction.
@@ -1609,7 +1588,7 @@ Expected: All pass with no errors.
 - [ ] **Step 3: Test Member flow**
 
 1. Add a member via a second user + invite flow (MultiMember feature — if invite flow is not yet built, simulate by setting the membership role to `member` in the Convex dashboard).
-2. Member sees only visible accounts; no FAB, no swipe actions.
+2. Member sees only visible accounts; no FAB, no edit/delete icons.
 3. Hidden account is not visible to the member.
 
 - [ ] **Step 4: Test validation + errors**
@@ -1638,7 +1617,7 @@ git commit -m "fix: accounts feature end-to-end fixes"
 - [ ] Owner can toggle Account visibility.
 - [ ] Member sees only visible Accounts; Member cannot create/edit/delete/toggle.
 - [ ] Accounts screen renders filter chips, empty state, and FAB (owner only).
-- [ ] Swipe-left Edit/Delete works for Owner rows.
+- [ ] Edit and Delete icons work for Owner rows.
 - [ ] Validation works (name 2–30, unique, enum type).
 - [ ] Error states use plain English, no technical backend errors.
 - [ ] `npx tsc --noEmit` and `npm run lint` pass.
