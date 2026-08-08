@@ -84,6 +84,7 @@ export const create = mutation({
     name: v.string(),
     type: accountType,
     openingBalance: v.optional(v.number()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
@@ -125,14 +126,14 @@ export const create = mutation({
       name,
       type: args.type,
       balance: 0,
-      hidden: false,
+      hidden: args.hidden ?? false,
       createdAt: now,
       updatedAt: now,
     });
 
     if (openingBalance !== 0) {
       const txType = openingBalance > 0 ? "income" : "expense";
-      const category = await ctx.db
+      let category = await ctx.db
         .query("categories")
         .withIndex("by_householdId", (q) =>
           q.eq("householdId", membership.householdId),
@@ -144,6 +145,18 @@ export const create = mutation({
           ),
         )
         .first();
+
+      if (category === null) {
+        const categoryId = await ctx.db.insert("categories", {
+          householdId: membership.householdId,
+          name: "Initial Balance",
+          type: txType,
+          hidden: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+        category = await ctx.db.get(categoryId);
+      }
 
       if (category === null) {
         throw new ConvexError("Initial Balance category not found.");

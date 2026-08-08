@@ -89,7 +89,7 @@ export default function Accounts() {
         ) : null}
       </View>
 
-      <View className="mt-4 flex-row gap-2 px-5">
+      <View className="mt-4 flex-row flex-wrap gap-2 px-5">
         {FILTERS.map((f) => (
           <Chip
             key={f.id}

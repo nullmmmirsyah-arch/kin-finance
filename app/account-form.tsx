@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -42,8 +42,11 @@ export default function AccountForm() {
     return result?.accounts?.find((a) => a._id === accountId);
   }, [isEdit, accountId, result]);
 
+  const seeded = useRef(false);
+
   useEffect(() => {
-    if (editingAccount) {
+    if (editingAccount && !seeded.current) {
+      seeded.current = true;
       setName(editingAccount.name);
       setType(editingAccount.type);
       setHidden(editingAccount.hidden);
@@ -90,6 +93,7 @@ export default function AccountForm() {
           name: trimmedName,
           type,
           openingBalance: parsedBalance,
+          hidden,
         });
       }
       router.back();

@@ -46,6 +46,15 @@ export const create = mutation({
       throw new ConvexError("Category does not belong to your household.");
     }
 
+    if (membership.role !== "owner") {
+      if (account.hidden) {
+        throw new ConvexError("You cannot create transactions on a hidden account.");
+      }
+      if (category.hidden) {
+        throw new ConvexError("You cannot create transactions on a hidden category.");
+      }
+    }
+
     if (args.type === "income" && args.amount <= 0) {
       throw new ConvexError("Amount must be positive for income transactions.");
     }
