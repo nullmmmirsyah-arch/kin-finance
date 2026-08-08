@@ -157,13 +157,16 @@ export default function Index() {
 
   const handleVerify = async () => {
     setError(null);
-    if (!code.trim()) {
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
       setError("Please enter the verification code.");
       return;
     }
     setIsLoading(true);
     try {
-      const { error } = await signUp.verifications.verifyEmailCode({ code });
+      const { error } = await signUp.verifications.verifyEmailCode({
+        code: trimmedCode,
+      });
       if (error) {
         setError(error.message);
         return;
@@ -181,7 +184,8 @@ export default function Index() {
 
   const handleMfaVerify = async () => {
     setError(null);
-    if (!code.trim()) {
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
       setError("Please enter the verification code.");
       return;
     }
@@ -190,16 +194,20 @@ export default function Index() {
       if (ssoSignIn) {
         const updated = await ssoSignIn.attemptSecondFactor({
           strategy: "email_code",
-          code,
+          code: trimmedCode,
         });
         if (updated.status === "complete" && updated.createdSessionId) {
-          await ssoSetActive?.({ session: updated.createdSessionId });
+          if (!ssoSetActive) {
+            setError("Session could not be activated. Please try again.");
+            return;
+          }
+          await ssoSetActive({ session: updated.createdSessionId });
           return;
         }
         setError("Verification is not complete. Please try again.");
         return;
       }
-      const { error } = await signIn.mfa.verifyEmailCode({ code });
+      const { error } = await signIn.mfa.verifyEmailCode({ code: trimmedCode });
       if (error) {
         setError(error.message);
         return;
@@ -237,9 +245,15 @@ export default function Index() {
           (factor) => factor.strategy === "email_code",
         );
         if (emailCodeFactor) {
+          if (!setActive) {
+            setError(
+              "Google sign in could not be completed. Please try again.",
+            );
+            return;
+          }
           await ssoSignIn.prepareSecondFactor({ strategy: "email_code" });
           setSsoSignIn(ssoSignIn);
-          setSsoSetActive(setActive ?? null);
+          setSsoSetActive(setActive);
           setIsMfaVerifying(true);
           return;
         }
