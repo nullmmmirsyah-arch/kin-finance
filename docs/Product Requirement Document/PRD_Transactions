@@ -1,0 +1,419 @@
+# Transactions
+
+> Status: Ready
+> Priority: P0
+> Depends On: Accounts, Categories
+> Next Feature: Budgets
+
+---
+
+# Overview
+
+Transactions are the core records of income and expense in Kin Finance.
+
+Every Transaction records a financial event: money coming in (income) or going out (expense). Transactions are linked to an Account and a Category.
+
+In MVP, Transactions are simple (no split, no recurring). Both Owner and Member can create, edit, and delete Transactions freely. Every Transaction records who created and updated it.
+
+---
+
+# Goals
+
+- Allow users to record income and expenses.
+- Auto-update Account balance on every transaction change.
+- Track who created and updated each Transaction.
+
+---
+
+# Scope
+
+## In Scope
+
+- Create a Transaction (income or expense).
+- Edit a Transaction.
+- Delete a Transaction.
+- List Transactions with date filtering.
+- Auto-update Account balance on create/edit/delete.
+- Record createdBy and updatedBy metadata.
+
+## Out of Scope
+
+- Split transactions (future).
+- Recurring transactions (future).
+- Attachments/receipts (future).
+- Transfer between accounts (future).
+- Multi-currency (future).
+
+---
+
+# User Stories
+
+### Create Transaction
+
+As a user (Owner or Member),
+
+I want to record an income or expense,
+
+So that I can track my financial activity.
+
+---
+
+### Edit Transaction
+
+As a user (Owner or Member),
+
+I want to correct or update a Transaction,
+
+So that my records stay accurate.
+
+---
+
+### Delete Transaction
+
+As a user (Owner or Member),
+
+I want to remove a Transaction I no longer need,
+
+So that my records stay clean.
+
+---
+
+### View Transactions
+
+As a user (Owner or Member),
+
+I want to see all Transactions in my Household,
+
+So that I can review my financial activity.
+
+---
+
+# User Flow
+
+## Create Transaction
+
+```text
+Transactions Screen
+
+↓
+
+Tap "+" button
+
+↓
+
+Create Transaction Screen
+
+↓
+
+Select type (Income/Expense), enter amount, select account, select category, set date, add note
+
+↓
+
+Tap "Save Transaction"
+
+↓
+
+Transaction created
+
+↓
+
+Account balance auto-updated
+
+↓
+
+Return to Transactions Screen
+```
+
+---
+
+## Edit Transaction
+
+```text
+Transactions Screen
+
+↓
+
+Tap on Transaction
+
+↓
+
+Edit Transaction Screen (pre-filled)
+
+↓
+
+Update fields
+
+↓
+
+Tap "Save Changes"
+
+↓
+
+Transaction updated
+
+↓
+
+Account balance auto-adjusted (reverse old, apply new)
+
+↓
+
+Return to Transactions Screen
+```
+
+---
+
+## Delete Transaction
+
+```text
+Transactions Screen
+
+↓
+
+Swipe left on Transaction → Tap "Delete"
+
+↓
+
+Confirmation dialog
+
+↓
+
+Tap "Delete"
+
+↓
+
+Transaction deleted
+
+↓
+
+Account balance auto-reversed
+
+↓
+
+Return to Transactions Screen
+```
+
+---
+
+# Business Rules
+
+## Transaction
+
+- Every Transaction belongs to exactly one Household.
+- Every Transaction belongs to exactly one Account.
+- Every Transaction belongs to exactly one Category.
+- Every Transaction has a type: "income" or "expense".
+- **amount is signed:** positive for income, negative for expense. The sign must agree with `type`.
+- **Category type must match transaction type:** income transactions require an income category, expense transactions require an expense category.
+
+---
+
+## Balance Auto-Update
+
+- When a Transaction is created: Account balance is updated.
+- When a Transaction is updated: Account balance is reversed (old amount) then applied (new amount).
+- When a Transaction is deleted: Account balance is reversed (old amount).
+
+---
+
+## Metadata
+
+- Every Transaction records `createdBy` (who created it) and `updatedBy` (who last updated it).
+- These are metadata only — no audit trail of previous values.
+
+---
+
+## Visibility
+
+- Transactions on visible Accounts: fully visible and editable by Members.
+- Transactions on hidden Accounts: visible and editable by Members for existing transactions only. Member cannot create new transactions on hidden accounts or reassign existing transactions to hidden accounts.
+- Transactions on visible Categories: fully visible and editable by Members.
+- Transactions on hidden Categories: completely invisible and untouchable by Members.
+
+---
+
+# Functional Requirements
+
+## Create Transaction
+
+User can create a Transaction by entering:
+
+- Type: Income or Expense
+- Amount (nominal, thousand separator display)
+- Account (from visible Accounts)
+- Category (from visible Categories, must match transaction type)
+- Date (default: today)
+- Note (optional)
+
+After success:
+
+- Transaction is created with signed amount (positive = income, negative = expense).
+- Account balance is auto-updated.
+- Transaction appears in the list.
+
+---
+
+## Edit Transaction
+
+User can edit a Transaction by changing:
+
+- Type
+- Amount
+- Account
+- Category (must match transaction type)
+- Date
+- Note
+
+After success:
+
+- Transaction is updated.
+- Account balance is auto-adjusted (reverse old, apply new).
+
+---
+
+## Delete Transaction
+
+User can delete a Transaction.
+
+After success:
+
+- Transaction is removed.
+- Account balance is auto-reversed.
+
+---
+
+## List Transactions
+
+The application retrieves Transactions for the Household within a date range.
+
+- Default: current month.
+- User can filter by custom date range.
+- Transactions are grouped by date.
+- Each Transaction shows: category icon, note, amount (+/-), time.
+
+---
+
+# Validation
+
+## Amount
+
+- Required.
+- Must be a non-zero number.
+- Positive for income, negative for expense.
+- Minimum absolute value: 1 (smallest unit).
+- No maximum (but very large numbers should be handled gracefully).
+
+---
+
+## Account
+
+- Required.
+- **Create:** Must be a visible Account for the current user.
+- **Edit:** If changing accountId, the new account must be visible. Existing transactions on hidden accounts can be edited (amount, category, date, note) without changing accountId.
+
+---
+
+## Category
+
+- Required.
+- Must be a visible Category for the current user.
+- **Type must match transaction type:** income category for income transactions, expense category for expense transactions.
+
+---
+
+## Date
+
+- Required.
+- Must be a valid date.
+- Cannot be in the future. Transaction dates represent actual financial events that have occurred.
+
+---
+
+## Note
+
+- Optional.
+- Maximum 200 characters.
+
+---
+
+# Permission
+
+| Action | Owner | Member |
+| ------------------ | :---: | :----: |
+| View Transaction |  ✅   |   ✅ (visible categories/accounts only)   |
+| Create Transaction |  ✅   |   ✅ (visible accounts/categories only)   |
+| Edit Transaction |  ✅   |   ✅ (cannot reassign to hidden account)   |
+| Delete Transaction |  ✅   |   ✅   |
+
+---
+
+# Empty State
+
+## No Transactions yet
+
+Title
+
+> No transactions yet
+
+Description
+
+> Start by recording your first transaction.
+
+Primary Action
+
+> Add Transaction
+
+---
+
+# Error State
+
+Show messages that are easy to understand.
+
+Examples:
+
+- Failed to create transaction.
+- Amount is required.
+- Account not found.
+- Category not found.
+- Category type must match transaction type.
+- Transaction date cannot be in the future.
+- Please try again.
+
+Do not show technical backend errors.
+
+---
+
+# Success Criteria
+
+Feature is considered complete when:
+
+- User can create a Transaction (income or expense).
+- User can edit a Transaction.
+- User can delete a Transaction.
+- Account balance auto-updates on create/edit/delete.
+- Transactions are filterable by date range.
+- Transactions on hidden Categories are invisible to Members.
+- Transactions on hidden Accounts are still visible/editable by Members.
+- createdBy and updatedBy are recorded.
+- Validation works correctly.
+- Empty State is available.
+- Error State is available.
+
+---
+
+# Notes
+
+Technical implementation (database, Convex schema, query, mutation, UI, folder structure, and library) is an engineering decision and is not determined by this document.
+
+Business rules in this document cannot be changed without project owner approval.
+
+---
+
+# Future Improvements
+
+- Split transactions.
+- Recurring transactions.
+- Attachments/receipts.
+- Transfer between accounts.
+- Multi-currency support.
+- Transaction search.
+- Transaction export (CSV, PDF).
