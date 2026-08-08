@@ -215,7 +215,7 @@ updatedAt: number
 | Function | Args | Returns | Notes |
 |----------|------|---------|-------|
 | `households.getActive` | - | Household \| null | Current user's household |
-| `households.listMembers` | - | `{ householdId, members: { userId, name?, email?, imageUrl?, role }[] }` \| null | Members of current user's household (owner + members); `null` if signed out or not in a household |
+| `households.listMembers` | { householdId } | `{ householdId, members: { userId, name?, email?, imageUrl?, role }[] }` \| null | Members of the given household (owner + members); `null` if signed out, not a member of that household, or the household does not exist |
 | `accounts.list` | - | Account[] | Accounts visible to current user |
 | `categories.list` | - | Category[] | Categories visible to current user |
 | `transactions.list` | { startDate, endDate } | Transaction[] | Filter by date range |
@@ -231,7 +231,7 @@ updatedAt: number
 |----------|------|-------|
 | `households.create` | { name } | Onboarding, creates + assigns owner |
 | `households.update` | { householdId, name } | Owner only |
-| `households.removeMember` | { userId } | Owner only; rejects removing the owner; deletes the membership, revoking access immediately; the member's transactions and budgets are retained |
+| `households.removeMember` | { householdId, userId } | Owner only; rejects removing the owner; deletes the membership, revoking access immediately; the member's transactions and budgets are retained |
 | `invitations.create` | - | Generate code, hash it, store with 7-day expiry, single-use |
 | `invitations.revoke` | { invitationId } | Owner only, sets revoked = true |
 | `invitations.redeem` | { code } | Signed-in only; atomic `by_userId` check rejects existing household members, then: check hash, expiry, revoked, useCount < maxUses, insert membership, increment useCount |
