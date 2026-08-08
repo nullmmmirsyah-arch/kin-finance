@@ -54,6 +54,21 @@ export const create = mutation({
       role: "owner",
     });
 
+    const reservedCategories = [
+      { name: "Initial Balance", type: "income" as const },
+      { name: "Initial Balance", type: "expense" as const },
+    ];
+    for (const category of reservedCategories) {
+      await ctx.db.insert("categories", {
+        householdId,
+        name: category.name,
+        type: category.type,
+        hidden: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
     return await ctx.db.get(householdId);
   },
 });
