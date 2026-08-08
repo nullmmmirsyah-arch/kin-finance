@@ -162,3 +162,101 @@ export const create = mutation({
     return await ctx.db.get(accountId);
   },
 });
+
+export const update = mutation({
+  args: {
+    accountId: v.id("accounts"),
+    name: v.optional(v.string()),
+    type: v.optional(accountType),
+    hidden: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+
+    if (membership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    const account = await ctx.db.get(args.accountId);
+    if (account === null || account.householdId !== membership.householdId) {
+      throw new ConvexError("Account not found.");
+    }
+
+    const patch: {
+      name?: string;
+      type?: "cash" | "bank" | "ewallet" | "credit_card";
+      hidden?: boolean;
+      updatedAt: number;
+    } = { updatedAt: Date.now() };
+
+    if (args.name !== undefined) {
+      const name = args.name.trim();
+      if (name.length === 0) {
+        throw new ConvexError("Account name is required.");
+      }
+      if (name.length < 2) {
+        throw new ConvexError("Account name must be at least 2 characters.");
+      }
+      if (name.length > 30) {
+        throw new ConvexError("Account name must be at most 30 characters.");
+      }
+
+      const existing = await ctx.db
+        .query("accounts")
+        .withIndex("by_householdId", (q) =>
+          q.eq("householdId", membership.householdId),
+        )
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("name"), name),
+            q.neq(q.field("_id"), args.accountId),
+          ),
+        )
+        .first();
+      if (existing !== null) {
+        throw new ConvexError("Account name already exists.");
+      }
+
+      patch.name = name;
+    }
+
+    if (args.type !== undefined) {
+      patch.type = args.type;
+    }
+    if (args.hidden !== undefined) {
+      patch.hidden = args.hidden;
+    }
+
+    await ctx.db.patch(args.accountId, patch);
+    return await ctx.db.get(args.accountId);
+  },
+});
+
+export const remove = mutation({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+
+    if (membership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    const account = await ctx.db.get(args.accountId);
+    if (account === null || account.householdId !== membership.householdId) {
+      throw new ConvexError("Account not found.");
+    }
+
+    const referencingTx = await ctx.db
+      .query("transactions")
+      .withIndex("by_accountId", (q) => q.eq("accountId", args.accountId))
+      .first();
+
+    if (referencingTx !== null) {
+      throw new ConvexError(
+        "Cannot delete account — existing transactions reference this account. Delete or reassign those transactions first.",
+      );
+    }
+
+    await ctx.db.delete(args.accountId);
+  },
+});
