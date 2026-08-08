@@ -6,7 +6,7 @@
 
 **Architecture:** Add `accounts`, `categories`, and `transactions` tables to Convex. `households.create` seeds two reserved "Initial Balance" categories. A minimal `transactions.create` posts signed transactions and updates account balances atomically; `accounts.create` reuses it for opening balance. The UI restructures to an Expo Router `(tabs)` group (Home | Accounts) plus a signed-in `account-form` stack screen. Owner sees all accounts and gets edit/delete icons + FAB; Members see only visible accounts read-only.
 
-**Tech Stack:** Expo SDK 54, React Native 0.81, expo-router 6, Convex 1.43, NativeWind, reanimated 4.1.
+**Tech Stack:** Expo SDK 54, React Native 0.81, expo-router 6, Convex 1.43, NativeWind, react-native-gesture-handler ~2.28 (GestureHandlerRootView).
 
 ## Global Constraints
 

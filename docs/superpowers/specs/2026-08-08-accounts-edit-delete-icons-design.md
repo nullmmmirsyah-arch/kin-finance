@@ -21,7 +21,7 @@ Replace swipe entirely with **always-visible Edit and Delete icon buttons on eac
 ### `components/AccountCard.tsx`
 
 - Add optional props `onEdit?: () => void` and `onDelete?: () => void`.
-- When either is provided (owner case), render a column of two icon buttons at the right edge of the card:
+- When either is provided (owner case), render a row of two icon buttons at the right edge of the card:
   - **Edit**: Feather `edit-2`, `Colors.primary`, `accessibilityRole="button"`, `accessibilityLabel="Edit account"`, tap target ≥ 40×40pt.
   - **Delete**: Feather `trash-2`, `Colors.error`, `accessibilityRole="button"`, `accessibilityLabel="Delete account"`, tap target ≥ 40×40pt.
 - When neither is provided (member case), card renders exactly as today (read-only, no icons).
