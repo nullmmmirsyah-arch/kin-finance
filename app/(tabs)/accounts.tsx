@@ -3,21 +3,18 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Pressable,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Colors, Shadow } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
-import { SwipeableRow } from "@/components/SwipeableRow";
 import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -122,43 +119,24 @@ export default function Accounts() {
           keyExtractor={(item) => item._id}
           renderItem={({ item }) =>
             isOwner ? (
-              <SwipeableRow
-                rightActions={
-                  <>
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: "/account-form",
-                          params: { id: item._id },
-                        })
-                      }
-                      accessibilityRole="button"
-                      style={{
-                        backgroundColor: Colors.primary,
-                        borderRadius: Radius.md,
-                      }}
-                      className="ml-2 w-20 items-center justify-center"
-                    >
-                      <Feather name="edit-2" size={20} color={Colors.background} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleDelete(item)}
-                      accessibilityRole="button"
-                      style={{
-                        backgroundColor: Colors.error,
-                        borderRadius: Radius.md,
-                      }}
-                      className="ml-2 w-20 items-center justify-center"
-                    >
-                      <Feather name="trash-2" size={20} color={Colors.background} />
-                    </Pressable>
-                  </>
+              <AccountCard
+                name={item.name}
+                type={item.type}
+                balance={item.balance}
+                onEdit={() =>
+                  router.push({
+                    pathname: "/account-form",
+                    params: { id: item._id },
+                  })
                 }
-              >
-                <AccountCard name={item.name} type={item.type} balance={item.balance} />
-              </SwipeableRow>
+                onDelete={() => handleDelete(item)}
+              />
             ) : (
-              <AccountCard name={item.name} type={item.type} balance={item.balance} />
+              <AccountCard
+                name={item.name}
+                type={item.type}
+                balance={item.balance}
+              />
             )
           }
         />
