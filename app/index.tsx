@@ -50,6 +50,14 @@ export default function Index() {
   const [isMfaVerifying, setIsMfaVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [ssoSignIn, setSsoSignIn] = useState<
+    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["signIn"]> | null
+  >(null);
+  const [ssoSetActive, setSsoSetActive] = useState<
+    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["setActive"]> | null
+  >(null);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -59,17 +67,19 @@ export default function Index() {
 
   const handleSignIn = async () => {
     setError(null);
+    setEmailError(null);
+    setPasswordError(null);
     const trimmedEmail = emailAddress.trim();
     if (!trimmedEmail) {
-      setError("Please enter your email.");
+      setEmailError("Please enter your email.");
       return;
     }
     if (!password) {
-      setError("Please enter your password.");
+      setPasswordError("Please enter your password.");
       return;
     }
     if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setError("Please enter a valid email address.");
+      setEmailError("Please enter a valid email address.");
       return;
     }
     setIsLoading(true);
@@ -110,17 +120,19 @@ export default function Index() {
 
   const handleSignUp = async () => {
     setError(null);
+    setEmailError(null);
+    setPasswordError(null);
     const trimmedEmail = emailAddress.trim();
     if (!trimmedEmail) {
-      setError("Please enter your email.");
+      setEmailError("Please enter your email.");
       return;
     }
     if (!password) {
-      setError("Please enter your password.");
+      setPasswordError("Please enter your password.");
       return;
     }
     if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setError("Please enter a valid email address.");
+      setEmailError("Please enter a valid email address.");
       return;
     }
     setIsLoading(true);
@@ -145,6 +157,10 @@ export default function Index() {
 
   const handleVerify = async () => {
     setError(null);
+    if (!code.trim()) {
+      setError("Please enter the verification code.");
+      return;
+    }
     setIsLoading(true);
     try {
       const { error } = await signUp.verifications.verifyEmailCode({ code });
@@ -165,8 +181,24 @@ export default function Index() {
 
   const handleMfaVerify = async () => {
     setError(null);
+    if (!code.trim()) {
+      setError("Please enter the verification code.");
+      return;
+    }
     setIsLoading(true);
     try {
+      if (ssoSignIn) {
+        const updated = await ssoSignIn.attemptSecondFactor({
+          strategy: "email_code",
+          code,
+        });
+        if (updated.status === "complete" && updated.createdSessionId) {
+          await ssoSetActive?.({ session: updated.createdSessionId });
+          return;
+        }
+        setError("Verification is not complete. Please try again.");
+        return;
+      }
       const { error } = await signIn.mfa.verifyEmailCode({ code });
       if (error) {
         setError(error.message);
@@ -205,17 +237,31 @@ export default function Index() {
           (factor) => factor.strategy === "email_code",
         );
         if (emailCodeFactor) {
-          const { error: sendError } = await signIn.mfa.sendEmailCode();
-          if (sendError) {
-            setError(sendError.message);
-            return;
-          }
+          await ssoSignIn.prepareSecondFactor({ strategy: "email_code" });
+          setSsoSignIn(ssoSignIn);
+          setSsoSetActive(setActive ?? null);
           setIsMfaVerifying(true);
           return;
         }
+        setError("No email verification method is available.");
+        return;
       }
       if (ssoSignUp?.status === "missing_requirements") {
-        setIsVerifying(true);
+        const missingFields = ssoSignUp.missingFields ?? [];
+        const updateParams: Record<string, string> = {};
+        if (missingFields.includes("password") && password) {
+          updateParams.password = password;
+        }
+        if (Object.keys(updateParams).length > 0) {
+          const updated = await ssoSignUp.update(updateParams);
+          if (updated.status === "complete" && updated.createdSessionId) {
+            await setActive?.({ session: updated.createdSessionId });
+            return;
+          }
+        }
+        setError(
+          "Google sign-up requires additional information. Please sign up with email instead.",
+        );
         return;
       }
       setError("Google sign in failed. Please try again.");
@@ -229,12 +275,22 @@ export default function Index() {
   const resetVerification = () => {
     setCode("");
     setError(null);
+    setEmailError(null);
+    setPasswordError(null);
   };
 
   const backToAuth = () => {
+    const wasMfa = isMfaVerifying;
     setIsMfaVerifying(false);
     setIsVerifying(false);
-    void signUp.reset();
+    if (ssoSignIn) {
+      setSsoSignIn(null);
+      setSsoSetActive(null);
+    } else if (wasMfa) {
+      void signIn.reset();
+    } else {
+      void signUp.reset();
+    }
     resetVerification();
   };
 
@@ -291,7 +347,6 @@ export default function Index() {
                   title="Verify"
                   onPress={isMfaVerifying ? handleMfaVerify : handleVerify}
                   loading={isLoading}
-                  disabled={code.trim().length === 0}
                 />
                 <Pressable
                   onPress={backToAuth}
@@ -321,14 +376,18 @@ export default function Index() {
                   onChangeText={setEmailAddress}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  error={error}
+                  error={emailError}
                 />
                 <Input
                   value={password}
                   placeholder="Password"
                   secureTextEntry
                   onChangeText={setPassword}
+                  error={passwordError}
                 />
+                {error ? (
+                  <Text className="text-center text-sm text-error">{error}</Text>
+                ) : null}
                 <Button
                   title={mode === "sign-in" ? "Sign In" : "Sign Up"}
                   onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
@@ -344,6 +403,8 @@ export default function Index() {
                   onPress={() => {
                     setMode(mode === "sign-in" ? "sign-up" : "sign-in");
                     setError(null);
+                    setEmailError(null);
+                    setPasswordError(null);
                   }}
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center py-2"

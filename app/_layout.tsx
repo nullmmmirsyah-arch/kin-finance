@@ -4,9 +4,13 @@ import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
+import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
+import { cssInterop } from "nativewind";
 import { ActivityIndicator, View } from "react-native";
 import { Colors } from "@/constants/theme";
+
+cssInterop(LinearGradient, { className: "style" });
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
