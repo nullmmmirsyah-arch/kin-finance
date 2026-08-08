@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Colors, Shadow } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
@@ -26,6 +26,7 @@ export default function Home() {
   const accountData = useQuery(api.accounts.list);
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [signOutPressed, setSignOutPressed] = useState(false);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -86,17 +87,12 @@ export default function Home() {
           </Text>
           <Pressable
             onPress={() => void signOut()}
+            onPressIn={() => setSignOutPressed(true)}
+            onPressOut={() => setSignOutPressed(false)}
             accessibilityRole="button"
             accessibilityLabel="Sign out"
-            style={({ pressed }) => [
-              {
-                width: 40,
-                height: 40,
-                borderRadius: Radius.sm,
-                backgroundColor: pressed ? Colors.surface : "transparent",
-              },
-            ]}
-            className="items-center justify-center"
+            className="h-10 w-10 items-center justify-center rounded-xl"
+            style={signOutPressed ? { backgroundColor: Colors.surface } : undefined}
           >
             <Feather name="log-out" size={20} color={Colors.textSecondary} />
           </Pressable>
