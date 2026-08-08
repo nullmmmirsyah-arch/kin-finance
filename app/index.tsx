@@ -4,13 +4,19 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Button,
-  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Feather from "@expo/vector-icons/Feather";
+import { Colors, Gradients, Radius, Shadow } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -75,13 +81,13 @@ export default function Index() {
           }
           setIsMfaVerifying(true);
         } else {
-          setError("Tidak ada metode verifikasi email yang tersedia.");
+          setError("No email verification method is available.");
         }
       } else {
-        setError("Masuk gagal. Periksa kembali email dan password.");
+        setError("Sign in failed. Please check your email and password.");
       }
     } catch {
-      setError("Terjadi kesalahan jaringan. Coba lagi.");
+      setError("A network error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +109,7 @@ export default function Index() {
       }
       setIsVerifying(true);
     } catch {
-      setError("Terjadi kesalahan jaringan. Coba lagi.");
+      setError("A network error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +129,7 @@ export default function Index() {
         setError(finalizeError.message);
       }
     } catch {
-      setError("Terjadi kesalahan jaringan. Coba lagi.");
+      setError("A network error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -144,10 +150,10 @@ export default function Index() {
           setError(finalizeError.message);
         }
       } else {
-        setError("Verifikasi belum selesai. Silakan coba lagi.");
+        setError("Verification is not complete. Please try again.");
       }
     } catch {
-      setError("Terjadi kesalahan jaringan. Coba lagi.");
+      setError("A network error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -184,158 +190,149 @@ export default function Index() {
         setIsVerifying(true);
         return;
       }
-      setError("Login Google gagal. Silakan coba lagi.");
+      setError("Google sign in failed. Please try again.");
     } catch {
-      setError("Login Google gagal. Coba lagi.");
+      setError("Google sign in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isMfaVerifying) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Verifikasi Keamanan</Text>
-        <Text style={styles.subtitle}>
-          Masukkan kode verifikasi yang dikirim ke email Anda.
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={code}
-          placeholder="Kode verifikasi"
-          onChangeText={setCode}
-          keyboardType="numeric"
-        />
-        {error && <Text style={styles.error}>{error}</Text>}
-        <Button
-          title="Verifikasi"
-          onPress={handleMfaVerify}
-          disabled={isLoading}
-        />
-        <Text
-          style={styles.link}
-          onPress={() => {
-            setIsMfaVerifying(false);
-            setCode("");
-            setError(null);
-          }}
-        >
-          Kembali
-        </Text>
-      </View>
-    );
-  }
+  const resetVerification = () => {
+    setCode("");
+    setError(null);
+  };
 
-  if (isVerifying) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Masukkan kode verifikasi</Text>
-        <TextInput
-          style={styles.input}
-          value={code}
-          placeholder="Kode verifikasi"
-          onChangeText={setCode}
-          keyboardType="numeric"
-        />
-        {error && <Text style={styles.error}>{error}</Text>}
-        <Button
-          title="Verifikasi"
-          onPress={handleVerify}
-          disabled={isLoading}
-        />
-        <Text
-          style={styles.link}
-          onPress={() => {
-            void signUp.reset();
-            setIsVerifying(false);
-            setCode("");
-            setError(null);
-          }}
-        >
-          Kembali
-        </Text>
-      </View>
-    );
-  }
+  const backToAuth = () => {
+    setIsMfaVerifying(false);
+    setIsVerifying(false);
+    void signUp.reset();
+    resetVerification();
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Kin Finance</Text>
-      <TextInput
-        style={styles.input}
-        autoCapitalize="none"
-        value={emailAddress}
-        placeholder="Email"
-        onChangeText={setEmailAddress}
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        value={password}
-        placeholder="Password"
-        secureTextEntry
-        onChangeText={setPassword}
-      />
-      {error && <Text style={styles.error}>{error}</Text>}
-      {isLoading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <>
-          <Button
-            title={mode === "sign-in" ? "Masuk" : "Daftar"}
-            onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-          />
-          <Button title="Lanjut dengan Google" onPress={handleGoogle} />
-          <Text
-            style={styles.link}
-            onPress={() => {
-              setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-              setError(null);
-            }}
-          >
-            {mode === "sign-in"
-              ? "Belum punya akun? Daftar"
-              : "Sudah punya akun? Masuk"}
-          </Text>
-        </>
-      )}
-      <View nativeID="clerk-captcha" />
-    </View>
+    <SafeAreaView className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="items-center gap-6">
+            <LinearGradient
+              colors={Gradients.card}
+              style={[
+                Shadow.card,
+                {
+                  width: 96,
+                  height: 96,
+                  borderRadius: Radius.lg,
+                  borderWidth: 1,
+                  borderColor: Colors.primaryLight,
+                },
+              ]}
+              className="items-center justify-center"
+            >
+              <Feather name="home" size={40} color={Colors.primary} />
+            </LinearGradient>
+
+            {isMfaVerifying || isVerifying ? (
+              <View className="w-full gap-4">
+                <View className="items-center gap-2">
+                  <Text className="text-center text-[28px] font-bold text-text-primary">
+                    {isMfaVerifying
+                      ? "Security Check"
+                      : "Check Your Email"}
+                  </Text>
+                  <Text className="text-center text-base text-text-secondary">
+                    {isMfaVerifying
+                      ? "Enter the verification code sent to your email."
+                      : "Enter the verification code we sent to you."}
+                  </Text>
+                </View>
+                <Input
+                  value={code}
+                  placeholder="Verification code"
+                  onChangeText={setCode}
+                  keyboardType="numeric"
+                  error={error}
+                />
+                <Button
+                  title="Verify"
+                  onPress={isMfaVerifying ? handleMfaVerify : handleVerify}
+                  loading={isLoading}
+                  disabled={code.trim().length === 0}
+                />
+                <Pressable
+                  onPress={backToAuth}
+                  accessibilityRole="button"
+                  className="items-center py-2"
+                >
+                  <Text className="text-sm font-medium text-primary">
+                    Back
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View className="w-full gap-4">
+                <View className="items-center gap-2">
+                  <Text className="text-center text-[28px] font-bold text-text-primary">
+                    Kin Finance
+                  </Text>
+                  <Text className="text-center text-base text-text-secondary">
+                    {mode === "sign-in"
+                      ? "Welcome back. Sign in to continue."
+                      : "Create an account to get started."}
+                  </Text>
+                </View>
+                <Input
+                  value={emailAddress}
+                  placeholder="Email"
+                  onChangeText={setEmailAddress}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={error}
+                />
+                <Input
+                  value={password}
+                  placeholder="Password"
+                  secureTextEntry
+                  onChangeText={setPassword}
+                />
+                <Button
+                  title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                  onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+                  loading={isLoading}
+                  disabled={!emailAddress.trim() || !password}
+                />
+                <Button
+                  title="Continue with Google"
+                  variant="secondary"
+                  onPress={handleGoogle}
+                  disabled={isLoading}
+                />
+                <Pressable
+                  onPress={() => {
+                    setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+                    setError(null);
+                  }}
+                  accessibilityRole="button"
+                  className="items-center py-2"
+                >
+                  <Text className="text-sm font-medium text-primary">
+                    {mode === "sign-in"
+                      ? "Don't have an account? Sign up"
+                      : "Already have an account? Sign in"}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+            <View nativeID="clerk-captcha" />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  error: {
-    color: "#d32f2f",
-    fontSize: 14,
-  },
-  link: {
-    color: "#1e88e5",
-    textAlign: "center",
-    marginTop: 8,
-  },
-});

@@ -3,13 +3,18 @@ import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Button,
-  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Feather from "@expo/vector-icons/Feather";
+import { Colors, Gradients, Shadow } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -17,6 +22,8 @@ export default function Onboarding() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const canSubmit = name.trim().length >= 3 && !isLoading;
 
   const handleCreate = async () => {
     setError(null);
@@ -34,59 +41,60 @@ export default function Onboarding() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Kin Finance</Text>
-      <Text style={styles.subtitle}>
-        Create your Household to start managing your family{"'"}s finances.
-      </Text>
-      <TextInput
-        style={styles.input}
-        value={name}
-        placeholder="Household name"
-        onChangeText={setName}
-        maxLength={50}
-      />
-      {error && <Text style={styles.error}>{error}</Text>}
-      {isLoading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <Button
-          title="Create Household"
-          onPress={handleCreate}
-          disabled={name.trim().length < 3}
-        />
-      )}
-    </View>
+    <SafeAreaView className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="items-center gap-6">
+            <LinearGradient
+              colors={Gradients.card}
+              style={[
+                Shadow.card,
+                {
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
+                  borderWidth: 1,
+                  borderColor: Colors.primaryLight,
+                },
+              ]}
+              className="items-center justify-center"
+            >
+              <Feather name="users" size={72} color={Colors.primary} />
+            </LinearGradient>
+
+            <View className="items-center gap-2">
+              <Text className="text-center text-[28px] font-bold text-text-primary">
+                Welcome to Kin Finance
+              </Text>
+              <Text className="text-center text-base text-text-secondary">
+                Create your Household to start managing your family{"'"}s finances.
+              </Text>
+            </View>
+
+            <View className="w-full gap-4">
+              <Input
+                value={name}
+                placeholder="Household name"
+                onChangeText={setName}
+                maxLength={50}
+                error={error}
+              />
+              <Button
+                title="Create Household"
+                onPress={handleCreate}
+                loading={isLoading}
+                disabled={!canSubmit}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  error: {
-    color: "#d32f2f",
-    fontSize: 14,
-  },
-});

@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
+import { Colors } from "@/constants/theme";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -44,9 +45,9 @@ export default function RootLayout() {
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <ClerkLoading>
           <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+            className="flex-1 items-center justify-center bg-background"
           >
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={Colors.primary} />
           </View>
         </ClerkLoading>
         <ClerkLoaded>
