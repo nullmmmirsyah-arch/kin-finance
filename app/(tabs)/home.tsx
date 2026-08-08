@@ -135,7 +135,11 @@ export default function Home() {
             </Pressable>
           </View>
           <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
-            {accountData?.accounts?.length === 0 ? (
+            {accountData === undefined || accountData.accounts === null ? (
+              <View className="items-center px-4 py-4">
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : accountData.accounts.length === 0 ? (
               <EmptyState
                 icon="credit-card"
                 title="No accounts yet"
@@ -152,16 +156,16 @@ export default function Home() {
             ) : (
               <View className="gap-2 px-4 py-4">
                 <Text className="text-base font-semibold text-text-primary">
-                  {accountData?.accounts?.length ?? 0}{" "}
-                  {accountData?.accounts?.length === 1 ? "account" : "accounts"}
+                  {accountData.accounts.length}{" "}
+                  {accountData.accounts.length === 1 ? "account" : "accounts"}
                 </Text>
                 <Text className="text-sm text-text-secondary">
                   Total balance:{" "}
                   {formatNumber(
-                    accountData?.accounts?.reduce(
+                    accountData.accounts.reduce(
                       (sum, account) => sum + account.balance,
                       0,
-                    ) ?? 0,
+                    ),
                   )}
                 </Text>
               </View>
