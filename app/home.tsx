@@ -45,19 +45,19 @@ export default function Home() {
     }
   }, [synced, household, router]);
 
-  if (!synced || household === undefined) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </SafeAreaView>
-    );
-  }
-
   if (syncError) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
         <Text className="mb-4 text-center text-sm text-error">{syncError}</Text>
         <Button title="Try Again" onPress={() => void sync()} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!synced || household === undefined) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color={Colors.primary} />
       </SafeAreaView>
     );
   }

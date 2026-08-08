@@ -20,6 +20,8 @@ import { Input } from "@/components/Input";
 
 WebBrowser.maybeCompleteAuthSession();
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function useWarmUpBrowser() {
   useEffect(() => {
     void WebBrowser.warmUpAsync();
@@ -57,9 +59,22 @@ export default function Index() {
 
   const handleSignIn = async () => {
     setError(null);
+    const trimmedEmail = emailAddress.trim();
+    if (!trimmedEmail) {
+      setError("Please enter your email.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setIsLoading(true);
     try {
-      const { error } = await signIn.password({ emailAddress, password });
+      const { error } = await signIn.password({ emailAddress: trimmedEmail, password });
       if (error) {
         setError(error.message);
         return;
@@ -95,9 +110,22 @@ export default function Index() {
 
   const handleSignUp = async () => {
     setError(null);
+    const trimmedEmail = emailAddress.trim();
+    if (!trimmedEmail) {
+      setError("Please enter your email.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setIsLoading(true);
     try {
-      const { error } = await signUp.password({ emailAddress, password });
+      const { error } = await signUp.password({ emailAddress: trimmedEmail, password });
       if (error) {
         setError(error.message);
         return;
@@ -268,7 +296,7 @@ export default function Index() {
                 <Pressable
                   onPress={backToAuth}
                   accessibilityRole="button"
-                  className="items-center py-2"
+                  className="min-h-12 items-center justify-center py-2"
                 >
                   <Text className="text-sm font-medium text-primary">
                     Back
@@ -305,7 +333,6 @@ export default function Index() {
                   title={mode === "sign-in" ? "Sign In" : "Sign Up"}
                   onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
                   loading={isLoading}
-                  disabled={!emailAddress.trim() || !password}
                 />
                 <Button
                   title="Continue with Google"
@@ -319,7 +346,7 @@ export default function Index() {
                     setError(null);
                   }}
                   accessibilityRole="button"
-                  className="items-center py-2"
+                  className="min-h-12 items-center justify-center py-2"
                 >
                   <Text className="text-sm font-medium text-primary">
                     {mode === "sign-in"

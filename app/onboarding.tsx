@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -15,21 +16,24 @@ import { Colors, Gradients, Shadow } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { useAuth } from "@clerk/expo";
 
 export default function Onboarding() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const createHousehold = useMutation(api.households.create);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const canSubmit = name.trim().length >= 3 && !isLoading;
+  const trimmedName = name.trim();
+  const canSubmit = trimmedName.length >= 3 && !isLoading;
 
   const handleCreate = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      await createHousehold({ name });
+      await createHousehold({ name: trimmedName });
       router.replace("/home");
     } catch (e) {
       setError(
@@ -92,6 +96,16 @@ export default function Onboarding() {
                 disabled={!canSubmit}
               />
             </View>
+
+            <Pressable
+              onPress={() => void signOut()}
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center py-2"
+            >
+              <Text className="text-sm font-medium text-primary">
+                Back to login
+              </Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

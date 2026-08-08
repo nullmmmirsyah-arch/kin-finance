@@ -1,10 +1,11 @@
 import Feather from "@expo/vector-icons/Feather";
 import { Colors, Radius, Shadow } from "@/constants/theme";
 import { Text, View } from "react-native";
+import { ComponentProps } from "react";
 import { Button } from "./Button";
 
 type Props = {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: ComponentProps<typeof Feather>["name"];
   title: string;
   description: string;
   actionLabel?: string;
