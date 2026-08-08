@@ -10,6 +10,7 @@ import { Colors, Radius, Shadow } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
+import { formatNumber } from "@/utils/format";
 
 export default function Home() {
   const { signOut } = useAuth();
@@ -22,6 +23,7 @@ export default function Home() {
     api.households.listMembers,
     household?._id ? { householdId: household._id } : "skip",
   );
+  const accountData = useQuery(api.accounts.list);
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -124,15 +126,50 @@ export default function Home() {
         </GradientCard>
 
         <View className="mt-8">
-          <Text className="mb-1 text-xl font-semibold text-text-primary">
-            My Accounts
-          </Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="mb-1 text-xl font-semibold text-text-primary">
+              My Accounts
+            </Text>
+            <Pressable
+              onPress={() => router.push("/accounts")}
+              accessibilityRole="button"
+              className="min-h-11 items-center justify-center"
+            >
+              <Text className="text-sm font-medium text-primary">Manage</Text>
+            </Pressable>
+          </View>
           <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
-            <EmptyState
-              icon="credit-card"
-              title="No accounts yet"
-              description="Add your first account to start tracking"
-            />
+            {accountData?.accounts?.length === 0 ? (
+              <EmptyState
+                icon="credit-card"
+                title="No accounts yet"
+                description="Add your first account to start tracking"
+                actionLabel={
+                  accountData.isOwner ? "Add Account" : undefined
+                }
+                onAction={
+                  accountData.isOwner
+                    ? () => router.push("/account-form")
+                    : undefined
+                }
+              />
+            ) : (
+              <View className="gap-2 px-4 py-4">
+                <Text className="text-base font-semibold text-text-primary">
+                  {accountData?.accounts?.length ?? 0}{" "}
+                  {accountData?.accounts?.length === 1 ? "account" : "accounts"}
+                </Text>
+                <Text className="text-sm text-text-secondary">
+                  Total balance:{" "}
+                  {formatNumber(
+                    accountData?.accounts?.reduce(
+                      (sum, account) => sum + account.balance,
+                      0,
+                    ) ?? 0,
+                  )}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
