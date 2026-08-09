@@ -137,6 +137,11 @@ export const create = mutation({
       }
       toAccount = to;
     } else {
+      if (args.toAccountId !== undefined) {
+        throw new ConvexError(
+          "Income and expense transactions cannot have a to account.",
+        );
+      }
       if (args.categoryId === undefined) {
         throw new ConvexError(
           "Category is required for income and expense transactions.",

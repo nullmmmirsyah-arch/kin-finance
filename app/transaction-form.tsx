@@ -163,7 +163,7 @@ export default function TransactionForm() {
       const base = {
         amount: signedAmount,
         type,
-        note: note.trim() === "" ? undefined : note.trim(),
+        note: note.trim(),
         date: date.getTime(),
         accountId: accountId as Id<"accounts">,
         categoryId:
