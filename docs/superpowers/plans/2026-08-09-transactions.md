@@ -1145,6 +1145,7 @@ export function DateField({
   error,
 }: Props) {
   const [show, setShow] = useState(false);
+  const [draft, setDraft] = useState<Date | null>(null);
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -1153,7 +1154,10 @@ export function DateField({
         <Text className="text-sm font-medium text-text-primary">{label}</Text>
       ) : null}
       <Pressable
-        onPress={() => setShow(true)}
+        onPress={() => {
+          setDraft(value);
+          setShow(true);
+        }}
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
         accessibilityRole="button"
@@ -1197,19 +1201,21 @@ export function DateField({
                 onPress={(e) => e.stopPropagation()}
               >
                 <DateTimePicker
-                  value={value}
+                  value={draft ?? value}
                   mode="date"
                   display="spinner"
                   maximumDate={maximumDate}
                   onChange={(event: DateTimePickerEvent, date?: Date) => {
-                    if (event.type === "set" && date) onChange(date);
-                    setShow(false);
+                    if (event.type === "set" && date) setDraft(date);
                   }}
                 />
                 <Button
                   title="Done"
                   variant="secondary"
-                  onPress={() => setShow(false)}
+                  onPress={() => {
+                    if (draft) onChange(draft);
+                    setShow(false);
+                  }}
                 />
               </Pressable>
             </Pressable>
