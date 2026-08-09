@@ -140,8 +140,8 @@
 2. Filter chips: All | Cash | Bank | E-Wallet | Credit Card
 3. Account list:
    - Each card: account name, type icon, balance (thousand separator)
-   - Owner: swipe left → Edit | Delete
-   - Member: no swipe actions (read-only)
+   - Owner: Edit and Delete icons on every card
+   - Member: read-only, no icons (read-only)
 4. FAB (Floating Action Button): plus icon → Create Account (Owner only, hidden for Member)
 5. Empty state: illustration of empty wallet → "No accounts yet" → "Add your first account to start tracking" → [Add Account] (Owner only)
 
@@ -161,7 +161,7 @@
 1. Header: "Create Account" (H1, left aligned)
 2. TextInput: placeholder "Account name" (full width, 48px height)
 3. Dropdown: Account type (Cash | Bank | E-Wallet | Credit Card)
-4. TextInput: placeholder "Opening balance (optional)" (number input, thousand separator, allows negative)
+4. TextInput: placeholder "Opening balance (optional)" (whole-number input, thousand separators as you type, allows negative)
 5. Toggle: "Visible to members" (default on, with description below)
 6. Button: "Create Account" (full width, solid primary, 48px height)
 

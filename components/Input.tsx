@@ -1,12 +1,29 @@
+import { useCallback } from "react";
 import { Colors, Radius } from "@/constants/theme";
 import { Text, TextInput, TextInputProps, View } from "react-native";
+import { formatAmountInput } from "@/utils/format";
 
 type Props = TextInputProps & {
   label?: string;
   error?: string | null;
+  amount?: boolean;
 };
 
-export function Input({ label, error, style, ...props }: Props) {
+export function Input({
+  label,
+  error,
+  style,
+  amount = false,
+  onChangeText,
+  ...props
+}: Props) {
+  const handleChangeText = useCallback(
+    (text: string) => {
+      onChangeText?.(amount ? formatAmountInput(text) : text);
+    },
+    [amount, onChangeText],
+  );
+
   return (
     <View className="w-full gap-1.5">
       {label ? (
@@ -19,13 +36,14 @@ export function Input({ label, error, style, ...props }: Props) {
             borderRadius: Radius.sm,
             borderWidth: 1,
             borderColor: error ? Colors.error : Colors.border,
-            backgroundColor: "#FFF",
+            backgroundColor: Colors.background,
             height: 48,
             paddingHorizontal: 16,
           },
           style,
         ]}
         className="w-full text-base text-text-primary"
+        onChangeText={handleChangeText}
         {...props}
       />
       {error ? (

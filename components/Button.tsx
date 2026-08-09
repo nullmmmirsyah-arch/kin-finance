@@ -1,4 +1,5 @@
 import { Colors, Radius, Shadow } from "@/constants/theme";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
 type Variant = "primary" | "secondary" | "ghost";
@@ -14,12 +15,12 @@ type Props = {
 
 const variantStyles: Record<Variant, string> = {
   primary: "bg-primary",
-  secondary: "bg-white border border-border",
+  secondary: "bg-background border border-border",
   ghost: "bg-transparent",
 };
 
 const labelStyles: Record<Variant, string> = {
-  primary: "text-[#FFFBF5]",
+  primary: "text-background",
   secondary: "text-text-primary",
   ghost: "text-primary",
 };
@@ -33,19 +34,20 @@ export function Button({
   className = "",
 }: Props) {
   const isDisabled = disabled || loading;
+  const [pressed, setPressed] = useState(false);
 
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={title}
-      style={({ pressed }) => [
+      style={[
         Shadow.card,
-        {
-          borderRadius: Radius.md,
-          opacity: isDisabled ? 0.5 : pressed ? 0.92 : 1,
-        },
+        { borderRadius: Radius.md },
+        isDisabled ? { opacity: 0.5 } : pressed ? { opacity: 0.92 } : undefined,
       ]}
       className={`h-12 w-full items-center justify-center ${variantStyles[variant]} ${className}`}
     >

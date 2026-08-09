@@ -8,6 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
 import { cssInterop } from "nativewind";
 import { ActivityIndicator, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Colors } from "@/constants/theme";
 
 cssInterop(LinearGradient, { className: "style" });
@@ -33,8 +34,9 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!isSignedIn}>
-        <Stack.Screen name="home" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="account-form" />
       </Stack.Protected>
       <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="index" />
@@ -45,19 +47,19 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <ClerkLoading>
-          <View
-            className="flex-1 items-center justify-center bg-background"
-          >
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        </ClerkLoading>
-        <ClerkLoaded>
-          <RootNavigator />
-        </ClerkLoaded>
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <ClerkLoading>
+            <View className="flex-1 items-center justify-center bg-background">
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          </ClerkLoading>
+          <ClerkLoaded>
+            <RootNavigator />
+          </ClerkLoaded>
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }

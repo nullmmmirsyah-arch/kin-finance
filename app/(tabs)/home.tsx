@@ -6,10 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Colors, Shadow } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
+import { formatNumber } from "@/utils/format";
 
 export default function Home() {
   const { signOut } = useAuth();
@@ -22,8 +23,10 @@ export default function Home() {
     api.households.listMembers,
     household?._id ? { householdId: household._id } : "skip",
   );
+  const accountData = useQuery(api.accounts.list);
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [signOutPressed, setSignOutPressed] = useState(false);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -84,17 +87,12 @@ export default function Home() {
           </Text>
           <Pressable
             onPress={() => void signOut()}
+            onPressIn={() => setSignOutPressed(true)}
+            onPressOut={() => setSignOutPressed(false)}
             accessibilityRole="button"
             accessibilityLabel="Sign out"
-            style={({ pressed }) => [
-              {
-                width: 40,
-                height: 40,
-                borderRadius: Radius.sm,
-                backgroundColor: pressed ? Colors.surface : "transparent",
-              },
-            ]}
-            className="items-center justify-center"
+            className="h-10 w-10 items-center justify-center rounded-xl"
+            style={signOutPressed ? { backgroundColor: Colors.surface } : undefined}
           >
             <Feather name="log-out" size={20} color={Colors.textSecondary} />
           </Pressable>
@@ -124,15 +122,54 @@ export default function Home() {
         </GradientCard>
 
         <View className="mt-8">
-          <Text className="mb-1 text-xl font-semibold text-text-primary">
-            My Accounts
-          </Text>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
-            <EmptyState
-              icon="credit-card"
-              title="No accounts yet"
-              description="Add your first account to start tracking"
-            />
+          <View className="flex-row items-center justify-between">
+            <Text className="mb-1 text-xl font-semibold text-text-primary">
+              My Accounts
+            </Text>
+            <Pressable
+              onPress={() => router.push("/accounts")}
+              accessibilityRole="button"
+              className="min-h-11 items-center justify-center"
+            >
+              <Text className="text-sm font-medium text-primary">Manage</Text>
+            </Pressable>
+          </View>
+          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
+            {accountData === undefined || accountData.accounts === null ? (
+              <View className="items-center px-4 py-4">
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : accountData.accounts.length === 0 ? (
+              <EmptyState
+                icon="credit-card"
+                title="No accounts yet"
+                description="Add your first account to start tracking"
+                actionLabel={
+                  accountData.isOwner ? "Add Account" : undefined
+                }
+                onAction={
+                  accountData.isOwner
+                    ? () => router.push("/account-form")
+                    : undefined
+                }
+              />
+            ) : (
+              <View className="gap-2 px-4 py-4">
+                <Text className="text-base font-semibold text-text-primary">
+                  {accountData.accounts.length}{" "}
+                  {accountData.accounts.length === 1 ? "account" : "accounts"}
+                </Text>
+                <Text className="text-sm text-text-secondary">
+                  Total balance:{" "}
+                  {formatNumber(
+                    accountData.accounts.reduce(
+                      (sum, account) => sum + account.balance,
+                      0,
+                    ),
+                  )}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -140,7 +177,7 @@ export default function Home() {
           <Text className="mb-1 text-xl font-semibold text-text-primary">
             Recent Transactions
           </Text>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
+          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
             <EmptyState
               icon="book-open"
               title="No transactions yet"
