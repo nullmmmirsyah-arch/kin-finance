@@ -40,7 +40,8 @@ export default function Transactions() {
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
 
   const invalidCustomRange =
-    filter === "custom" && customFrom.getTime() > customTo.getTime();
+    filter === "custom" &&
+    startOfDay(customFrom).getTime() > startOfDay(customTo).getTime();
 
   const range = useMemo(() => {
     const now = new Date();
