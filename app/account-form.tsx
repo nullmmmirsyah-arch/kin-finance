@@ -183,6 +183,7 @@ export default function AccountForm() {
               value={openingBalance}
               onChangeText={setOpeningBalance}
               keyboardType="numbers-and-punctuation"
+              amount
             />
           ) : null}
 
