@@ -175,23 +175,6 @@ export const update = mutation({
       if (name === RESERVED_CATEGORY_NAME) {
         throw new ConvexError("This category name is reserved.");
       }
-
-      const existing = await ctx.db
-        .query("categories")
-        .withIndex("by_householdId", (q) =>
-          q.eq("householdId", membership.householdId),
-        )
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("name"), name),
-            q.neq(q.field("_id"), args.categoryId),
-          ),
-        )
-        .first();
-      if (existing !== null) {
-        throw new ConvexError("Category name already exists.");
-      }
-
       patch.name = name;
     }
 
@@ -206,6 +189,30 @@ export const update = mutation({
         );
       }
       patch.type = args.type;
+    }
+
+    if (
+      args.name !== undefined ||
+      (args.type !== undefined && args.type !== category.type)
+    ) {
+      const effectiveName = patch.name ?? category.name;
+      const effectiveType = patch.type ?? category.type;
+      const existing = await ctx.db
+        .query("categories")
+        .withIndex("by_householdId", (q) =>
+          q.eq("householdId", membership.householdId),
+        )
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("name"), effectiveName),
+            q.eq(q.field("type"), effectiveType),
+            q.neq(q.field("_id"), args.categoryId),
+          ),
+        )
+        .first();
+      if (existing !== null) {
+        throw new ConvexError("Category name already exists.");
+      }
     }
 
     if (args.hidden !== undefined) {
