@@ -14,17 +14,19 @@ Add automatic thousand-separator formatting to the opening balance field in the 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Formatting timing | As you type (on every `onChangeText`) | Chosen by user; most responsive UX |
-| Decimal support | Whole numbers only | Chosen by user; opening balance is a whole amount |
-| Negative support | Allowed (leading `-`) | Matches DESIGN.md "allows negative" and signed balance model |
+| Decimal support | Whole numbers only; decimals shown as typed but rejected on submit | Chosen by user; opening balance is a whole amount. Decimals are surfaced (never silently converted — `12.5` stays `12.5`) and rejected by submit validation with a clear error |
+| Negative support | Allowed (leading `-`), platform-specific keyboard | Matches DESIGN.md "allows negative" and signed balance model. iOS: `numbers-and-punctuation`; Android: signed `numeric` keyboard (`TYPE_NUMBER_FLAG_SIGNED` exposes `-`) |
 | Formatting mechanism | Comma insertion on the digit string (regex) | No `Intl.NumberFormat` float precision loss; trivial; works for any magnitude |
 | Standard entry point | `amount` boolean prop on the shared `Input` component | Single shared component; future money fields opt in with one prop, no layout duplication |
 
 ## Behavior
 
-- As the user types, non-digit characters are stripped and commas are inserted every 3 digits from the right.
+- As the user types, non-digit characters are stripped and commas are inserted every 3 digits from the right in the integer part.
 - A leading `-` is preserved; a lone `-` shows while typing and is treated as an invalid amount on submit.
-- Submitting strips commas before parsing (`Number(value.replace(/,/g, ""))`), so existing parsing and validation are unchanged.
-- Examples: `1000` → `1,000`; `1000000` → `1,000,000`; `-500000` → `-500,000`.
+- Decimals are preserved as typed (never silently converted — `12.5` stays `12.5`), and submit validation rejects any value containing `.` with "Opening balance must be a whole number."
+- Submitting strips commas before parsing (`Number(value.replace(/,/g, ""))`), so integer parsing and validation are unchanged.
+- Keyboard: `keyboardType="numbers-and-punctuation"` (iOS-only) on iOS; the signed `numeric` keyboard on Android so the `-` key is available. On-device verification is required on both platforms.
+- Examples: `1000` → `1,000`; `1000000` → `1,000,000`; `-500000` → `-500,000`; `12.5` → `12.5` (rejected on submit).
 
 ## Changes
 
@@ -44,11 +46,11 @@ export function formatAmountInput(value: string): string {
 
 ### 2. `components/Input.tsx` — standard entry point
 
-Add `amount?: boolean` to `Props`. When `amount` is true, intercept `onChangeText` and forward `formatAmountInput(text)` to the caller. `keyboardType` remains the caller's responsibility (e.g. `"numbers-and-punctuation"` for negative support).
+Add `amount?: boolean` to `Props`. When `amount` is true, intercept `onChangeText` and forward `formatAmountInput(text)` to the caller. `keyboardType` remains the caller's responsibility — use `Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"` so the `-` key is available on both platforms (`numbers-and-punctuation` is iOS-only and is ignored on Android).
 
 ### 3. `app/account-form.tsx` — apply the standard
 
-Opening balance `Input` gets `amount` and keeps `keyboardType="numbers-and-punctuation"`. Submit parsing already strips commas — no change needed.
+Opening balance `Input` gets `amount` and the platform `keyboardType` above. Submit parsing strips commas; validation rejects any value containing `.` ("Opening balance must be a whole number.") before the `Number` parse.
 
 ### 4. Documentation
 
@@ -59,5 +61,5 @@ Opening balance `Input` gets `amount` and keeps `keyboardType="numbers-and-punct
 
 ## Out of Scope
 
-- Decimal amount support (future Transaction/Budget forms may add a decimal mode to `formatAmountInput` if needed).
+- Decimal amount *acceptance*: decimals are surfaced as typed but rejected on submit (whole numbers only). Future Transaction/Budget forms may add a decimal mode to `formatAmountInput` if decimals become supported.
 - Currency symbols or locale-aware separators beyond `,`.

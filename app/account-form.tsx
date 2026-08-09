@@ -81,10 +81,15 @@ export default function AccountForm() {
           hidden,
         });
       } else {
-        const parsedBalance =
+        const rawBalance =
           openingBalance.trim() === ""
-            ? undefined
-            : Number(openingBalance.replace(/,/g, ""));
+            ? ""
+            : openingBalance.replace(/,/g, "");
+        if (rawBalance.includes(".")) {
+          setError("Opening balance must be a whole number.");
+          return;
+        }
+        const parsedBalance = rawBalance === "" ? undefined : Number(rawBalance);
         if (parsedBalance !== undefined && Number.isNaN(parsedBalance)) {
           setError("Opening balance must be a valid number.");
           return;
@@ -182,7 +187,9 @@ export default function AccountForm() {
               placeholder="0"
               value={openingBalance}
               onChangeText={setOpeningBalance}
-              keyboardType="numbers-and-punctuation"
+              keyboardType={
+                Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"
+              }
               amount
             />
           ) : null}

@@ -1403,7 +1403,9 @@ export default function AccountForm() {
               placeholder="0"
               value={openingBalance}
               onChangeText={setOpeningBalance}
-              keyboardType="numbers-and-punctuation"
+              keyboardType={
+                Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"
+              }
               amount
             />
           ) : null}

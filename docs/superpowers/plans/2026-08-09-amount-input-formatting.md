@@ -24,7 +24,7 @@
 - Modify: `utils/format.ts`
 
 **Interfaces:**
-- Produces: `formatAmountInput(value: string): string` — strips non-digit chars except a leading `-`, inserts `,` every 3 digits from the right. Empty digits → `""` (or `"-"` if negative).
+- Produces: `formatAmountInput(value: string): string` — strips non-digit chars except a leading `-` and a decimal point (integer part comma-separated every 3 digits). Decimals are preserved (not silently converted) and rejected on submit by the form's whole-number validation. Empty digits → `""` (or `"-"` if negative).
 
 - [ ] **Step 1: Add the formatter to the end of `utils/format.ts`**
 
@@ -37,9 +37,14 @@ export function formatNumber(value: number): string {
 
 export function formatAmountInput(value: string): string {
   const isNegative = value.startsWith("-");
-  const digits = value.replace(/[^0-9]/g, "");
-  if (digits === "") return isNegative ? "-" : "";
-  const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const rest = isNegative ? value.slice(1) : value;
+  const [integerPart, decimalPart] = rest.split(".");
+  const intDigits = integerPart.replace(/[^0-9]/g, "");
+  let formatted = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (decimalPart !== undefined) {
+    formatted += `.${decimalPart.replace(/[^0-9]/g, "")}`;
+  }
+  if (formatted === "" || formatted === ".") return isNegative ? "-" : "";
   return isNegative ? `-${formatted}` : formatted;
 }
 ```
@@ -54,7 +59,7 @@ Expected: no errors.
   - `formatAmountInput("1000000")` → `"1,000,000"`
   - `formatAmountInput("-500000")` → `"-500,000"`
   - `formatAmountInput("-")` → `"-"`
-  - `formatAmountInput("12.5")` → `"125"` (decimal point stripped)
+  - `formatAmountInput("12.5")` → `"12.5"` (decimal preserved — not silently converted to `"125"`; decimals are rejected on submit)
 
 - [ ] **Step 4: Commit**
 
@@ -167,11 +172,15 @@ git commit -m "feat: add amount mode to Input for thousand-separator formatting"
               placeholder="0"
               value={openingBalance}
               onChangeText={setOpeningBalance}
-              keyboardType="numbers-and-punctuation"
+              keyboardType={
+                Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"
+              }
               amount
             />
           ) : null}
 ```
+
+Note: `keyboardType="numbers-and-punctuation"` is iOS-only; it is ignored on Android, so `numeric` is used there — its signed (`TYPE_NUMBER_FLAG_SIGNED`) numeric keyboard exposes the `-` key. `Platform` is already imported in `app/account-form.tsx`.
 
 - [ ] **Step 2: Verify lint and types**
 
@@ -182,6 +191,8 @@ Expected: no errors.
 
 Run: `npx expo start --clear`, open Create Account, type `1000000` into Opening balance.
 Expected: field shows `1,000,000` as you type; negative `-500000` shows `-500,000`; typing only `-` and submitting shows "Opening balance must be a valid number.".
+
+Android verification: the opening-balance keyboard is the signed `numeric` one — confirm a `-` key is present. Type `-500000` (shows `-500,000`), a lone `-` then submit (shows "Opening balance must be a valid number."), and a formatted negative value; confirm the sign key is available without switching to the full keyboard.
 
 - [ ] **Step 4: Commit**
 
