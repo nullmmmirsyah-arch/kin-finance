@@ -54,7 +54,7 @@ Expected: no errors.
   - `formatAmountInput("1000000")` → `"1,000,000"`
   - `formatAmountInput("-500000")` → `"-500,000"`
   - `formatAmountInput("-")` → `"-"`
-  - `formatAmountInput("12.5")` → `"1,250"` (decimal stripped)
+  - `formatAmountInput("12.5")` → `"125"` (decimal point stripped)
 
 - [ ] **Step 4: Commit**
 
