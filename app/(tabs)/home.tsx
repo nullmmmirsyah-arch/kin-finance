@@ -10,6 +10,7 @@ import { Colors, Shadow } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
+import { Fab } from "@/components/Fab";
 import { formatNumber } from "@/utils/format";
 
 export default function Home() {
@@ -186,6 +187,11 @@ export default function Home() {
           </View>
         </View>
       </ScrollView>
+      <Fab
+        label="Add Transaction"
+        onPress={() => router.push("/transaction-form")}
+        accessibilityLabel="Add transaction"
+      />
     </SafeAreaView>
   );
 }
