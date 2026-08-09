@@ -57,6 +57,7 @@ export default function CategoryForm() {
     trimmedName.length >= 2 &&
     trimmedName.length <= 30 &&
     !isLoading &&
+    result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
 
   const handleSubmit = async () => {
@@ -99,6 +100,16 @@ export default function CategoryForm() {
       setIsLoading(false);
     }
   };
+
+  if (result !== undefined && result.isOwner === false) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="text-center text-sm text-text-secondary">
+          You are not the owner of this household.
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   if (isEdit && result !== undefined && editingCategory === undefined) {
     return (

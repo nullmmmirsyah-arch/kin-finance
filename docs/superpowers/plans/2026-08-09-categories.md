@@ -625,10 +625,20 @@ export default function Categories() {
     [removeCategory],
   );
 
-  if (categories === null) {
+  if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (categories === null) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="text-center text-sm text-text-secondary">
+          You are not a member of a household.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -826,6 +836,7 @@ export default function CategoryForm() {
     trimmedName.length >= 2 &&
     trimmedName.length <= 30 &&
     !isLoading &&
+    result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
 
   const handleSubmit = async () => {
@@ -868,6 +879,16 @@ export default function CategoryForm() {
       setIsLoading(false);
     }
   };
+
+  if (result !== undefined && result.isOwner === false) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="text-center text-sm text-text-secondary">
+          You are not the owner of this household.
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   if (isEdit && result !== undefined && editingCategory === undefined) {
     return (
@@ -988,7 +1009,7 @@ Expected: no errors.
 
 - [ ] **Step 5: Manual smoke test**
 
-Verify: create flow (blank fields, default Expense type, "Visible to members" on → Create → returns to list with new category); edit flow (pre-filled, "Save Changes"); duplicate name surfaces "Category name already exists."; changing type on a category that has transactions surfaces "Cannot change category type — existing transactions or budgets use this category."
+Verify: create flow (blank fields, default Expense type, "Visible to members" on → Create → returns to list with new category); edit flow (pre-filled, "Save Changes"); duplicate name surfaces "Category name already exists."; changing type on a category that has transactions surfaces "Cannot change category type — existing transactions or budgets use this category."; a household member deep-linking to `/category-form` (create or edit) sees "You are not the owner of this household." and cannot submit; the submit button stays disabled until the owner status query resolves.
 
 - [ ] **Step 6: Commit**
 

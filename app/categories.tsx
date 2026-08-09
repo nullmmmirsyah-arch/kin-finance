@@ -88,10 +88,20 @@ export default function Categories() {
     [removeCategory],
   );
 
-  if (categories === null) {
+  if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (categories === null) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="text-center text-sm text-text-secondary">
+          You are not a member of a household.
+        </Text>
       </SafeAreaView>
     );
   }
