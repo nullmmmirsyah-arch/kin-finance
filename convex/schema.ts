@@ -62,5 +62,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_householdId", ["householdId"])
-    .index("by_accountId", ["accountId"]),
+    .index("by_accountId", ["accountId"])
+    .index("by_categoryId", ["categoryId"]),
 });
