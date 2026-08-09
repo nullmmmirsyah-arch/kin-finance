@@ -35,7 +35,7 @@ export function TransactionCard({
         ? toAccountName
           ? `Transfer to ${toAccountName}`
           : "Transfer"
-        : (categoryName ?? "");
+        : (categoryName ?? "Transaction");
 
   const amountLabel =
     type === "expense"

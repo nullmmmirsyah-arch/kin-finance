@@ -435,6 +435,15 @@ export const update = mutation({
       toAccount = to;
     }
 
+    if (membership.role !== "owner" && tx.categoryId !== undefined) {
+      const existingCategory = await ctx.db.get(tx.categoryId);
+      if (existingCategory !== null && existingCategory.hidden) {
+        throw new ConvexError(
+          "You cannot edit transactions on a hidden category.",
+        );
+      }
+    }
+
     if (membership.role !== "owner") {
       if (accountId !== tx.accountId && account.hidden) {
         throw new ConvexError("You cannot reassign to a hidden account.");

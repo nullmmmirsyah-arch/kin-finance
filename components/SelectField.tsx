@@ -24,6 +24,12 @@ export function SelectField({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  const overflowing = contentHeight > viewportHeight;
+  const selectedLabel =
+    options.find((o) => o.id === value)?.label ?? placeholder;
 
   return (
     <View className="w-full gap-1.5">
@@ -51,7 +57,7 @@ export function SelectField({
         <Text
           className={`text-base ${value ? "text-text-primary" : "text-text-secondary"}`}
         >
-          {value ?? placeholder}
+          {selectedLabel}
         </Text>
         <Feather name="chevron-down" size={20} color={Colors.textSecondary} />
       </Pressable>
@@ -79,7 +85,10 @@ export function SelectField({
             <Text className="px-4 pb-2 pt-4 text-sm font-medium text-text-secondary">
               Select {label ?? "option"}
             </Text>
-            <ScrollView>
+            <ScrollView
+              onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
+              onContentSizeChange={(_w, h) => setContentHeight(h)}
+            >
               {options.map((option) => (
                 <Pressable
                   key={option.id}
@@ -87,17 +96,26 @@ export function SelectField({
                     onSelect(option.id);
                     setOpen(false);
                   }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: option.id === value }}
                   className="flex-row items-center justify-between px-4 py-3"
                 >
                   <Text className="text-base text-text-primary">
                     {option.label}
                   </Text>
-                  {option.label === value ? (
+                  {option.id === value ? (
                     <Feather name="check" size={18} color={Colors.primary} />
                   ) : null}
                 </Pressable>
               ))}
             </ScrollView>
+            {overflowing ? (
+              <View className="items-center border-t border-border py-2">
+                <Text className="text-xs text-text-secondary">
+                  Scroll for more options
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>

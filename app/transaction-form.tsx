@@ -49,6 +49,7 @@ export default function TransactionForm() {
   const [date, setDate] = useState(() => new Date());
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const editingTx = useMemo(
@@ -96,6 +97,7 @@ export default function TransactionForm() {
   }, [categoryResult, type]);
 
   useEffect(() => {
+    if (categoryResult === undefined) return;
     if (
       type !== "transfer" &&
       categoryId !== null &&
@@ -103,7 +105,7 @@ export default function TransactionForm() {
     ) {
       setCategoryId(null);
     }
-  }, [type, categoryId, categoryOptions]);
+  }, [categoryResult, type, categoryId, categoryOptions]);
 
   const handleTypeChange = (t: TransactionType) => {
     setType(t);
@@ -125,6 +127,7 @@ export default function TransactionForm() {
   const canSubmit =
     amountValue !== null &&
     amountValue > 0 &&
+    Number.isFinite(amountValue) &&
     !isLoading &&
     (type === "transfer"
       ? accountId !== null &&
@@ -134,8 +137,13 @@ export default function TransactionForm() {
 
   const handleSubmit = async () => {
     setError(null);
-    if (amountValue === null || amountValue <= 0) {
-      setError("Amount is required and must be greater than zero.");
+    setAmountError(null);
+    if (
+      amountValue === null ||
+      amountValue <= 0 ||
+      !Number.isFinite(amountValue)
+    ) {
+      setAmountError("Amount is required and must be greater than zero.");
       return;
     }
     if (type === "transfer") {
@@ -207,6 +215,7 @@ export default function TransactionForm() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
+            setIsLoading(true);
             removeTransaction({
               transactionId: transactionId as Id<"transactions">,
             })
@@ -217,7 +226,8 @@ export default function TransactionForm() {
                     ? e.message
                     : "Failed to delete transaction.",
                 ),
-              );
+              )
+              .finally(() => setIsLoading(false));
           },
         },
       ],
@@ -302,7 +312,7 @@ export default function TransactionForm() {
               Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"
             }
             amount
-            error={error}
+            error={amountError}
           />
 
           {type === "transfer" ? (
@@ -310,19 +320,14 @@ export default function TransactionForm() {
               <SelectField
                 label="From account"
                 placeholder="Select account"
-                value={
-                  accountOptions.find((o) => o.id === accountId)?.label ?? null
-                }
+                value={accountId}
                 options={accountOptions}
                 onSelect={setAccountId}
               />
               <SelectField
                 label="To account"
                 placeholder="Select account"
-                value={
-                  accountOptions.find((o) => o.id === toAccountId)?.label ??
-                  null
-                }
+                value={toAccountId}
                 options={accountOptions.filter((o) => o.id !== accountId)}
                 onSelect={setToAccountId}
               />
@@ -332,19 +337,14 @@ export default function TransactionForm() {
               <SelectField
                 label="Account"
                 placeholder="Select account"
-                value={
-                  accountOptions.find((o) => o.id === accountId)?.label ?? null
-                }
+                value={accountId}
                 options={accountOptions}
                 onSelect={setAccountId}
               />
               <SelectField
                 label="Category"
                 placeholder="Select category"
-                value={
-                  categoryOptions.find((o) => o.id === categoryId)?.label ??
-                  null
-                }
+                value={categoryId}
                 options={categoryOptions}
                 onSelect={setCategoryId}
               />
@@ -366,6 +366,8 @@ export default function TransactionForm() {
             maxLength={200}
           />
 
+          {error ? <Text className="text-sm text-error">{error}</Text> : null}
+
           <Button
             title={isEdit ? "Save Changes" : "Save Transaction"}
             onPress={handleSubmit}
@@ -378,6 +380,8 @@ export default function TransactionForm() {
               title="Delete Transaction"
               variant="danger"
               onPress={handleDelete}
+              loading={isLoading}
+              disabled={isLoading}
             />
           ) : null}
         </ScrollView>

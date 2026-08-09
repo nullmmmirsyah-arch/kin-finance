@@ -144,7 +144,7 @@ Mirrors `app/account-form.tsx`/`app/category-form.tsx` + DESIGN.md Screen 6.
 ## UI — new components
 
 - `components/Fab.tsx` — add optional `label?: string`. When present, render a rounded pill (icon `plus` + label text); otherwise keep current circular icon-only look. Same position/colors.
-- `components/SelectField.tsx` — `{ label?, placeholder, value (display), options: { id, value }[], onSelect, error? }`. Pressable opens a bottom `Modal` with a scrollable option list; tap selects and closes. NativeWind `className`, theme tokens only, no `style` callbacks on Pressable (use `useState` pressed state).
+- `components/SelectField.tsx` — `{ label?, placeholder, value (selected option id), options: { id, label }[], onSelect, error? }`. Pressable opens a bottom `Modal` with a scrollable option list; tap selects and closes. NativeWind `className`, theme tokens only, no `style` callbacks on Pressable (use `useState` pressed state).
 - `components/TransactionCard.tsx` — compact row: category icon block (income/expense) or transfer arrow, note, amount (± colored or neutral), time.
 - `utils/date.ts` — `startOfDay`, `formatDateHeader` ("August 7, 2026"), `formatTime`, month-preset boundary helpers (local time).
 

@@ -63,6 +63,7 @@ export function DateField({
       {show ? (
         Platform.OS === "ios" ? (
           <Modal
+            visible={show}
             transparent
             animationType="fade"
             onRequestClose={() => setShow(false)}
@@ -77,6 +78,7 @@ export function DateField({
                   Shadow.card,
                   { borderRadius: Radius.md, backgroundColor: Colors.background, padding: 16 },
                 ]}
+                className="gap-2"
                 onPress={(e) => e.stopPropagation()}
               >
                 <DateTimePicker
@@ -87,6 +89,11 @@ export function DateField({
                   onChange={(event: DateTimePickerEvent, date?: Date) => {
                     if (event.type === "set" && date) setDraft(date);
                   }}
+                />
+                <Button
+                  title="Cancel"
+                  variant="ghost"
+                  onPress={() => setShow(false)}
                 />
                 <Button
                   title="Done"

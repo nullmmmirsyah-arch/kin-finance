@@ -56,7 +56,13 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "primary" ? Colors.background : Colors.primary}
+          color={
+            variant === "primary"
+              ? Colors.background
+              : variant === "danger"
+                ? Colors.error
+                : Colors.primary
+          }
         />
       ) : (
         <Text className={`text-base font-semibold ${labelStyles[variant]}`}>

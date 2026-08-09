@@ -223,7 +223,6 @@ updatedAt: number
 | `accounts.list` | - | Account[] | Accounts visible to current user |
 | `categories.list` | - | Category[] | Categories visible to current user |
 | `transactions.list` | { startDate, endDate } | Transaction[] | Filter by date range |
-| `transactions.listByAccount` | { accountId } | Transaction[] | Transactions for specific account (income/expense + transfers where the account is source or destination) |
 | `budgets.list` | { periodStart: number } | Budget[] | Budgets for household in given month |
 | `users.getMe` | - | User \| null | Current user profile |
 

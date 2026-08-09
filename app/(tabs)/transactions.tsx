@@ -18,6 +18,7 @@ import { DateField } from "@/components/DateField";
 import { GradientCard } from "@/components/GradientCard";
 import { formatNumber } from "@/utils/format";
 import {
+  addDays,
   addMonths,
   formatDateHeader,
   startOfDay,
@@ -38,6 +39,9 @@ export default function Transactions() {
   const [customFrom, setCustomFrom] = useState(() => startOfDay(new Date()));
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
 
+  const invalidCustomRange =
+    filter === "custom" && customFrom.getTime() > customTo.getTime();
+
   const range = useMemo(() => {
     const now = new Date();
     if (filter === "thisMonth") {
@@ -52,11 +56,14 @@ export default function Transactions() {
         endDate: startOfMonth(now).getTime(),
       };
     }
+    if (invalidCustomRange) {
+      return { startDate: 0, endDate: 0 };
+    }
     return {
       startDate: startOfDay(customFrom).getTime(),
-      endDate: startOfDay(customTo).getTime() + 24 * 60 * 60 * 1000,
+      endDate: addDays(startOfDay(customTo), 1).getTime(),
     };
-  }, [filter, customFrom, customTo]);
+  }, [filter, customFrom, customTo, invalidCustomRange]);
 
   const result = useQuery(api.transactions.list, range);
 
@@ -143,6 +150,11 @@ export default function Transactions() {
               value={customTo}
               maximumDate={new Date()}
               onChange={setCustomTo}
+              error={
+                invalidCustomRange
+                  ? "To date must be on or after the From date."
+                  : null
+              }
             />
           </View>
         </View>
