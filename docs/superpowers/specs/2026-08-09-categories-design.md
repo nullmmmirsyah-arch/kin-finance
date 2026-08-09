@@ -12,7 +12,8 @@ Implement the Categories feature from PRD_Categories. Categories are labels for 
 
 ## Decisions
 
-- **Navigation:** Add a "Categories" tab to the bottom tab bar (next to Home and Accounts), with a Feather `tag` icon. No Settings screen exists yet.
+- **Navigation:** Categories live inside a new minimal **Settings tab** (Feather `settings` icon), matching the PRD user flow (`Settings → Categories`) and DESIGN.md Screen 11/7. The Settings tab is a scaffold: for now it contains only a "Categories" row; other rows (Household, Members, Profile, Sign Out, About) wait for their respective PRDs.
+- **Categories list is a stack screen** (`/categories`), pushed from Settings — not a tab. The form (`/category-form`) is also a stack screen, mirroring how `/account-form` is reached from the Accounts tab.
 - **Row actions:** Inline edit/delete icons per row (matching the already-shipped Accounts screen), not swipe gestures.
 - **Reserved categories:** The system-managed "Initial Balance" categories (one income, one expense, auto-created with each household) are excluded from the Categories management list for everyone, and protected server-side from rename/hide/retype/delete.
 
@@ -32,11 +33,17 @@ Notes:
 - The `budgets` table does not exist in the schema yet; the "existing budgets" part of the guards becomes active when PRD_Budgets lands. Transaction checks are implemented now.
 - Existing `convex/transactions.ts` already rejects member-created transactions on hidden categories; no change needed.
 
-## UI — `app/(tabs)/categories.tsx`
+## UI — `app/settings.tsx` (minimal Settings scaffold)
+
+- Header: "Settings" (28px bold, text-primary).
+- A single row: "Categories" with a chevron (Feather `chevron-right`) → `router.push("/categories")`.
+- Scrollable `View`; other sections intentionally omitted (future PRDs).
+
+## UI — `app/categories.tsx` (stack screen, pushed from Settings)
 
 Mirrors `app/(tabs)/accounts.tsx`.
 
-- Header: "Categories" (28px bold, text-primary).
+- Back arrow + header: "Categories" (28px bold, text-primary).
 - Inline error text below header.
 - Filter chips: All | Income | Expense.
 - Category rows: icon block (Feather `tag`, primary on surface), name, type badge (Income = success text, Expense = error text).
@@ -61,8 +68,8 @@ Mirrors `app/account-form.tsx`.
 
 ## Navigation
 
-- Add `Categories` tab to `app/(tabs)/_layout.tsx` (Feather `tag`, position after Accounts).
-- Register `category-form` in the root Stack in `app/_layout.tsx` (inside the signed-in `Stack.Protected`).
+- Add a `Settings` tab to `app/(tabs)/_layout.tsx` (Feather `settings`, position after Accounts). The existing `categories` → `/categories` push lives here.
+- Register `categories` and `category-form` in the root Stack in `app/_layout.tsx` (inside the signed-in `Stack.Protected`). Both are pushed screens; `categories` keeps the back-arrow + header pattern used by `account-form`.
 
 ## Consistency / Constraints
 
