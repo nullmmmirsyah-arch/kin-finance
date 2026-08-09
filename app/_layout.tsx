@@ -38,6 +38,7 @@ function RootNavigator() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="account-form" />
         <Stack.Screen name="categories" />
+        <Stack.Screen name="category-form" />
       </Stack.Protected>
       <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="index" />
