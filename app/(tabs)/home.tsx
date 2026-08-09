@@ -134,7 +134,7 @@ export default function Home() {
               <Text className="text-sm font-medium text-primary">Manage</Text>
             </Pressable>
           </View>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
+          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
             {accountData === undefined || accountData.accounts === null ? (
               <View className="items-center px-4 py-4">
                 <ActivityIndicator size="small" color={Colors.primary} />

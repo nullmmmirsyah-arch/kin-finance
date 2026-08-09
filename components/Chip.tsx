@@ -20,13 +20,13 @@ export function Chip({ label, active, onPress }: Props) {
       className={`min-h-11 items-center justify-center rounded-full border px-4 ${
         active
           ? "border-primary bg-primary"
-          : "border-border bg-white"
+          : "border-border bg-background"
       }`}
       style={pressed ? { opacity: 0.85 } : undefined}
     >
       <Text
         className={`text-sm font-medium ${
-          active ? "text-[#FFFBF5]" : "text-text-secondary"
+          active ? "text-background" : "text-text-secondary"
         }`}
       >
         {label}

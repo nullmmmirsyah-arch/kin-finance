@@ -99,7 +99,7 @@ export default function Accounts() {
 
       {visibleAccounts !== null && visibleAccounts.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
-          <View style={Shadow.card} className="rounded-[16px] bg-white">
+          <View style={Shadow.card} className="rounded-[16px] bg-background">
             <EmptyState
               icon="credit-card"
               title="No accounts yet"

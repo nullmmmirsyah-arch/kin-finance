@@ -110,6 +110,14 @@ export default function AccountForm() {
     }
   };
 
+  if (isEdit && result !== undefined && editingAccount === undefined) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <Text className="text-sm text-text-secondary">Account not found.</Text>
+      </SafeAreaView>
+    );
+  }
+
   if (isEdit && editingAccount === undefined) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
@@ -180,7 +188,7 @@ export default function AccountForm() {
 
           <View
             style={{ borderColor: Colors.border }}
-            className="flex-row items-center justify-between rounded-[12px] border bg-white px-4 py-3"
+            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3"
           >
             <View className="flex-1">
               <Text className="text-base font-medium text-text-primary">
@@ -194,7 +202,7 @@ export default function AccountForm() {
               value={!hidden}
               onValueChange={(value) => setHidden(!value)}
               trackColor={{ true: Colors.primary, false: Colors.border }}
-              thumbColor="#FFF"
+              thumbColor={Colors.background}
             />
           </View>
 

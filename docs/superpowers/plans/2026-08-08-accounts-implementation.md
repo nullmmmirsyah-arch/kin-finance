@@ -37,7 +37,7 @@
 | `components/Fab.tsx` | Create | Floating "+" button |
 | `components/AccountCard.tsx` | Create | Account row (icon, name, balance) |
 | `app/_layout.tsx` | Modify | Register `(tabs)` + `account-form`; add `GestureHandlerRootView` |
-| `app/(tabs)/_layout.tsx` | Create | Tabs navigator (Home | Accounts) |
+| `app/(tabs)/_layout.tsx` | Create | Tabs navigator (Home \| Accounts) |
 | `app/(tabs)/home.tsx` | Create | Move `app/home.tsx`, live account summary |
 | `app/(tabs)/accounts.tsx` | Create | Accounts list screen |
 | `app/account-form.tsx` | Create | Create/Edit Account form |
@@ -1322,6 +1322,7 @@ export default function AccountForm() {
           name: trimmedName,
           type,
           openingBalance: parsedBalance,
+          hidden,
         });
       }
       router.back();

@@ -55,6 +55,13 @@ export const create = mutation({
       }
     }
 
+    if (!Number.isFinite(args.amount)) {
+      throw new ConvexError("Amount must be a finite number.");
+    }
+    if (!Number.isFinite(args.date)) {
+      throw new ConvexError("Date must be a valid timestamp.");
+    }
+
     if (args.type === "income" && args.amount <= 0) {
       throw new ConvexError("Amount must be positive for income transactions.");
     }

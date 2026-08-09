@@ -20,7 +20,7 @@ Implement the Accounts feature per PRD_Accounts: backend (Convex schema + querie
 | Opening-balance transaction | Minimal `transactions.create` now | Opening balance must post via the standard transaction path; Transactions feature stays in its own PRD |
 | Reserved categories | "Initial Balance" income + expense created with the household | ARCHITECTURE.md contract; the opening-balance flow selects by sign |
 | UI scope | Full screens per DESIGN.md | Dedicated Accounts screen + Create/Edit form |
-| Navigation | Bottom tabs (Home | Accounts) | Matches DESIGN.md tab bar; other tabs deferred to their PRDs |
+| Navigation | Bottom tabs (Home \| Accounts) | Matches DESIGN.md tab bar; other tabs deferred to their PRDs |
 | Row actions | Always-visible Edit and Delete icons on owner cards | DESIGN.md + PRD user flow require edit/delete in a single, discoverable step |
 | Balance format | Plain number, thousand separators, no symbol (e.g. `1,234,567`) | User preference |
 
@@ -124,7 +124,7 @@ updatedAt: number
   4. If `type` provided: validate enum.
   5. Patch account + `updatedAt`.
 
-#### `delete` (mutation)
+#### `remove` (mutation)
 
 - **Args:** `{ accountId: Id<"accounts"> }`
 - **Owner only.**
@@ -186,7 +186,7 @@ This is the single source of truth for balance updates; `accounts.create` reuses
 
 ## Navigation
 
-```
+```text
 app/
   _layout.tsx          → root Stack: index, onboarding, (tabs), account-form
   index.tsx            → auth (unchanged)
@@ -209,7 +209,7 @@ Tab bar (per DESIGN.md): `Home` (home icon) and `Accounts` (credit-card icon). A
 | Component | Spec |
 |-----------|------|
 | `components/AccountCard.tsx` | Row: type icon (Feather), name, formatted balance; wrapped in `GradientCard` styling |
-| `components/Chip.tsx` | Filter chip (All | Cash | Bank | E-Wallet | Credit Card); active = primary fill, inactive = outlined |
+| `components/Chip.tsx` | Filter chip (All \| Cash \| Bank \| E-Wallet \| Credit Card); active = primary fill, inactive = outlined |
 | `components/Fab.tsx` | Floating "+" button (primary, shadow, 56px), owner-only |
 | `constants/accounts.ts` | `ACCOUNT_TYPES` map: id, label, Feather icon |
 | `utils/format.ts` | `formatNumber(n)` → plain thousand-separated string via `Intl.NumberFormat("en-US")`, no symbol |
@@ -230,7 +230,7 @@ Tab bar (per DESIGN.md): `Home` (home icon) and `Accounts` (credit-card icon). A
 **Behavior:**
 - Loads `accounts.list`; shows spinner while loading.
 - Filter chip state filters the displayed list client-side by type.
-- Delete: `Alert.alert` confirmation ("Delete Account?", `Delete "X"?`, Cancel | Delete). On confirm → `accounts.delete`. Guard rejection shows the exact PRD message inline.
+- Delete: `Alert.alert` confirmation ("Delete Account?", `Delete "X"?`, Cancel | Delete). On confirm → `accounts.remove`. Guard rejection shows the exact PRD message inline.
 - Edit: tap Edit icon → `/account-form?id=<accountId>`.
 
 **Member state:** read-only list of visible accounts. No FAB, no edit/delete icons. Empty state without action button.
@@ -291,7 +291,7 @@ Move `app/home.tsx` → `app/(tabs)/index.tsx`. Replace the static "My Accounts"
 | File | Action |
 |------|--------|
 | `convex/schema.ts` | Modify — add `accounts`, `categories`, `transactions` tables |
-| `convex/accounts.ts` | Create — `list`, `create`, `update`, `delete` |
+| `convex/accounts.ts` | Create — `list`, `create`, `update`, `remove` |
 | `convex/transactions.ts` | Create — `create` (minimal) |
 | `convex/households.ts` | Modify — create reserved "Initial Balance" categories |
 | `app/_layout.tsx` | Modify — register `(tabs)` + `account-form` |

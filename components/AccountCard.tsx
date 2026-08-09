@@ -21,7 +21,7 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
         Shadow.card,
         {
           borderRadius: Radius.md,
-          backgroundColor: "#FFF",
+          backgroundColor: Colors.background,
           borderWidth: 1,
           borderColor: Colors.border,
         },
