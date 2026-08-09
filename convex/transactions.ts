@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, MutationCtx } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 const transactionType = v.union(
@@ -201,5 +201,126 @@ export const create = mutation({
     }
 
     return transactionId;
+  },
+});
+
+export const list = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const membership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (membership === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const isOwner = membership.role === "owner";
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q
+          .eq("householdId", membership.householdId)
+          .gte("date", args.startDate)
+          .lt("date", args.endDate),
+      )
+      .collect();
+
+    const transactions = [];
+    for (const row of rows) {
+      const category =
+        row.categoryId === undefined
+          ? undefined
+          : ((await ctx.db.get(row.categoryId)) ?? undefined);
+      if (!isOwner && category !== undefined && category.hidden) {
+        continue;
+      }
+      const account = (await ctx.db.get(row.accountId)) ?? undefined;
+      const toAccount =
+        row.toAccountId === undefined
+          ? undefined
+          : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+      transactions.push({ ...row, category, account, toAccount });
+    }
+
+    transactions.sort((a, b) => b.date - a.date);
+    return { transactions, isOwner };
+  },
+});
+
+export const get = query({
+  args: { transactionId: v.id("transactions") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      return null;
+    }
+
+    const membership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (membership === null) {
+      return null;
+    }
+
+    const tx = await ctx.db.get(args.transactionId);
+    if (tx === null || tx.householdId !== membership.householdId) {
+      return null;
+    }
+
+    if (membership.role !== "owner" && tx.categoryId !== undefined) {
+      const category = await ctx.db.get(tx.categoryId);
+      if (category !== null && category.hidden) {
+        return null;
+      }
+    }
+
+    const category =
+      tx.categoryId === undefined
+        ? undefined
+        : ((await ctx.db.get(tx.categoryId)) ?? undefined);
+    const account = (await ctx.db.get(tx.accountId)) ?? undefined;
+    const toAccount =
+      tx.toAccountId === undefined
+        ? undefined
+        : ((await ctx.db.get(tx.toAccountId)) ?? undefined);
+
+    return {
+      transaction: { ...tx, category, account, toAccount },
+      isOwner: membership.role === "owner",
+    };
   },
 });
