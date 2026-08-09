@@ -161,7 +161,7 @@
 1. Header: "Create Account" (H1, left aligned)
 2. TextInput: placeholder "Account name" (full width, 48px height)
 3. Dropdown: Account type (Cash | Bank | E-Wallet | Credit Card)
-4. TextInput: placeholder "Opening balance (optional)" (number input, thousand separator, allows negative)
+4. TextInput: placeholder "Opening balance (optional)" (whole-number input, thousand separators as you type, allows negative)
 5. Toggle: "Visible to members" (default on, with description below)
 6. Button: "Create Account" (full width, solid primary, 48px height)
 

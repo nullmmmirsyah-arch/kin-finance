@@ -9,6 +9,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 - Gradient cards: `expo-linear-gradient` + `Gradients.card`.
 - Shadows: `Shadow.card` or `Shadow.elevated`.
 - **NativeWind v4 gotcha:** Never use `style` callback functions on `Pressable` (e.g. `style={({ pressed }) => [...]}`). This breaks all style rendering including `className`. Use `useState` for pressed state + static `style` or `className` instead. See [GitHub #847](https://github.com/nativewind/nativewind/issues/847).
+- Money/amount inputs: use the shared `Input` component with the `amount` prop (e.g. `<Input amount />`) for automatic thousand-separator formatting. Never format amount inputs ad hoc.
 
 # Documentation
 

@@ -243,7 +243,7 @@ Route param `id` (optional): absent → create, present → edit.
 - Header: "Create Account"
 - Input: Account name
 - Type selector (Cash | Bank | E-Wallet | Credit Card), default Cash
-- Input: Opening balance (optional), number, allows leading `-`
+- Input: Opening balance (optional), whole number with thousand separators as you type, allows leading `-`
 - Toggle: "Visible to members" (default on, with description)
 - Button: "Create Account"
 
@@ -281,7 +281,7 @@ Move `app/home.tsx` → `app/(tabs)/index.tsx`. Replace the static "My Accounts"
 |-------|------|
 | Account name | Required, 2–30 chars, trimmed, unique within household |
 | Account type | One of `cash`, `bank`, `ewallet`, `credit_card` |
-| Opening balance | Optional number; `0` default; no sign requirement (treated as starting value) |
+| Opening balance | Optional whole number; `0` default; thousand separators in the field; no sign requirement (treated as starting value) |
 | Visibility | Boolean, default `false` (visible) |
 
 ---
