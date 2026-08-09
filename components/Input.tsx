@@ -19,7 +19,7 @@ export function Input({ label, error, style, ...props }: Props) {
             borderRadius: Radius.sm,
             borderWidth: 1,
             borderColor: error ? Colors.error : Colors.border,
-            backgroundColor: "#FFF",
+            backgroundColor: Colors.background,
             height: 48,
             paddingHorizontal: 16,
           },

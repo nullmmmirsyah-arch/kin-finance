@@ -15,12 +15,12 @@ type Props = {
 
 const variantStyles: Record<Variant, string> = {
   primary: "bg-primary",
-  secondary: "bg-white border border-border",
+  secondary: "bg-background border border-border",
   ghost: "bg-transparent",
 };
 
 const labelStyles: Record<Variant, string> = {
-  primary: "text-[#FFFBF5]",
+  primary: "text-background",
   secondary: "text-text-primary",
   ghost: "text-primary",
 };

@@ -177,7 +177,7 @@ export default function Home() {
           <Text className="mb-1 text-xl font-semibold text-text-primary">
             Recent Transactions
           </Text>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
+          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
             <EmptyState
               icon="book-open"
               title="No transactions yet"

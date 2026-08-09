@@ -834,7 +834,7 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
         Shadow.card,
         {
           borderRadius: Radius.md,
-          backgroundColor: "#FFF",
+          backgroundColor: Colors.background,
           borderWidth: 1,
           borderColor: Colors.border,
         },
@@ -1139,7 +1139,7 @@ export default function Accounts() {
 
       {visibleAccounts !== null && visibleAccounts.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
-          <View style={Shadow.card} className="rounded-[16px] bg-white">
+          <View style={Shadow.card} className="rounded-[16px] bg-background">
             <EmptyState
               icon="credit-card"
               title="No accounts yet"
@@ -1409,7 +1409,7 @@ export default function AccountForm() {
 
           <View
             style={{ borderColor: Colors.border }}
-            className="flex-row items-center justify-between rounded-[12px] border bg-white px-4 py-3"
+            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3"
           >
             <View className="flex-1">
               <Text className="text-base font-medium text-text-primary">
@@ -1423,7 +1423,7 @@ export default function AccountForm() {
               value={!hidden}
               onValueChange={(value) => setHidden(!value)}
               trackColor={{ true: Colors.primary, false: Colors.border }}
-              thumbColor="#FFF"
+              thumbColor={Colors.background}
             />
           </View>
 
@@ -1506,7 +1506,7 @@ const accountData = useQuery(api.accounts.list);
               <Text className="text-sm font-medium text-primary">Manage</Text>
             </Pressable>
           </View>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-white">
+          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
             {accountData?.accounts?.length === 0 ? (
               <EmptyState
                 icon="credit-card"

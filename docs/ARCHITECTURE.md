@@ -235,9 +235,9 @@ updatedAt: number
 | `invitations.create` | - | Generate code, hash it, store with 7-day expiry, single-use |
 | `invitations.revoke` | { invitationId } | Owner only, sets revoked = true |
 | `invitations.redeem` | { code } | Signed-in only; atomic `by_userId` check rejects existing household members, then: check hash, expiry, revoked, useCount < maxUses, insert membership, increment useCount |
-| `accounts.create` | { name, type, balance? } | Atomic: create account with zero balance → if balance != 0, post signed initial transaction via transactions.create |
+| `accounts.create` | { name, type, openingBalance?, hidden? } | Atomic: create account with zero balance → if balance != 0, post signed initial transaction via transactions.create |
 | `accounts.update` | { accountId, name?, type?, hidden? } | Owner only, toggle visibility |
-| `accounts.delete` | { accountId } | Owner only; reject if transactions reference this account |
+| `accounts.remove` | { accountId } | Owner only; reject if transactions reference this account |
 | `accounts.updateBalance` | { accountId, amount, operation } | Internal: adjust balance |
 | `categories.create` | { name, type } | Owner only |
 | `categories.update` | { categoryId, name?, type?, hidden? } | Owner only, toggle visibility; reject type change if linked tx/budgets exist |
