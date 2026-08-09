@@ -2,7 +2,7 @@ import { Colors, Radius, Shadow } from "@/constants/theme";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 type Props = {
   title: string;
@@ -17,12 +17,14 @@ const variantStyles: Record<Variant, string> = {
   primary: "bg-primary",
   secondary: "bg-background border border-border",
   ghost: "bg-transparent",
+  danger: "bg-transparent border border-error",
 };
 
 const labelStyles: Record<Variant, string> = {
   primary: "text-background",
   secondary: "text-text-primary",
   ghost: "text-primary",
+  danger: "text-error",
 };
 
 export function Button({
@@ -54,7 +56,13 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "primary" ? Colors.background : Colors.primary}
+          color={
+            variant === "primary"
+              ? Colors.background
+              : variant === "danger"
+                ? Colors.error
+                : Colors.primary
+          }
         />
       ) : (
         <Text className={`text-base font-semibold ${labelStyles[variant]}`}>

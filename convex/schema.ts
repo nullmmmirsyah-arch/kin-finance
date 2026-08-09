@@ -51,9 +51,10 @@ export default defineSchema({
   transactions: defineTable({
     householdId: v.id("households"),
     accountId: v.id("accounts"),
-    categoryId: v.id("categories"),
+    categoryId: v.optional(v.id("categories")),
+    toAccountId: v.optional(v.id("accounts")),
     amount: v.number(),
-    type: v.union(v.literal("income"), v.literal("expense")),
+    type: v.union(v.literal("income"), v.literal("expense"), v.literal("transfer")),
     note: v.optional(v.string()),
     date: v.number(),
     createdBy: v.id("users"),
@@ -62,6 +63,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_householdId", ["householdId"])
+    .index("by_household_date", ["householdId", "date"])
     .index("by_accountId", ["accountId"])
+    .index("by_toAccountId", ["toAccountId"])
     .index("by_categoryId", ["categoryId"]),
 });

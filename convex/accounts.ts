@@ -264,7 +264,14 @@ export const remove = mutation({
       .withIndex("by_accountId", (q) => q.eq("accountId", args.accountId))
       .first();
 
-    if (referencingTx !== null) {
+    const referencingToTx = await ctx.db
+      .query("transactions")
+      .withIndex("by_toAccountId", (q) =>
+        q.eq("toAccountId", args.accountId),
+      )
+      .first();
+
+    if (referencingTx !== null || referencingToTx !== null) {
       throw new ConvexError(
         "Cannot delete account — existing transactions reference this account. Delete or reassign those transactions first.",
       );

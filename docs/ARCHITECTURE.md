@@ -169,21 +169,25 @@ updatedAt: number
 
 ```text
 householdId: id<households>
-accountId: id<accounts>
-categoryId: id<categories>
-amount: number              // signed: positive = income, negative = expense; must agree with type
-type: "income" | "expense"
-note: string | undefined    // optional description
-date: number                // transaction date timestamp
-createdBy: id<users>        // who created this
-updatedBy: id<users>        // who last updated
+accountId: id<accounts>                 // income/expense: the account; transfer: source (from)
+categoryId: id<categories> | undefined  // income/expense only; undefined for transfer
+toAccountId: id<accounts> | undefined   // transfer only (destination)
+amount: number                          // income: > 0; expense: < 0; transfer: > 0 (magnitude)
+type: "income" | "expense" | "transfer"
+note: string | undefined                // optional description
+date: number                            // transaction date timestamp
+createdBy: id<users>                    // who created this
+updatedBy: id<users>                    // who last updated
 createdAt: number
 updatedAt: number
 ```
 
-**Invariant:** `amount > 0` when `type = "income"`, `amount < 0` when `type = "expense"`. Category type must match transaction type (income category for income transactions, expense category for expense transactions).
+**Invariant:**
+- `amount > 0` when `type = "income"`, `amount < 0` when `type = "expense"`, `amount > 0` (magnitude) when `type = "transfer"`.
+- Category type must match transaction type (income category for income transactions, expense category for expense transactions).
+- Transfers have no category and must have `toAccountId !== accountId`.
 
-**Indexes:** `by_householdId` on `["householdId"]`, `by_accountId` on `["accountId"]`, `by_categoryId` on `["categoryId"]`, `by_date` on `["date"]`
+**Indexes:** `by_householdId` on `["householdId"]`, `by_household_date` on `["householdId", "date"]`, `by_accountId` on `["accountId"]`, `by_toAccountId` on `["toAccountId"]`, `by_categoryId` on `["categoryId"]`
 
 ---
 
@@ -219,7 +223,6 @@ updatedAt: number
 | `accounts.list` | - | Account[] | Accounts visible to current user |
 | `categories.list` | - | Category[] | Categories visible to current user |
 | `transactions.list` | { startDate, endDate } | Transaction[] | Filter by date range |
-| `transactions.listByAccount` | { accountId } | Transaction[] | Transactions for specific account |
 | `budgets.list` | { periodStart: number } | Budget[] | Budgets for household in given month |
 | `users.getMe` | - | User \| null | Current user profile |
 
@@ -237,14 +240,14 @@ updatedAt: number
 | `invitations.redeem` | { code } | Signed-in only; atomic `by_userId` check rejects existing household members, then: check hash, expiry, revoked, useCount < maxUses, insert membership, increment useCount |
 | `accounts.create` | { name, type, openingBalance?, hidden? } | Atomic: create account with zero balance → if balance != 0, post signed initial transaction via transactions.create |
 | `accounts.update` | { accountId, name?, type?, hidden? } | Owner only, toggle visibility |
-| `accounts.remove` | { accountId } | Owner only; reject if transactions reference this account |
+| `accounts.remove` | { accountId } | Owner only; reject if transactions reference this account (as accountId or toAccountId) |
 | `accounts.updateBalance` | { accountId, amount, operation } | Internal: adjust balance |
 | `categories.create` | { name, type } | Owner only |
 | `categories.update` | { categoryId, name?, type?, hidden? } | Owner only, toggle visibility; reject type change if linked tx/budgets exist |
 | `categories.delete` | { categoryId } | Owner only; reject if transactions or budgets reference this category |
-| `transactions.create` | { accountId, categoryId, amount, type, note?, date } | Signed amount: +income, -expense; category type must match |
-| `transactions.update` | { transactionId, ...fields } | Auto-update balance (reverse old + apply new); category type must match |
-| `transactions.delete` | { transactionId } | Auto-update account balance (reverse) |
+| `transactions.create` | { accountId, categoryId?, toAccountId?, amount, type, note?, date } | Signed amount: +income, -expense, +transfer magnitude; category type must match (income/expense); transfer: toAccountId != accountId, no category |
+| `transactions.update` | { transactionId, ...fields } | Auto-update balance(s) (reverse old + apply new); category type must match (income/expense); member cannot reassign to hidden account |
+| `transactions.delete` | { transactionId } | Auto-update account balance(s) (reverse) |
 | `budgets.create` | { categoryId, amount, periodStart } | Member can create; category must be expense type; unique per (household, category, month) |
 | `budgets.update` | { budgetId, amount } | Member can update |
 | `budgets.delete` | { budgetId } | Member can delete |
@@ -272,18 +275,22 @@ This ensures the opening balance is applied exactly once and goes through the sa
 ## Account Balance Auto-Update Logic
 
 ```text
-on create:
-  account.balance += amount
+income/expense (amount signed):
+  on create:   account.balance += amount
+  on update:   if accountId changed:
+                 oldAccount.balance -= oldAmount      // reverse from previous account
+                 newAccount.balance += newAmount      // apply to new account
+               else (same account):
+                 account.balance += (newAmount - oldAmount)  // net adjustment
+  on delete:   account.balance -= amount
 
-on update:
-  if accountId changed:
-    oldAccount.balance -= oldAmount      // reverse from previous account
-    newAccount.balance += newAmount      // apply to new account
-  else (same account):
-    account.balance += (newAmount - oldAmount)  // net adjustment
-
-on delete:
-  account.balance -= amount
+transfer (amount = positive magnitude):
+  on create:   from.balance -= amount
+               to.balance += amount
+  on update:   reverse old:  oldFrom.balance += oldAmount; oldTo.balance -= oldAmount
+               apply new:    newFrom.balance -= newAmount; newTo.balance += newAmount
+  on delete:   from.balance += amount
+               to.balance -= amount
 ```
 
 All operations within one mutation — atomic.
@@ -305,6 +312,8 @@ All operations within one mutation — atomic.
 | Select Account for new Transaction | ✅ | Hanya jika visible |
 | View/Create/Edit/Delete Transaction | ✅ | Hanya jika category visible |
 | Edit existing Transaction on hidden Account | ✅ | ✅ (existing only, cannot reassign to hidden) |
+| Create/Reassign Transfer | ✅ | ✅ (both accounts visible) |
+| Edit existing Transfer on hidden Account | ✅ | ✅ (existing only, cannot reassign to hidden) |
 | Create Category | ✅ | ❌ |
 | Edit Category | ✅ | ❌ |
 | Delete Category | ✅ | ❌ |
@@ -318,7 +327,8 @@ All operations within one mutation — atomic.
 ## Visibility Rules
 
 - **Account hidden:** balance tidak terlihat member. Member cannot select or reassign transactions to this account. Member CAN edit existing transactions that already reference this account.
-- **Category hidden:** transaksi atas kategori itu sepenuhnya tidak terlihat dan tidak tersentuh member.
+- **Transfer on hidden account:** member cannot create or reassign a transfer involving a hidden account, but CAN view/edit/delete an existing transfer that touches one.
+- **Category hidden:** transaksi atas kategori itu sepenuhnya tidak terlihat dan tidak tersentuh member. Transfers have no category and are unaffected.
 
 ---
 
