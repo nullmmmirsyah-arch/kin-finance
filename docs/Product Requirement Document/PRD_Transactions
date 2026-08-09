@@ -9,9 +9,9 @@
 
 # Overview
 
-Transactions are the core records of income and expense in Kin Finance.
+Transactions are the core records of financial activity in Kin Finance.
 
-Every Transaction records a financial event: money coming in (income) or going out (expense). Transactions are linked to an Account and a Category.
+Every Transaction records a financial event: money coming in (income), money going out (expense), or money moving between accounts (transfer). Income and expense Transactions are linked to an Account and a Category. Transfers link two Accounts (from → to) and have no Category.
 
 In MVP, Transactions are simple (no split, no recurring). Both Owner and Member can create, edit, and delete Transactions freely. Every Transaction records who created and updated it.
 
@@ -20,7 +20,8 @@ In MVP, Transactions are simple (no split, no recurring). Both Owner and Member 
 # Goals
 
 - Allow users to record income and expenses.
-- Auto-update Account balance on every transaction change.
+- Allow users to move money between accounts (transfers).
+- Auto-update Account balance(s) on every transaction change.
 - Track who created and updated each Transaction.
 
 ---
@@ -29,11 +30,11 @@ In MVP, Transactions are simple (no split, no recurring). Both Owner and Member 
 
 ## In Scope
 
-- Create a Transaction (income or expense).
+- Create a Transaction (income, expense, or transfer).
 - Edit a Transaction.
 - Delete a Transaction.
 - List Transactions with date filtering.
-- Auto-update Account balance on create/edit/delete.
+- Auto-update Account balance(s) on create/edit/delete.
 - Record createdBy and updatedBy metadata.
 
 ## Out of Scope
@@ -41,7 +42,6 @@ In MVP, Transactions are simple (no split, no recurring). Both Owner and Member 
 - Split transactions (future).
 - Recurring transactions (future).
 - Attachments/receipts (future).
-- Transfer between accounts (future).
 - Multi-currency (future).
 
 ---
@@ -52,7 +52,7 @@ In MVP, Transactions are simple (no split, no recurring). Both Owner and Member 
 
 As a user (Owner or Member),
 
-I want to record an income or expense,
+I want to record an income, expense, or transfer,
 
 So that I can track my financial activity.
 
@@ -97,7 +97,7 @@ Transactions Screen
 
 ↓
 
-Tap "+" button
+Tap "+" button (or FAB on Home)
 
 ↓
 
@@ -105,7 +105,10 @@ Create Transaction Screen
 
 ↓
 
-Select type (Income/Expense), enter amount, select account, select category, set date, add note
+Select type (Income/Expense/Transfer)
+
+- Income/Expense: enter amount, select account, select category, set date, add note
+- Transfer: enter amount, select from account, select to account, set date, add note
 
 ↓
 
@@ -117,7 +120,7 @@ Transaction created
 
 ↓
 
-Account balance auto-updated
+Account balance(s) auto-updated
 
 ↓
 
@@ -153,7 +156,7 @@ Transaction updated
 
 ↓
 
-Account balance auto-adjusted (reverse old, apply new)
+Account balance(s) auto-adjusted (reverse old, apply new)
 
 ↓
 
@@ -169,7 +172,7 @@ Transactions Screen
 
 ↓
 
-Swipe left on Transaction → Tap "Delete"
+Tap on Transaction → Tap "Delete Transaction"
 
 ↓
 
@@ -185,7 +188,7 @@ Transaction deleted
 
 ↓
 
-Account balance auto-reversed
+Account balance(s) auto-reversed
 
 ↓
 
@@ -199,19 +202,34 @@ Return to Transactions Screen
 ## Transaction
 
 - Every Transaction belongs to exactly one Household.
-- Every Transaction belongs to exactly one Account.
-- Every Transaction belongs to exactly one Category.
-- Every Transaction has a type: "income" or "expense".
+- Every Transaction has a type: "income", "expense", or "transfer".
+- Income and expense Transactions belong to exactly one Account and exactly one Category.
+- Transfer Transactions link exactly two Accounts (from → to) and have no Category.
+
+---
+
+## Income & Expense
+
 - **amount is signed:** positive for income, negative for expense. The sign must agree with `type`.
 - **Category type must match transaction type:** income transactions require an income category, expense transactions require an expense category.
 
 ---
 
+## Transfer
+
+- A Transfer moves money from one Account (`from`) to another Account (`to`).
+- **amount is the transfer magnitude:** always positive.
+- `from` and `to` must be different Accounts.
+- On create: `from.balance -= amount`, `to.balance += amount`.
+- Transfers do not affect income/expense totals and do not change Household net.
+
+---
+
 ## Balance Auto-Update
 
-- When a Transaction is created: Account balance is updated.
-- When a Transaction is updated: Account balance is reversed (old amount) then applied (new amount).
-- When a Transaction is deleted: Account balance is reversed (old amount).
+- When a Transaction is created: Account balance(s) are updated.
+- When a Transaction is updated: Account balance(s) are reversed (old values) then applied (new values).
+- When a Transaction is deleted: Account balance(s) are reversed (old values).
 
 ---
 
@@ -226,8 +244,9 @@ Return to Transactions Screen
 
 - Transactions on visible Accounts: fully visible and editable by Members.
 - Transactions on hidden Accounts: visible and editable by Members for existing transactions only. Member cannot create new transactions on hidden accounts or reassign existing transactions to hidden accounts.
+- Transfers: a Member must have both Accounts visible to create or reassign a Transfer. A Transfer touching a hidden Account remains visible and editable by Members for existing transfers only.
 - Transactions on visible Categories: fully visible and editable by Members.
-- Transactions on hidden Categories: completely invisible and untouchable by Members.
+- Transactions on hidden Categories: completely invisible and untouchable by Members. Transfers have no Category and are not affected by category visibility.
 
 ---
 
@@ -237,6 +256,8 @@ Return to Transactions Screen
 
 User can create a Transaction by entering:
 
+### Income / Expense
+
 - Type: Income or Expense
 - Amount (nominal, thousand separator display)
 - Account (from visible Accounts)
@@ -244,10 +265,19 @@ User can create a Transaction by entering:
 - Date (default: today)
 - Note (optional)
 
+### Transfer
+
+- Type: Transfer
+- Amount (nominal, thousand separator display)
+- From Account (from visible Accounts)
+- To Account (from visible Accounts, must differ from From Account)
+- Date (default: today)
+- Note (optional)
+
 After success:
 
-- Transaction is created with signed amount (positive = income, negative = expense).
-- Account balance is auto-updated.
+- Transaction is created with signed amount (positive = income, negative = expense, transfer = positive magnitude).
+- Account balance(s) are auto-updated.
 - Transaction appears in the list.
 
 ---
@@ -258,15 +288,15 @@ User can edit a Transaction by changing:
 
 - Type
 - Amount
-- Account
-- Category (must match transaction type)
+- Account(s)
+- Category (income/expense only, must match transaction type)
 - Date
 - Note
 
 After success:
 
 - Transaction is updated.
-- Account balance is auto-adjusted (reverse old, apply new).
+- Account balance(s) are auto-adjusted (reverse old, apply new).
 
 ---
 
@@ -277,7 +307,7 @@ User can delete a Transaction.
 After success:
 
 - Transaction is removed.
-- Account balance is auto-reversed.
+- Account balance(s) are auto-reversed.
 
 ---
 
@@ -288,7 +318,8 @@ The application retrieves Transactions for the Household within a date range.
 - Default: current month.
 - User can filter by custom date range.
 - Transactions are grouped by date.
-- Each Transaction shows: category icon, note, amount (+/-), time.
+- Each income/expense Transaction shows: category icon, note, amount (+/-), time.
+- Each Transfer shows: transfer icon, note (default "Transfer to {To Account}"), amount (no sign), time.
 
 ---
 
@@ -298,7 +329,7 @@ The application retrieves Transactions for the Household within a date range.
 
 - Required.
 - Must be a non-zero number.
-- Positive for income, negative for expense.
+- Positive for income, negative for expense, positive for transfer.
 - Minimum absolute value: 1 (smallest unit).
 - No maximum (but very large numbers should be handled gracefully).
 
@@ -306,15 +337,26 @@ The application retrieves Transactions for the Household within a date range.
 
 ## Account
 
-- Required.
+- Required for income/expense.
 - **Create:** Must be a visible Account for the current user.
 - **Edit:** If changing accountId, the new account must be visible. Existing transactions on hidden accounts can be edited (amount, category, date, note) without changing accountId.
 
 ---
 
+## Transfer Accounts
+
+- From and To Accounts are required for transfers.
+- Both must belong to the same Household.
+- From and To must be different Accounts.
+- **Create:** Both must be visible Accounts for the current user.
+- **Edit:** If changing either Account, the new Account must be visible. Existing transfers touching hidden Accounts can be edited without changing those Accounts.
+
+---
+
 ## Category
 
-- Required.
+- Required for income/expense.
+- Not applicable for transfers.
 - Must be a visible Category for the current user.
 - **Type must match transaction type:** income category for income transactions, expense category for expense transactions.
 
@@ -343,6 +385,9 @@ The application retrieves Transactions for the Household within a date range.
 | Create Transaction |  ✅   |   ✅ (visible accounts/categories only)   |
 | Edit Transaction |  ✅   |   ✅ (cannot reassign to hidden account)   |
 | Delete Transaction |  ✅   |   ✅   |
+| Create Transfer |  ✅   |   ✅ (both accounts visible)   |
+| Edit Transfer |  ✅   |   ✅ (cannot reassign to hidden account)   |
+| Delete Transfer |  ✅   |   ✅   |
 
 ---
 
@@ -376,6 +421,7 @@ Examples:
 - Category not found.
 - Category type must match transaction type.
 - Transaction date cannot be in the future.
+- From and To accounts must be different.
 - Please try again.
 
 Do not show technical backend errors.
@@ -386,10 +432,11 @@ Do not show technical backend errors.
 
 Feature is considered complete when:
 
-- User can create a Transaction (income or expense).
+- User can create a Transaction (income, expense, or transfer).
 - User can edit a Transaction.
 - User can delete a Transaction.
-- Account balance auto-updates on create/edit/delete.
+- Account balance(s) auto-update on create/edit/delete.
+- Transfers update both Account balances (from −, to +).
 - Transactions are filterable by date range.
 - Transactions on hidden Categories are invisible to Members.
 - Transactions on hidden Accounts are still visible/editable by Members.
@@ -413,7 +460,6 @@ Business rules in this document cannot be changed without project owner approval
 - Split transactions.
 - Recurring transactions.
 - Attachments/receipts.
-- Transfer between accounts.
 - Multi-currency support.
 - Transaction search.
 - Transaction export (CSV, PDF).
