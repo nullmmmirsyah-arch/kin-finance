@@ -324,3 +324,176 @@ export const get = query({
     };
   },
 });
+
+export const update = mutation({
+  args: {
+    transactionId: v.id("transactions"),
+    accountId: v.optional(v.id("accounts")),
+    categoryId: v.optional(v.id("categories")),
+    toAccountId: v.optional(v.id("accounts")),
+    amount: v.optional(v.number()),
+    type: v.optional(transactionType),
+    note: v.optional(v.string()),
+    date: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { user, membership } = await getUserAndMembership(ctx);
+
+    const tx = await ctx.db.get(args.transactionId);
+    if (tx === null || tx.householdId !== membership.householdId) {
+      throw new ConvexError("Transaction not found.");
+    }
+
+    const type = args.type ?? tx.type;
+    const amount = args.amount ?? tx.amount;
+    const accountId = args.accountId ?? tx.accountId;
+
+    let categoryId: Id<"categories"> | undefined;
+    let toAccountId: Id<"accounts"> | undefined;
+    if (type === "transfer") {
+      if (args.categoryId !== undefined) {
+        throw new ConvexError("Transfers cannot have a category.");
+      }
+      toAccountId = args.toAccountId ?? tx.toAccountId;
+      if (toAccountId === undefined) {
+        throw new ConvexError("To account is required for transfers.");
+      }
+      if (toAccountId === accountId) {
+        throw new ConvexError("From and To accounts must be different.");
+      }
+    } else {
+      if (args.toAccountId !== undefined) {
+        throw new ConvexError(
+          "Income and expense transactions cannot have a to account.",
+        );
+      }
+      categoryId = args.categoryId ?? tx.categoryId;
+      if (categoryId === undefined) {
+        throw new ConvexError(
+          "Category is required for income and expense transactions.",
+        );
+      }
+    }
+
+    validateAmount(amount, type);
+    if (args.note !== undefined) {
+      validateNote(args.note);
+    }
+    if (args.date !== undefined) {
+      validateDate(args.date);
+    }
+
+    const account = await ctx.db.get(accountId);
+    if (account === null || account.householdId !== membership.householdId) {
+      throw new ConvexError("Account not found.");
+    }
+
+    let category:
+      | {
+          _id: Id<"categories">;
+          householdId: Id<"households">;
+          name: string;
+          type: "income" | "expense";
+          hidden: boolean;
+          createdAt: number;
+          updatedAt: number;
+        }
+      | undefined;
+    if (categoryId !== undefined) {
+      const cat = await ctx.db.get(categoryId);
+      if (cat === null || cat.householdId !== membership.householdId) {
+        throw new ConvexError("Category not found.");
+      }
+      if (cat.type !== type) {
+        throw new ConvexError("Category type must match transaction type.");
+      }
+      category = cat;
+    }
+
+    let toAccount:
+      | {
+          _id: Id<"accounts">;
+          householdId: Id<"households">;
+          name: string;
+          type: "cash" | "bank" | "ewallet" | "credit_card";
+          balance: number;
+          hidden: boolean;
+          createdAt: number;
+          updatedAt: number;
+        }
+      | undefined;
+    if (toAccountId !== undefined) {
+      const to = await ctx.db.get(toAccountId);
+      if (to === null || to.householdId !== membership.householdId) {
+        throw new ConvexError("To account not found.");
+      }
+      toAccount = to;
+    }
+
+    if (membership.role !== "owner") {
+      if (accountId !== tx.accountId && account.hidden) {
+        throw new ConvexError("You cannot reassign to a hidden account.");
+      }
+      if (
+        toAccount !== undefined &&
+        toAccountId !== tx.toAccountId &&
+        toAccount.hidden
+      ) {
+        throw new ConvexError("You cannot reassign to a hidden account.");
+      }
+      if (
+        category !== undefined &&
+        categoryId !== tx.categoryId &&
+        category.hidden
+      ) {
+        throw new ConvexError("You cannot reassign to a hidden category.");
+      }
+    }
+
+    const now = Date.now();
+
+    const deltas = new Map<string, number>();
+    const applyDelta = (id: string, delta: number) => {
+      deltas.set(id, (deltas.get(id) ?? 0) + delta);
+    };
+
+    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+      applyDelta(tx.accountId, tx.amount);
+      applyDelta(tx.toAccountId, -tx.amount);
+    } else {
+      applyDelta(tx.accountId, -tx.amount);
+    }
+
+    if (type === "transfer" && toAccountId !== undefined) {
+      applyDelta(accountId, -amount);
+      applyDelta(toAccountId, amount);
+    } else {
+      applyDelta(accountId, amount);
+    }
+
+    for (const [id, delta] of deltas) {
+      if (delta === 0) continue;
+      const doc = await ctx.db.get(id as Id<"accounts">);
+      if (doc !== null) {
+        await ctx.db.patch(doc._id, {
+          balance: doc.balance + delta,
+          updatedAt: now,
+        });
+      }
+    }
+
+    await ctx.db.patch(args.transactionId, {
+      accountId,
+      categoryId: category?._id,
+      toAccountId,
+      amount,
+      type,
+      note: args.note !== undefined ? args.note : tx.note,
+      date: args.date ?? tx.date,
+      updatedBy: user._id,
+      updatedAt: now,
+    });
+
+    return await ctx.db.get(args.transactionId);
+  },
+});
