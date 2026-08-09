@@ -497,3 +497,52 @@ export const update = mutation({
     return await ctx.db.get(args.transactionId);
   },
 });
+
+export const remove = mutation({
+  args: { transactionId: v.id("transactions") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+
+    const tx = await ctx.db.get(args.transactionId);
+    if (tx === null || tx.householdId !== membership.householdId) {
+      throw new ConvexError("Transaction not found.");
+    }
+
+    if (membership.role !== "owner" && tx.categoryId !== undefined) {
+      const category = await ctx.db.get(tx.categoryId);
+      if (category !== null && category.hidden) {
+        throw new ConvexError(
+          "You cannot delete transactions on a hidden category.",
+        );
+      }
+    }
+
+    const now = Date.now();
+    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+      const from = await ctx.db.get(tx.accountId);
+      const to = await ctx.db.get(tx.toAccountId);
+      if (from !== null) {
+        await ctx.db.patch(from._id, {
+          balance: from.balance + tx.amount,
+          updatedAt: now,
+        });
+      }
+      if (to !== null) {
+        await ctx.db.patch(to._id, {
+          balance: to.balance - tx.amount,
+          updatedAt: now,
+        });
+      }
+    } else {
+      const account = await ctx.db.get(tx.accountId);
+      if (account !== null) {
+        await ctx.db.patch(account._id, {
+          balance: account.balance - tx.amount,
+          updatedAt: now,
+        });
+      }
+    }
+
+    await ctx.db.delete(args.transactionId);
+  },
+});
