@@ -82,4 +82,20 @@ export default defineSchema({
     .index("by_categoryId", ["categoryId"])
     .index("by_category_period", ["categoryId", "periodStart"])
     .index("by_household_period", ["householdId", "periodStart"]),
+
+  invitations: defineTable({
+    householdId: v.id("households"),
+    codeHash: v.string(),
+    createdBy: v.id("users"),
+    expiresAt: v.number(),
+    maxUses: v.number(),
+    useCount: v.number(),
+    revoked: v.boolean(),
+    redemptionAttempts: v.number(),
+    lastAttemptAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_codeHash", ["codeHash"])
+    .index("by_householdId", ["householdId"]),
 });

@@ -1,28 +1,101 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useQuery } from "convex/react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 export default function Settings() {
   const router = useRouter();
-  const [pressed, setPressed] = useState(false);
   const C = useThemeColors();
+
+  const household = useQuery(api.households.getActive);
+  const members = useQuery(
+    api.households.listMembers,
+    household?._id ? { householdId: household._id } : "skip",
+  );
+
+  const memberCount = members?.members.length ?? 1;
+
+  if (household === undefined) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (household === null) {
+    router.replace("/onboarding");
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Settings</Text>
+        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+          Settings
+        </Text>
       </View>
 
-      <View className="mt-4 px-5">
-        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Household</Text>
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Household
+        </Text>
+
+        <Pressable
+          onPress={() => router.push("/members")}
+          accessibilityLabel={`${household?.name}, ${memberCount} member${memberCount === 1 ? "" : "s"}`}
+          style={[
+            Shadow.card,
+            {
+              borderRadius: Radius.md,
+              backgroundColor: C.background,
+              borderWidth: 1,
+              borderColor: C.border,
+            },
+          ]}
+          className="flex-row items-center justify-between px-4 py-4"
+        >
+          <View className="flex-row items-center gap-3">
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: Radius.sm,
+                backgroundColor: C.surface,
+              }}
+              className="items-center justify-center"
+            >
+              <Feather name="users" size={20} color={C.primary} />
+            </View>
+            <View>
+              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                {household?.name ?? "Household"}
+              </Text>
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                {memberCount === 1
+                  ? "1 member"
+                  : `${memberCount} members`}
+              </Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={C.textSecondary} />
+        </Pressable>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Categories
+        </Text>
+
         <Pressable
           onPress={() => router.push("/categories")}
-          onPressIn={() => setPressed(true)}
-          onPressOut={() => setPressed(false)}
-          accessibilityRole="button"
           accessibilityLabel="Categories"
           style={[
             Shadow.card,
@@ -32,9 +105,8 @@ export default function Settings() {
               borderWidth: 1,
               borderColor: C.border,
             },
-            pressed ? { backgroundColor: C.surface } : undefined,
           ]}
-          className="mt-2 flex-row items-center justify-between px-4 py-4"
+          className="flex-row items-center justify-between px-4 py-4"
         >
           <View className="flex-row items-center gap-3">
             <View
