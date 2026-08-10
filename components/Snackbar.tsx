@@ -1,5 +1,5 @@
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { ReactNode, createContext, useCallback, useContext, useRef, useState } from "react";
+import { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Animated, Text, View } from "react-native";
 
 type SnackbarContextValue = {
@@ -22,12 +22,17 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generation = useRef(0);
 
   const show = useCallback(
     (text: string) => {
+      const current = ++generation.current;
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
+        hideTimer.current = null;
       }
+      opacity.stopAnimation();
+      translateY.stopAnimation();
       setMessage(text);
       Animated.parallel([
         Animated.timing(opacity, {
@@ -53,11 +58,26 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
             duration: 200,
             useNativeDriver: true,
           }),
-        ]).start(() => setMessage(null));
+        ]).start(({ finished }) => {
+          if (finished && generation.current === current) {
+            setMessage(null);
+          }
+        });
       }, 2500);
     },
     [opacity, translateY],
   );
+
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) {
+        clearTimeout(hideTimer.current);
+        hideTimer.current = null;
+      }
+      opacity.stopAnimation();
+      translateY.stopAnimation();
+    };
+  }, [opacity, translateY]);
 
   return (
     <SnackbarContext.Provider value={{ show }}>

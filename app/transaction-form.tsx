@@ -355,7 +355,7 @@ export default function TransactionForm() {
                 options={categoryOptions}
                 onSelect={setCategoryId}
               />
-              {categoryOptions.length === 0 ? (
+              {categoryResult !== undefined && categoryOptions.length === 0 ? (
                 <View className="gap-1.5">
                   <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
                     {categoryResult?.isOwner === true
