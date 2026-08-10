@@ -74,6 +74,7 @@
 | `app/(tabs)/settings.tsx` | Settings (Household card → members, Categories) |
 | `app/onboarding.tsx` | Create/Join household flow (toggle: create vs invite code) |
 | `app/members.tsx` | Household Members (name + rename, member list, generate invite FAB) |
+| `lib/errors.ts` | Shared `getConvexErrorMessage` helper for user-friendly error extraction |
 | `convex/schema.ts` | Database schema definition |
 | `convex/*.ts` | Query/mutation functions |
 
@@ -339,6 +340,43 @@ All operations within one mutation — atomic.
 - **Account hidden:** balance tidak terlihat member. Member cannot select or reassign transactions to this account. Member CAN edit existing transactions that already reference this account.
 - **Transfer on hidden account:** member cannot create or reassign a transfer involving a hidden account, but CAN view/edit/delete an existing transfer that touches one.
 - **Category hidden:** transaksi atas kategori itu sepenuhnya tidak terlihat dan tidak tersentuh member. Transfers have no category and are unaffected.
+
+---
+
+## Error Handling Convention
+
+All backend handlers require sign-in via `ctx.auth.getUserIdentity()` and throw `ConvexError` with a **plain-string, user-friendly message**:
+
+```ts
+throw new ConvexError("Invalid invite code.");
+throw new ConvexError("You are not signed in.");
+```
+
+### Client-side extraction
+
+Convex serializes `ConvexError` over the network; the client receives an error where:
+
+- `error.data` = the original plain-string message (e.g. `"Invalid invite code."`)
+- `error.message` = a technical wrapper (`"[Request ID: ...] Server Error"`)
+
+Client code must **never display `error.message` directly** — it is technical. Use the shared helper `getConvexErrorMessage(error, fallback)` from `lib/errors.ts` in every `catch` block:
+
+```ts
+import { getConvexErrorMessage } from "@/lib/errors";
+
+catch (e: any) {
+  setError(getConvexErrorMessage(e, "Failed to join household. Please try again."));
+}
+```
+
+Extraction order in `getConvexErrorMessage`:
+1. `error.data` (plain string) — server's user-friendly message
+2. `error.data.message` (string) — for object-shaped ConvexError data
+3. `error.message` — generic JS Error message
+4. First stack line — last resort
+5. Provided fallback — final default
+
+The fallback must always be a user-friendly sentence ("Failed to ..."). `getConvexErrorMessage` is used in all mutation catch blocks (onboarding, members, and any screen invoking a Convex mutation). Server-side `[CONVEX M(...)] ... Server Error` console output for thrown errors is Convex's default observability logging and is expected, not a bug.
 
 ---
 
