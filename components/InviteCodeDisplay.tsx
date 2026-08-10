@@ -31,7 +31,7 @@ export function InviteCodeDisplay({ code, onDone }: Props) {
       // Browser-native share API
       try {
         await (navigator as any).share({ title: "Kin Finance", text: message, url: window.location.href });
-      } catch (e: any) {
+      } catch {
         // User cancelled or error, do nothing
       }
     } else {

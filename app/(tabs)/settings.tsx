@@ -4,7 +4,6 @@ import { useQuery } from "convex/react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
-import { getConvexErrorMessage } from "@/lib/errors";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 export default function Settings() {
