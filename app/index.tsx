@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Gradients, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -35,6 +35,8 @@ type Mode = "sign-in" | "sign-up";
 
 export default function Index() {
   useWarmUpBrowser();
+  const C = useThemeColors();
+  const gradients = useThemeGradients();
 
   const { isSignedIn } = useAuth();
   const router = useRouter();
@@ -309,7 +311,7 @@ export default function Index() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -320,7 +322,7 @@ export default function Index() {
         >
           <View className="items-center gap-6">
             <LinearGradient
-              colors={Gradients.card}
+              colors={gradients.card}
               style={[
                 Shadow.card,
                 {
@@ -328,23 +330,23 @@ export default function Index() {
                   height: 96,
                   borderRadius: Radius.lg,
                   borderWidth: 1,
-                  borderColor: Colors.primaryLight,
+                  borderColor: C.primaryLight,
                 },
               ]}
               className="items-center justify-center"
             >
-              <Feather name="home" size={40} color={Colors.primary} />
+              <Feather name="home" size={40} color={C.primary} />
             </LinearGradient>
 
             {isMfaVerifying || isVerifying ? (
               <View className="w-full gap-4">
                 <View className="items-center gap-2">
-                  <Text className="text-center text-[28px] font-bold text-text-primary">
+                  <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
                     {isMfaVerifying
                       ? "Security Check"
                       : "Check Your Email"}
                   </Text>
-                  <Text className="text-center text-base text-text-secondary">
+                  <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
                     {isMfaVerifying
                       ? "Enter the verification code sent to your email."
                       : "Enter the verification code we sent to you."}
@@ -367,7 +369,7 @@ export default function Index() {
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center py-2"
                 >
-                  <Text className="text-sm font-medium text-primary">
+                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">
                     Back
                   </Text>
                 </Pressable>
@@ -375,10 +377,10 @@ export default function Index() {
             ) : (
               <View className="w-full gap-4">
                 <View className="items-center gap-2">
-                  <Text className="text-center text-[28px] font-bold text-text-primary">
+                  <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
                     Kin Finance
                   </Text>
-                  <Text className="text-center text-base text-text-secondary">
+                  <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
                     {mode === "sign-in"
                       ? "Welcome back. Sign in to continue."
                       : "Create an account to get started."}
@@ -400,7 +402,7 @@ export default function Index() {
                   error={passwordError}
                 />
                 {error ? (
-                  <Text className="text-center text-sm text-error">{error}</Text>
+                  <Text className="text-center text-sm text-error dark:text-error-dark">{error}</Text>
                 ) : null}
                 <Button
                   title={mode === "sign-in" ? "Sign In" : "Sign Up"}
@@ -423,7 +425,7 @@ export default function Index() {
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center py-2"
                 >
-                  <Text className="text-sm font-medium text-primary">
+                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">
                     {mode === "sign-in"
                       ? "Don't have an account? Sign up"
                       : "Already have an account? Sign in"}

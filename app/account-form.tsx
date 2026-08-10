@@ -14,11 +14,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
+import { useSnackbar } from "@/components/Snackbar";
 
 export default function AccountForm() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function AccountForm() {
   const result = useQuery(api.accounts.list);
   const createAccount = useMutation(api.accounts.create);
   const updateAccount = useMutation(api.accounts.update);
+  const { show } = useSnackbar();
+  const C = useThemeColors();
 
   const [name, setName] = useState("");
   const [type, setType] = useState<AccountType>("cash");
@@ -101,6 +104,7 @@ export default function AccountForm() {
           hidden,
         });
       }
+      show(isEdit ? "Account updated" : "Account created");
       router.back();
     } catch (e) {
       const message =
@@ -117,22 +121,22 @@ export default function AccountForm() {
 
   if (isEdit && result !== undefined && editingAccount === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">Account not found.</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Account not found.</Text>
       </SafeAreaView>
     );
   }
 
   if (isEdit && editingAccount === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">Loading account…</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Loading account…</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -142,12 +146,12 @@ export default function AccountForm() {
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 48, height: 48 }}
             className="items-center justify-center"
           >
-            <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
+            <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
             {isEdit ? "Edit Account" : "Create Account"}
           </Text>
         </View>
@@ -166,7 +170,7 @@ export default function AccountForm() {
           />
 
           <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary">
+            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
               Account type
             </Text>
             <View className="flex-row flex-wrap gap-2">
@@ -195,22 +199,22 @@ export default function AccountForm() {
           ) : null}
 
           <View
-            style={{ borderColor: Colors.border }}
-            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3"
+            style={{ borderColor: C.border }}
+            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
           >
             <View className="flex-1">
-              <Text className="text-base font-medium text-text-primary">
+              <Text className="text-base font-medium text-text-primary dark:text-text-primary-dark">
                 Visible to members
               </Text>
-              <Text className="text-sm text-text-secondary">
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
                 Members can see and use this account.
               </Text>
             </View>
             <Switch
               value={!hidden}
               onValueChange={(value) => setHidden(!value)}
-              trackColor={{ true: Colors.primary, false: Colors.border }}
-              thumbColor={Colors.background}
+              trackColor={{ true: C.primary, false: C.border }}
+              thumbColor={C.background}
             />
           </View>
 

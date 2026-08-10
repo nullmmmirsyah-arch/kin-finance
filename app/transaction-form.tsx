@@ -14,13 +14,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { TRANSACTION_TYPES, TransactionType } from "@/constants/transactions";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { SelectField } from "@/components/SelectField";
 import { DateField } from "@/components/DateField";
+import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber } from "@/utils/format";
 
 export default function TransactionForm() {
@@ -28,6 +29,8 @@ export default function TransactionForm() {
   const params = useLocalSearchParams<{ id?: string }>();
   const transactionId = params.id;
   const isEdit = transactionId !== undefined;
+  const C = useThemeColors();
+  const { show } = useSnackbar();
 
   const getResult = useQuery(
     api.transactions.get,
@@ -189,6 +192,7 @@ export default function TransactionForm() {
       } else {
         await createTransaction(base);
       }
+      show(isEdit ? "Transaction updated" : "Transaction added");
       router.back();
     } catch (e) {
       setError(
@@ -219,7 +223,10 @@ export default function TransactionForm() {
             removeTransaction({
               transactionId: transactionId as Id<"transactions">,
             })
-              .then(() => router.back())
+              .then(() => {
+                show("Transaction deleted");
+                router.back();
+              })
               .catch((e: unknown) =>
                 setError(
                   e instanceof Error
@@ -236,16 +243,16 @@ export default function TransactionForm() {
 
   if (accountResult === undefined || (isEdit && getResult === undefined)) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">Loading…</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Loading…</Text>
       </SafeAreaView>
     );
   }
 
   if (accountResult.accounts === null) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
-        <Text className="text-center text-sm text-text-secondary">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
           You are not a member of a household.
         </Text>
       </SafeAreaView>
@@ -254,8 +261,8 @@ export default function TransactionForm() {
 
   if (isEdit && getResult === null) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
           Transaction not found.
         </Text>
       </SafeAreaView>
@@ -263,7 +270,7 @@ export default function TransactionForm() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -273,12 +280,12 @@ export default function TransactionForm() {
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 48, height: 48 }}
             className="items-center justify-center"
           >
-            <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
+            <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
             {isEdit ? "Edit Transaction" : "New Transaction"}
           </Text>
         </View>
@@ -288,7 +295,7 @@ export default function TransactionForm() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary">
+            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
               Type
             </Text>
             <View className="flex-row flex-wrap gap-2">
@@ -366,7 +373,9 @@ export default function TransactionForm() {
             maxLength={200}
           />
 
-          {error ? <Text className="text-sm text-error">{error}</Text> : null}
+          {error ? (
+            <Text className="text-sm text-error dark:text-error-dark">{error}</Text>
+          ) : null}
 
           <Button
             title={isEdit ? "Save Changes" : "Save Transaction"}

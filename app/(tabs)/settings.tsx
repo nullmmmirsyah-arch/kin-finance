@@ -3,20 +3,21 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 export default function Settings() {
   const router = useRouter();
   const [pressed, setPressed] = useState(false);
+  const C = useThemeColors();
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary">Settings</Text>
+        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Settings</Text>
       </View>
 
       <View className="mt-4 px-5">
-        <Text className="text-sm font-medium text-text-primary">Household</Text>
+        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Household</Text>
         <Pressable
           onPress={() => router.push("/categories")}
           onPressIn={() => setPressed(true)}
@@ -27,11 +28,11 @@ export default function Settings() {
             Shadow.card,
             {
               borderRadius: Radius.md,
-              backgroundColor: Colors.background,
+              backgroundColor: C.background,
               borderWidth: 1,
-              borderColor: Colors.border,
+              borderColor: C.border,
             },
-            pressed ? { backgroundColor: Colors.surface } : undefined,
+            pressed ? { backgroundColor: C.surface } : undefined,
           ]}
           className="mt-2 flex-row items-center justify-between px-4 py-4"
         >
@@ -41,17 +42,17 @@ export default function Settings() {
                 width: 44,
                 height: 44,
                 borderRadius: Radius.sm,
-                backgroundColor: Colors.surface,
+                backgroundColor: C.surface,
               }}
               className="items-center justify-center"
             >
-              <Feather name="tag" size={20} color={Colors.primary} />
+              <Feather name="tag" size={20} color={C.primary} />
             </View>
-            <Text className="text-base font-semibold text-text-primary">
+            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
               Categories
             </Text>
           </View>
-          <Feather name="chevron-right" size={20} color={Colors.textSecondary} />
+          <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
       </View>
     </SafeAreaView>

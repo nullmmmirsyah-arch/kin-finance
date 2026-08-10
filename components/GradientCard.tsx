@@ -1,4 +1,4 @@
-import { Gradients, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeGradients } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { ReactNode } from "react";
 import { View } from "react-native";
@@ -9,9 +9,10 @@ type Props = {
 };
 
 export function GradientCard({ children, className = "" }: Props) {
+  const gradients = useThemeGradients();
   return (
     <LinearGradient
-      colors={Gradients.card}
+      colors={gradients.card}
       style={[
         Shadow.card,
         {
