@@ -179,13 +179,23 @@ export const update = mutation({
     }
 
     if (args.type !== undefined && args.type !== category.type) {
+      const referencingBudget = await ctx.db
+        .query("budgets")
+        .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+        .first();
+      if (referencingBudget !== null) {
+        throw new ConvexError(
+          "Cannot change category type — existing budgets use this category.",
+        );
+      }
+
       const referencingTx = await ctx.db
         .query("transactions")
         .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
         .first();
       if (referencingTx !== null) {
         throw new ConvexError(
-          "Cannot change category type — existing transactions or budgets use this category.",
+          "Cannot change category type — existing transactions use this category.",
         );
       }
       patch.type = args.type;
@@ -242,6 +252,17 @@ export const remove = mutation({
       throw new ConvexError("This category cannot be deleted.");
     }
 
+    const referencingBudget = await ctx.db
+      .query("budgets")
+      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+      .first();
+
+    if (referencingBudget !== null) {
+      throw new ConvexError(
+        "Cannot delete category — existing budgets reference this category. Delete those budgets first.",
+      );
+    }
+
     const referencingTx = await ctx.db
       .query("transactions")
       .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
@@ -249,7 +270,7 @@ export const remove = mutation({
 
     if (referencingTx !== null) {
       throw new ConvexError(
-        "Cannot delete category — existing transactions or budgets reference this category. Delete or reassign those first.",
+        "Cannot delete category — existing transactions reference this category. Delete or reassign those first.",
       );
     }
 
