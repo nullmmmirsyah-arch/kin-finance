@@ -240,3 +240,51 @@ export const redeem = mutation({
     });
   },
 });
+
+export const listActive = query({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return [];
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      return [];
+    }
+
+    const membership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (
+      membership === null ||
+      membership.householdId !== args.householdId
+    ) {
+      return [];
+    }
+
+    const now = Date.now();
+    const invitations = await ctx.db
+      .query("invitations")
+      .withIndex("by_householdId", (q) =>
+        q.eq("householdId", args.householdId),
+      )
+      .collect();
+
+    return invitations.filter(
+      (inv) =>
+        !inv.revoked &&
+        inv.expiresAt > now &&
+        inv.useCount < inv.maxUses,
+    );
+  },
+});
