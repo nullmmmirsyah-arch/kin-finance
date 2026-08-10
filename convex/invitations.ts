@@ -113,3 +113,27 @@ export const create = mutation({
     return { code: code! };
   },
 });
+
+export const revoke = mutation({
+  args: { invitationId: v.id("invitations") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+
+    if (membership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    const invitation = await ctx.db.get(args.invitationId);
+    if (
+      invitation === null ||
+      invitation.householdId !== membership.householdId
+    ) {
+      throw new ConvexError("Invitation not found.");
+    }
+
+    await ctx.db.patch(args.invitationId, {
+      revoked: true,
+      updatedAt: Date.now(),
+    });
+  },
+});
