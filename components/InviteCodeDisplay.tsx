@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";

@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { Button } from "@/components/Button";
 import { MemberCard } from "@/components/MemberCard";
@@ -78,7 +79,7 @@ export default function Members() {
               try {
                 await removeMember({
                   householdId: household._id,
-                  userId: member.userId as any,
+                  userId: member.userId as Id<"users">,
                 });
                 show(`${member.name ?? "Member"} removed`);
               } catch (e) {
