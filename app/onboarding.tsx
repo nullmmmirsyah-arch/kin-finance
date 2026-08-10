@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { getConvexErrorMessage } from "@/lib/errors";
 import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -53,7 +54,7 @@ export default function Onboarding() {
       await createHousehold({ name: trimmedName });
       router.replace("/home");
     } catch (e: any) {
-      setError(e?.message ?? "Failed to create household. Please try again.");
+      setError(getConvexErrorMessage(e, "Failed to create household. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +67,7 @@ export default function Onboarding() {
       await redeemInvite({ code: trimmedCode });
       router.replace("/home");
     } catch (e: any) {
-      setError(e?.message ?? "Failed to join household. Please try again.");
+      setError(getConvexErrorMessage(e, "Failed to join household. Please try again."));
     } finally {
       setIsLoading(false);
     }

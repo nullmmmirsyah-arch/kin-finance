@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
+import { getConvexErrorMessage } from "@/lib/errors";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Button } from "@/components/Button";
@@ -64,7 +65,7 @@ export default function Members() {
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
-      setError(e?.message ?? "Failed to generate invite code.");
+      setError(getConvexErrorMessage(e, "Failed to generate invite code."));
     } finally {
       setIsGenerating(false);
     }
@@ -89,7 +90,7 @@ export default function Members() {
                 });
                 show(`${member.name ?? "Member"} removed`);
               } catch (e: any) {
-                setError(e?.message ?? "Failed to remove member.");
+                setError(getConvexErrorMessage(e, "Failed to remove member."));
               }
             },
           },
