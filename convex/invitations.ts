@@ -1,0 +1,115 @@
+import { ConvexError, v } from "convex/values";
+import { mutation, query, MutationCtx } from "./_generated/server";
+
+const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const CODE_LENGTH = 8;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function generateCode(): string {
+  const bytes = new Uint8Array(CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => CHARSET[b % CHARSET.length]).join("");
+}
+
+async function hmacHash(data: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function getUserAndMembership(ctx: MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) {
+    throw new ConvexError("You are not signed in.");
+  }
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_tokenIdentifier", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+
+  if (user === null) {
+    throw new ConvexError("User not found.");
+  }
+
+  const membership = await ctx.db
+    .query("householdMemberships")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .first();
+
+  if (membership === null) {
+    throw new ConvexError("You are not a member of a household.");
+  }
+
+  return { user, membership };
+}
+
+export const create = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { user, membership } = await getUserAndMembership(ctx);
+
+    if (membership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    const secret = process.env.INVITE_SECRET;
+    if (!secret) {
+      throw new ConvexError("Server configuration error.");
+    }
+
+    const now = Date.now();
+    const expiresAt = now + SEVEN_DAYS_MS;
+
+    let code: string;
+    let codeHash: string;
+    let attempts = 0;
+    const MAX_RETRIES = 5;
+
+    do {
+      code = generateCode();
+      codeHash = await hmacHash(code.toLowerCase(), secret);
+      attempts++;
+
+      const existing = await ctx.db
+        .query("invitations")
+        .withIndex("by_codeHash", (q) => q.eq("codeHash", codeHash!))
+        .first();
+
+      if (existing === null) {
+        break;
+      }
+
+      if (attempts >= MAX_RETRIES) {
+        throw new ConvexError("Failed to generate unique code. Please try again.");
+      }
+    } while (true);
+
+    await ctx.db.insert("invitations", {
+      householdId: membership.householdId,
+      codeHash: codeHash!,
+      createdBy: user._id,
+      expiresAt,
+      maxUses: 1,
+      useCount: 0,
+      revoked: false,
+      redemptionAttempts: 0,
+      lastAttemptAt: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { code: code! };
+  },
+});
