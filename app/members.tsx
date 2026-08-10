@@ -13,8 +13,10 @@ import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Button } from "@/components/Button";
+import { Fab } from "@/components/Fab";
+import { Input } from "@/components/Input";
 import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
@@ -36,10 +38,15 @@ export default function Members() {
   );
   const removeMember = useMutation(api.households.removeMember);
   const createInvite = useMutation(api.invitations.create);
+  const updateHousehold = useMutation(api.households.update);
 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isOwner =
     members?.members.some(
@@ -48,15 +55,12 @@ export default function Members() {
 
   const handleGenerateCode = useCallback(async () => {
     setError(null);
-    setIsGenerating(true);
     try {
       const result = await createInvite();
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate invite code.");
-    } finally {
-      setIsGenerating(false);
     }
   }, [createInvite]);
 
@@ -88,6 +92,42 @@ export default function Members() {
     },
     [household, removeMember, show],
   );
+
+  const handleStartRename = () => {
+    setRenameValue(household?.name ?? "");
+    setRenameError(null);
+    setIsRenaming(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(false);
+    setRenameError(null);
+  };
+
+  const handleSaveRename = async () => {
+    setRenameError(null);
+    const trimmed = renameValue.trim();
+    if (trimmed.length < 3) {
+      setRenameError("Household name must be at least 3 characters.");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setRenameError("Household name must be at most 50 characters.");
+      return;
+    }
+    if (!household?._id) return;
+
+    setIsSaving(true);
+    try {
+      await updateHousehold({ householdId: household._id, name: trimmed });
+      setIsRenaming(false);
+      show("Household renamed");
+    } catch (e: any) {
+      setRenameError(e?.message ?? "Failed to rename household.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (screen === "invite" && inviteCode) {
     return (
@@ -159,16 +199,75 @@ export default function Members() {
         ) : null}
       </View>
 
-      {isOwner && (
-        <View className="mt-4 px-5">
-          <Button
-            title={isGenerating ? "Generating..." : "Generate Invite Code"}
-            onPress={handleGenerateCode}
-            loading={isGenerating}
-            disabled={isGenerating}
-          />
+      <View className="mt-4 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Household
+        </Text>
+
+        <View
+          style={[
+            Shadow.card,
+            {
+              borderRadius: Radius.md,
+              backgroundColor: C.background,
+              borderWidth: 1,
+              borderColor: C.border,
+            },
+          ]}
+          className="gap-3 px-4 py-4"
+        >
+          {isRenaming ? (
+            <>
+              <Input
+                value={renameValue}
+                onChangeText={setRenameValue}
+                placeholder="Household name"
+                maxLength={50}
+                error={renameError}
+              />
+              <View className="flex-row gap-2">
+                <View className="flex-1">
+                  <Button
+                    title="Save"
+                    onPress={handleSaveRename}
+                    loading={isSaving}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Button
+                    title="Cancel"
+                    variant="secondary"
+                    onPress={handleCancelRename}
+                    disabled={isSaving}
+                  />
+                </View>
+              </View>
+            </>
+          ) : (
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                  Household name
+                </Text>
+                <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                  {household?.name ?? "Household"}
+                </Text>
+              </View>
+              {isOwner ? (
+                <Pressable
+                  onPress={handleStartRename}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rename household"
+                  style={{ width: 48, height: 48 }}
+                  className="items-center justify-center"
+                >
+                  <Feather name="edit-2" size={18} color={C.primary} />
+                </Pressable>
+              ) : null}
+            </View>
+          )}
         </View>
-      )}
+      </View>
 
       {members.members.length === 1 ? (
         <View className="mt-6 flex-1 px-5">
@@ -207,6 +306,14 @@ export default function Members() {
               }
             />
           )}
+        />
+      )}
+
+      {isOwner && (
+        <Fab
+          label="Generate Invite"
+          onPress={handleGenerateCode}
+          accessibilityLabel="Generate invite code"
         />
       )}
     </SafeAreaView>
