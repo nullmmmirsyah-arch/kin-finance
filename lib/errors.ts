@@ -3,15 +3,15 @@
  * ConvexErrors serialized over network lose instanceof checks.
  */
 export function getConvexErrorMessage(e: any, fallback: string): string {
-  // Try to extract message from various possible shapes
-  return (
-    // ConvexError with data wrapper
-    e?.data?.message ??
-    e?.data?.name === "ConvexError" && e?.data?.message ??
-    // Standard error object
-    e?.message ??
-    // Error stack contains message
-    (e?.stack?.split("\n")[0] ?? fallback) ??
-    fallback
-  );
+  if (e?.data?.message) {
+    return e.data.message;
+  }
+  if (e?.message) {
+    return e.message;
+  }
+  const stackLine = e?.stack?.split("\n")[0];
+  if (typeof stackLine === "string" && stackLine.length > 0) {
+    return stackLine;
+  }
+  return fallback;
 }
