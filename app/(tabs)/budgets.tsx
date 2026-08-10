@@ -39,7 +39,6 @@ export default function Budgets() {
   const result = useQuery(api.budgets.list, { periodStart, periodEnd });
 
   const budgets = result?.budgets ?? null;
-  const isOwner = result?.isOwner ?? false;
 
   const summary = useMemo(() => {
     if (budgets === null || budgets.length === 0) {
@@ -199,15 +198,12 @@ export default function Budgets() {
               icon="pie-chart"
               title="No budgets yet"
               description="Set budgets to control your spending."
-              actionLabel={isOwner ? "Set Budget" : undefined}
-              onAction={
-                isOwner
-                  ? () =>
-                      router.push({
-                        pathname: "/budget-form",
-                        params: { periodStart: periodStart.toString() },
-                      })
-                  : undefined
+              actionLabel="Set Budget"
+              onAction={() =>
+                router.push({
+                  pathname: "/budget-form",
+                  params: { periodStart: periodStart.toString() },
+                })
               }
             />
           </View>
@@ -218,47 +214,34 @@ export default function Budgets() {
           contentContainerClassName="gap-3 px-5 pb-28"
           data={budgets}
           keyExtractor={(item) => item._id}
-          renderItem={({ item }) =>
-            isOwner ? (
-              <BudgetCard
-                categoryName={item.category?.name ?? "Unknown"}
-                categoryHidden={item.category?.hidden ?? false}
-                budgetAmount={item.amount}
-                spent={item.spent}
-                onEdit={() =>
-                  router.push({
-                    pathname: "/budget-form",
-                    params: { id: item._id },
-                  })
-                }
-                onDelete={() => handleDelete(item)}
-              />
-            ) : (
-              <BudgetCard
-                categoryName={item.category?.name ?? "Unknown"}
-                categoryHidden={item.category?.hidden ?? false}
-                budgetAmount={item.amount}
-                spent={item.spent}
-                onEdit={() => {}}
-                onDelete={() => {}}
-              />
-            )
-          }
+          renderItem={({ item }) => (
+            <BudgetCard
+              categoryName={item.category?.name ?? "Unknown"}
+              categoryHidden={item.category?.hidden ?? false}
+              budgetAmount={item.amount}
+              spent={item.spent}
+              onEdit={() =>
+                router.push({
+                  pathname: "/budget-form",
+                  params: { id: item._id },
+                })
+              }
+              onDelete={() => handleDelete(item)}
+            />
+          )}
         />
       )}
 
-      {isOwner ? (
-        <Fab
-          label="Set Budget"
-          onPress={() =>
-            router.push({
-              pathname: "/budget-form",
-              params: { periodStart: periodStart.toString() },
-            })
-          }
-          accessibilityLabel="Set budget"
-        />
-      ) : null}
+      <Fab
+        label="Set Budget"
+        onPress={() =>
+          router.push({
+            pathname: "/budget-form",
+            params: { periodStart: periodStart.toString() },
+          })
+        }
+        accessibilityLabel="Set budget"
+      />
     </SafeAreaView>
   );
 }
