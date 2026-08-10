@@ -20,7 +20,7 @@ Navigation: a new **Budgets** tab (5th tab) between Transactions and Settings.
 
 New `budgets` table:
 
-```
+```typescript
 budgets: {
   householdId: Id<"households">
   categoryId: Id<"categories">      // must be expense
@@ -51,7 +51,7 @@ All functions require sign-in + household membership (same `getUserAndMembership
 | `categoryOptions` | — | All **expense** categories in the household (visible + hidden), excluding the reserved "Initial Balance" category. Source for the form's category picker. |
 | `create` | `{ categoryId, amount, periodStart }` | Validate `amount >= 1`. Category must exist in household and be `type === "expense"` (else *"Cannot create budget for an income category."*). Reject duplicate `(categoryId, periodStart)` with *"A budget already exists for this category in this month."* Insert with `createdBy`/`updatedBy` = user, timestamps = now. |
 | `update` | `{ budgetId, amount }` | Budget must exist in household. `amount >= 1`. Patch `amount`, `updatedBy`, `updatedAt`. |
-| `delete` | `{ budgetId }` | Budget must exist in household. Delete; transactions unaffected. |
+| `remove` | `{ budgetId }` | Budget must exist in household. Delete; transactions unaffected. |
 
 ### `periodStart` timezone decision
 
@@ -105,11 +105,11 @@ Top-level route (matches `account-form`/`category-form`):
 
 ## Data Flow
 
-```
+```text
 List:   month state → { periodStart, periodEnd } → budgets.list → rows (spent, progress)
 Create: FAB (passes periodStart) → budget-form → categoryOptions → create → back + snackbar
 Edit:   card edit (passes id) → budget-form → budgets.get → prefill → update → back + snackbar
-Delete: card trash → Alert → budgets.delete → snackbar
+Delete: card trash → Alert → budgets.remove → snackbar
 ```
 
 ---

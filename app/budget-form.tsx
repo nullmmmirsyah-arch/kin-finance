@@ -19,6 +19,7 @@ import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatAmountInput } from "@/utils/format";
+import { startOfMonth } from "@/utils/date";
 
 export default function BudgetForm() {
   const router = useRouter();
@@ -53,8 +54,10 @@ export default function BudgetForm() {
     }
   }, [existingBudget]);
 
-  const periodStartParam = params.periodStart ? parseInt(params.periodStart, 10) : NaN;
-  const periodStart = Number.isFinite(periodStartParam) ? periodStartParam : Date.now();
+  const rawPeriodStart = params.periodStart ? Number(params.periodStart) : NaN;
+  const periodStart = Number.isFinite(rawPeriodStart)
+    ? startOfMonth(new Date(rawPeriodStart)).getTime()
+    : Date.now();
 
   const monthTs = existingBudget?.periodStart ?? periodStart;
   const monthLabel = new Date(monthTs).toLocaleDateString("en-US", {
@@ -74,7 +77,7 @@ export default function BudgetForm() {
   const canSubmit =
     !isLoading &&
     (!isEdit || existingBudget !== undefined) &&
-    (isEdit || amountValid);
+    (isEdit || (amountValid && selectedCategoryId !== null));
 
   const handleSubmit = async () => {
     setError(null);

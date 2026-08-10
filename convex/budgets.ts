@@ -63,6 +63,13 @@ export const list = query({
 
     const isOwner = membership.role === "owner";
 
+    if (args.periodEnd <= args.periodStart) {
+      throw new ConvexError("periodEnd must be after periodStart.");
+    }
+    if (args.periodEnd - args.periodStart > 32 * 86_400_000) {
+      throw new ConvexError("Period cannot exceed 32 days.");
+    }
+
     const budgets = await ctx.db
       .query("budgets")
       .withIndex("by_household_period", (q) =>
@@ -239,9 +246,8 @@ export const create = mutation({
 
     const existing = await ctx.db
       .query("budgets")
-      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
-      .filter((q) =>
-        q.eq(q.field("periodStart"), args.periodStart),
+      .withIndex("by_category_period", (q) =>
+        q.eq("categoryId", args.categoryId).eq("periodStart", args.periodStart),
       )
       .first();
 

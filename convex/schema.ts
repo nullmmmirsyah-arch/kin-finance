@@ -80,5 +80,6 @@ export default defineSchema({
   })
     .index("by_householdId", ["householdId"])
     .index("by_categoryId", ["categoryId"])
+    .index("by_category_period", ["categoryId", "periodStart"])
     .index("by_household_period", ["householdId", "periodStart"]),
 });
