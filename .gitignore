@@ -53,3 +53,4 @@ convex/_generated/dataModel.d.ts
 convex/_generated/server.d.ts
 convex/_generated/server.js
 .impeccable/*
+docs/*

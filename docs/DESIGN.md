@@ -88,17 +88,28 @@
 ```markdown
 ## Onboarding Screen
 
-**Purpose:** User creates their first Household
+**Purpose:** User creates a new Household OR joins an existing one
 
 **Layout (top to bottom):**
 1. Large illustration: warm line art of a family (centered, ~200px)
 2. Title: "Welcome to Kin Finance" (H1, centered)
-3. Description: "Create your Household to start managing your family's finances." (Body, centered, text-secondary)
-4. TextInput: placeholder "Household name" (full width, 48px height)
-5. Button: "Create Household" (full width, solid primary, 48px height)
-6. Inline error message below input (if any, text-error)
+3. Description: contextual text for the selected mode (Body, centered, text-secondary)
+4. Mode toggle: two-tab segmented control
+   - Tab "Create Household"
+   - Tab "Join with Code"
+5. Create mode:
+   - Info card: explains what a Household is
+   - TextInput: placeholder "Household name" (full width, 48px height)
+   - Button: "Create Household" (full width, solid primary, 48px height)
+6. Join mode:
+   - TextInput: placeholder "Enter 8-character invite code" (uppercase, alphanumeric only, max 8)
+   - Button: "Join Household" (full width, solid primary, 48px height)
+7. Inline error message below input (if any, text-error)
+8. "Back to login" link (sign out)
 
-**On Submit:** Navigate to Home Screen
+**On Submit (create):** Create household + owner membership → navigate to Home
+**On Submit (join):** Redeem invite code → insert member membership → navigate to Home
+**Validation:** create requires name >= 3 chars; join requires exactly 8 alphanumeric chars
 ```
 
 ---
@@ -324,20 +335,17 @@
 ```markdown
 ## Settings Screen
 
-**Purpose:** Household management and account settings
+**Purpose:** Entry point to household management and app settings
 
 **Layout (top to bottom):**
 1. Header: "Settings" (H1, left aligned)
 2. Section: "Household"
-   - Row: Household Name → Edit (Owner only, read-only for Member)
-   - Row: Members → View (Owner and Member can view; Invite is Owner only)
-3. Section: "Account"
-   - Row: Profile (name, email)
-   - Row: Sign Out
-4. Section: "About"
-   - Row: Version
+   - Card: household name + member count → navigates to Household Members screen
+     (icon: users, chevron-right)
+3. Section: "Categories"
+   - Card: Categories → navigates to Categories screen (icon: tag, chevron-right)
 
-**Member state:** Household Name read-only. Members row links to view-only member list (no invite section).
+**Member state:** Same cards, household name shown as-is (rename lives on Members screen, Owner only).
 ```
 
 ---
@@ -347,19 +355,25 @@
 ```markdown
 ## Household Members Screen
 
-**Purpose:** Manage household members
+**Purpose:** Manage household members + generate invite codes (Owner)
 
 **Layout (top to bottom):**
 1. Header: "Household Members" (H1, left aligned)
-2. Member list:
+2. Section: "Household"
+   - Card: current household name + icon edit (Owner only, toggles inline rename input)
+   - Inline rename input when editing (Owner only)
+3. Member list:
    - Each row: avatar, name, email, role badge (Owner/Member)
-3. Section: "Invite" (Owner only, hidden for Member)
-   - Generate invite code button
-   - Code display with copy button
-   - Share button (native share sheet)
-4. Empty state (no other members): illustration of single person → "You're the only member" → "Invite family members to manage finances together" → [Invite Member] (Owner only)
+   - Owner: remove icon (swipe or button) for non-owner members
+4. FAB: "Generate Invite" (Owner only, floating action button, + icon + label, bottom-right)
+5. Empty state (no other members): illustration of single person → "You're the only member" → "Invite family members to manage finances together" → [Invite Member] (Owner only)
 
-**Member state:** Read-only member list. No invite section. No generate/revoke invite codes.
+**Member state:** Read-only member list. No rename. No FAB. No generate/revoke invite codes.
+
+**Invite code flow:**
+- Tap FAB → generate code → show modal overlay with code (large, monospace), copy button, share button (native share sheet), done button
+- Share button uses native share sheet with message: "Join my household on Kin Finance! Use invite code: ABCDEFGH"
+- Code is displayed once only; leaving screen discards it
 ```
 
 ---

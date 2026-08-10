@@ -68,10 +68,12 @@
 
 | Component | Responsibility |
 |-----------|---------------|
-| `app/_layout.tsx` | Root layout, ConvexProvider, ClerkProvider |
+| `app/_layout.tsx` | Root layout, ConvexProvider, ClerkProvider, root stack (forms, members) |
 | `app/index.tsx` | Auth gate (redirect signed in/out) |
-| `app/home.tsx` | Dashboard (household summary, sign out) |
-| `app/onboarding.tsx` | Create household flow |
+| `app/(tabs)/home.tsx` | Dashboard (household summary, accounts, recent transactions) |
+| `app/(tabs)/settings.tsx` | Settings (Household card → members, Categories) |
+| `app/onboarding.tsx` | Create/Join household flow (toggle: create vs invite code) |
+| `app/members.tsx` | Household Members (name + rename, member list, generate invite FAB) |
 | `convex/schema.ts` | Database schema definition |
 | `convex/*.ts` | Query/mutation functions |
 
@@ -125,12 +127,19 @@ expiresAt: number            // timestamp (7 days from creation)
 maxUses: number              // 1 = single-use (MVP default)
 useCount: number             // redeemed count
 revoked: boolean             // owner can revoke before expiry
+redemptionAttempts: number   // attempts in current rate-limit window
+lastAttemptAt: number        // timestamp of last redemption attempt
 createdAt: number
+updatedAt: number
 ```
 
 **Indexes:** `by_codeHash` on `["codeHash"]` (globally unique), `by_householdId` on `["householdId"]`
 
 **Uniqueness:** `codeHash` is globally unique across all households, not scoped per household. `invitations.redeem` requires a single unambiguous `codeHash` match and rejects redemption if more than one invitation matches. `invitations.create` retries with a newly generated hash whenever insertion hits a `codeHash` uniqueness collision.
+
+**Rate limiting:** `invitations.redeem` enforces max 5 attempts per code per 60-second window (`redemptionAttempts`/`lastAttemptAt`). Attempts outside the window reset the counter. The counter is incremented on every attempt regardless of validity so locked codes can't be probed.
+
+**Secret:** code hashing uses the `INVITE_SECRET` Convex environment variable (HMAC key). It must be set on the deployment; `invitations.create`/`redeem` throw `ConvexError("Server configuration error.")` if missing.
 
 ---
 
@@ -225,6 +234,7 @@ updatedAt: number
 | `transactions.list` | { startDate, endDate } | Transaction[] | Filter by date range |
 | `budgets.list` | { periodStart: number } | Budget[] | Budgets for household in given month |
 | `users.getMe` | - | User \| null | Current user profile |
+| `invitations.listActive` | { householdId } | Invitation[] | Active (non-revoked, unexpired, unused) invitations for a household; `[]` if signed out or not a member |
 
 ---
 
