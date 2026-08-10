@@ -355,6 +355,26 @@ export default function TransactionForm() {
                 options={categoryOptions}
                 onSelect={setCategoryId}
               />
+              {categoryOptions.length === 0 ? (
+                <View className="gap-1.5">
+                  <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                    {categoryResult?.isOwner === true
+                      ? `No ${type === "income" ? "income" : "expense"} categories yet. Create one to continue.`
+                      : `No ${type === "income" ? "income" : "expense"} categories available yet.`}
+                  </Text>
+                  {categoryResult?.isOwner === true ? (
+                    <Pressable
+                      onPress={() => router.push("/category-form")}
+                      accessibilityRole="button"
+                      className="min-h-12 items-center justify-center"
+                    >
+                      <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                        Create a category
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </>
           )}
 

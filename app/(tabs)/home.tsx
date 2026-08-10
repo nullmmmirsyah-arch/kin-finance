@@ -80,6 +80,10 @@ export default function Home() {
   const memberLabel =
     memberCount === 1 ? "1 member" : `${memberCount} members`;
 
+  const totalBalance =
+    accountData?.accounts?.reduce((sum, account) => sum + account.balance, 0) ??
+    undefined;
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <ScrollView contentContainerClassName="px-5 pb-10 pt-4">
@@ -100,25 +104,40 @@ export default function Home() {
           </Pressable>
         </View>
 
-        <GradientCard>
-          <View className="items-center gap-3 py-2">
-            <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-              {household.name}
+        <View className="mb-4 items-center gap-1.5">
+          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+            {household.name}
+          </Text>
+          <View
+            style={[
+              {
+                borderRadius: 999,
+                backgroundColor: C.primaryLight,
+              },
+            ]}
+            className="flex-row items-center gap-1.5 px-3 py-1"
+          >
+            <Feather name="users" size={14} color={C.primary} />
+            <Text className="text-xs font-medium text-primary dark:text-primary-dark">
+              {memberLabel}
             </Text>
-            <View
-              style={[
-                {
-                  borderRadius: 999,
-                  backgroundColor: C.primaryLight,
-                },
-              ]}
-              className="flex-row items-center gap-1.5 px-3 py-1"
-            >
-              <Feather name="users" size={14} color={C.primary} />
-              <Text className="text-xs font-medium text-primary dark:text-primary-dark">
-                {memberLabel}
+          </View>
+        </View>
+
+        <GradientCard>
+          <View className="items-center gap-1 py-2">
+            <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+              Total Balance
+            </Text>
+            {totalBalance === undefined ? (
+              <View className="py-2">
+                <ActivityIndicator size="small" color={C.primary} />
+              </View>
+            ) : (
+              <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+                {formatNumber(totalBalance)}
               </Text>
-            </View>
+            )}
           </View>
         </GradientCard>
 
