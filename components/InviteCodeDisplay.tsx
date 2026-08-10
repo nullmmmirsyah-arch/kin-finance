@@ -25,9 +25,21 @@ export function InviteCodeDisplay({ code, onDone }: Props) {
   };
 
   const handleShare = async () => {
-    await Share.share({
-      message: `Join my household on Kin Finance! Use invite code: ${code}`,
-    });
+    const message = `Join my household on Kin Finance! Use invite code: ${code}`;
+    
+    if (Platform.OS === "web" && (navigator as any).share) {
+      // Browser-native share API
+      try {
+        await (navigator as any).share({ title: "Kin Finance", text: message, url: window.location.href });
+      } catch (e: any) {
+        // User cancelled or error, do nothing
+      }
+    } else {
+      // React Native share sheet
+      await Share.share({
+        message,
+      });
+    }
   };
 
   return (
