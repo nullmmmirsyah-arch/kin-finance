@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { formatNumber } from "@/utils/format";
 import { Pressable, Text, View } from "react-native";
@@ -13,6 +13,7 @@ type Props = {
 };
 
 export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
+  const C = useThemeColors();
   const meta = ACCOUNT_TYPES.find((t) => t.id === type) ?? ACCOUNT_TYPES[0];
 
   return (
@@ -21,9 +22,9 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
         Shadow.card,
         {
           borderRadius: Radius.md,
-          backgroundColor: Colors.background,
+          backgroundColor: C.background,
           borderWidth: 1,
-          borderColor: Colors.border,
+          borderColor: C.border,
         },
       ]}
       className="flex-row items-center gap-3 px-4 py-4"
@@ -33,15 +34,19 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
           width: 44,
           height: 44,
           borderRadius: Radius.sm,
-          backgroundColor: Colors.surface,
+          backgroundColor: C.surface,
         }}
         className="items-center justify-center"
       >
-        <Feather name={meta.icon} size={20} color={Colors.primary} />
+        <Feather name={meta.icon} size={20} color={C.primary} />
       </View>
       <View className="flex-1">
-        <Text className="text-base font-semibold text-text-primary">{name}</Text>
-        <Text className="text-sm text-text-secondary">{meta.label}</Text>
+        <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+          {name}
+        </Text>
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+          {meta.label}
+        </Text>
       </View>
       {onEdit !== undefined || onDelete !== undefined ? (
         <View className="flex-row items-center gap-1">
@@ -50,10 +55,10 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
               onPress={onEdit}
               accessibilityRole="button"
               accessibilityLabel="Edit account"
-              style={{ width: 40, height: 40 }}
+              style={{ width: 48, height: 48 }}
               className="items-center justify-center"
             >
-              <Feather name="edit-2" size={18} color={Colors.primary} />
+              <Feather name="edit-2" size={18} color={C.primary} />
             </Pressable>
           ) : null}
           {onDelete !== undefined ? (
@@ -61,15 +66,15 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
               onPress={onDelete}
               accessibilityRole="button"
               accessibilityLabel="Delete account"
-              style={{ width: 40, height: 40 }}
+              style={{ width: 48, height: 48 }}
               className="items-center justify-center"
             >
-              <Feather name="trash-2" size={18} color={Colors.error} />
+              <Feather name="trash-2" size={18} color={C.error} />
             </Pressable>
           ) : null}
         </View>
       ) : null}
-      <Text className="text-base font-semibold text-text-primary">
+      <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
         {formatNumber(balance)}
       </Text>
     </View>

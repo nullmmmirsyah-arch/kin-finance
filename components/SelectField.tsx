@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
@@ -26,6 +26,7 @@ export function SelectField({
   const [pressed, setPressed] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
+  const C = useThemeColors();
 
   const overflowing = contentHeight > viewportHeight;
   const selectedLabel =
@@ -34,7 +35,9 @@ export function SelectField({
   return (
     <View className="w-full gap-1.5">
       {label ? (
-        <Text className="text-sm font-medium text-text-primary">{label}</Text>
+        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+          {label}
+        </Text>
       ) : null}
       <Pressable
         onPress={() => setOpen(true)}
@@ -45,8 +48,8 @@ export function SelectField({
           {
             borderRadius: Radius.sm,
             borderWidth: 1,
-            borderColor: error ? Colors.error : Colors.border,
-            backgroundColor: Colors.background,
+            borderColor: error ? C.error : C.border,
+            backgroundColor: C.background,
             height: 48,
             paddingHorizontal: 16,
           },
@@ -55,13 +58,15 @@ export function SelectField({
         className="flex-row items-center justify-between"
       >
         <Text
-          className={`text-base ${value ? "text-text-primary" : "text-text-secondary"}`}
+          className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
         >
           {selectedLabel}
         </Text>
-        <Feather name="chevron-down" size={20} color={Colors.textSecondary} />
+        <Feather name="chevron-down" size={20} color={C.textSecondary} />
       </Pressable>
-      {error ? <Text className="text-sm text-error">{error}</Text> : null}
+      {error ? (
+        <Text className="text-sm text-error dark:text-error-dark">{error}</Text>
+      ) : null}
 
       <Modal
         visible={open}
@@ -77,12 +82,12 @@ export function SelectField({
           <Pressable
             style={[
               Shadow.card,
-              { borderRadius: Radius.md, backgroundColor: Colors.background },
+              { borderRadius: Radius.md, backgroundColor: C.background },
             ]}
             className="max-h-[60%] overflow-hidden"
             onPress={(e) => e.stopPropagation()}
           >
-            <Text className="px-4 pb-2 pt-4 text-sm font-medium text-text-secondary">
+            <Text className="px-4 pb-2 pt-4 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
               Select {label ?? "option"}
             </Text>
             <ScrollView
@@ -100,18 +105,18 @@ export function SelectField({
                   accessibilityState={{ selected: option.id === value }}
                   className="flex-row items-center justify-between px-4 py-3"
                 >
-                  <Text className="text-base text-text-primary">
+                  <Text className="text-base text-text-primary dark:text-text-primary-dark">
                     {option.label}
                   </Text>
                   {option.id === value ? (
-                    <Feather name="check" size={18} color={Colors.primary} />
+                    <Feather name="check" size={18} color={C.primary} />
                   ) : null}
                 </Pressable>
               ))}
             </ScrollView>
             {overflowing ? (
-              <View className="items-center border-t border-border py-2">
-                <Text className="text-xs text-text-secondary">
+              <View className="items-center border-t border-border py-2 dark:border-border-dark">
+                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
                   Scroll for more options
                 </Text>
               </View>

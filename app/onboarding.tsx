@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Gradients, Shadow } from "@/constants/theme";
+import { useThemeColors, useThemeGradients, Shadow } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -25,6 +25,8 @@ export default function Onboarding() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const C = useThemeColors();
+  const gradients = useThemeGradients();
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length >= 3 && !isLoading;
@@ -45,7 +47,7 @@ export default function Onboarding() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -56,7 +58,7 @@ export default function Onboarding() {
         >
           <View className="items-center gap-6">
             <LinearGradient
-              colors={Gradients.card}
+              colors={gradients.card}
               style={[
                 Shadow.card,
                 {
@@ -64,20 +66,29 @@ export default function Onboarding() {
                   height: 200,
                   borderRadius: 100,
                   borderWidth: 1,
-                  borderColor: Colors.primaryLight,
+                  borderColor: C.primaryLight,
                 },
               ]}
               className="items-center justify-center"
             >
-              <Feather name="users" size={72} color={Colors.primary} />
+              <Feather name="users" size={72} color={C.primary} />
             </LinearGradient>
 
             <View className="items-center gap-2">
-              <Text className="text-center text-[28px] font-bold text-text-primary">
+              <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
                 Welcome to Kin Finance
               </Text>
-              <Text className="text-center text-base text-text-secondary">
+              <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
                 Create your Household to start managing your family{"'"}s finances.
+              </Text>
+            </View>
+
+            <View className="w-full gap-2 rounded-[16px] border border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
+              <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                What{"'"}s a Household?
+              </Text>
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                A Household is your shared space for money. You{"'"}re the Owner — you can add family members later and control what they see and do.
               </Text>
             </View>
 
@@ -102,7 +113,7 @@ export default function Onboarding() {
               accessibilityRole="button"
               className="min-h-12 items-center justify-center py-2"
             >
-              <Text className="text-sm font-medium text-primary">
+              <Text className="text-sm font-medium text-primary dark:text-primary-dark">
                 Back to login
               </Text>
             </Pressable>

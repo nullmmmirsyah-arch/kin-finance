@@ -11,12 +11,13 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors, Shadow } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
 import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
+import { useSnackbar } from "@/components/Snackbar";
 
 type Filter = "all" | AccountType;
 
@@ -29,8 +30,10 @@ export default function Accounts() {
   const router = useRouter();
   const result = useQuery(api.accounts.list);
   const removeAccount = useMutation(api.accounts.remove);
+  const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState<string | null>(null);
+  const C = useThemeColors();
 
   const accounts = result?.accounts ?? null;
   const isOwner = result?.isOwner ?? false;
@@ -55,7 +58,10 @@ export default function Accounts() {
             style: "destructive",
             onPress: () => {
               removeAccount({ accountId: account._id })
-                .then(() => setError(null))
+                .then(() => {
+                  setError(null);
+                  show(`"${account.name}" deleted`);
+                })
                 .catch((e: unknown) => {
                   const message =
                     e instanceof Error ? e.message : "Failed to delete account.";
@@ -71,18 +77,18 @@ export default function Accounts() {
 
   if (accounts === null) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary">Accounts</Text>
+        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
         {error ? (
-          <Text className="mt-2 text-sm text-error">{error}</Text>
+          <Text className="mt-2 text-sm text-error dark:text-error-dark">{error}</Text>
         ) : null}
       </View>
 
@@ -99,7 +105,10 @@ export default function Accounts() {
 
       {visibleAccounts !== null && visibleAccounts.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
-          <View style={Shadow.card} className="rounded-[16px] bg-background">
+          <View
+            style={{ backgroundColor: C.background }}
+            className="rounded-[16px]"
+          >
             <EmptyState
               icon="credit-card"
               title="No accounts yet"

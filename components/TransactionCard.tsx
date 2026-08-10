@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
@@ -27,6 +27,7 @@ export function TransactionCard({
   onPress,
 }: Props) {
   const [pressed, setPressed] = useState(false);
+  const C = useThemeColors();
 
   const displayNote =
     note && note.length > 0
@@ -46,10 +47,10 @@ export function TransactionCard({
 
   const amountColor =
     type === "income"
-      ? Colors.success
+      ? C.success
       : type === "expense"
-        ? Colors.error
-        : Colors.textPrimary;
+        ? C.error
+        : C.textPrimary;
 
   return (
     <Pressable
@@ -58,28 +59,30 @@ export function TransactionCard({
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
       className="flex-row items-center gap-3 rounded-[16px] px-4 py-3"
-      style={pressed ? { backgroundColor: Colors.surface } : undefined}
+      style={pressed ? { backgroundColor: C.surface } : undefined}
     >
       <View
         style={{
           width: 40,
           height: 40,
           borderRadius: Radius.sm,
-          backgroundColor: Colors.surface,
+          backgroundColor: C.surface,
         }}
         className="items-center justify-center"
       >
         <Feather
           name={isTransfer ? "arrow-right" : "tag"}
           size={18}
-          color={Colors.primary}
+          color={C.primary}
         />
       </View>
       <View className="flex-1">
-        <Text numberOfLines={1} className="text-base text-text-primary">
+        <Text numberOfLines={1} className="text-base text-text-primary dark:text-text-primary-dark">
           {displayNote}
         </Text>
-        <Text className="text-xs text-text-secondary">{formatTime(date)}</Text>
+        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+          {formatTime(date)}
+        </Text>
       </View>
       <Text
         className="text-base font-semibold"

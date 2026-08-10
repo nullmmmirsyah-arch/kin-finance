@@ -13,12 +13,13 @@ import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors, Shadow } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
+import { useSnackbar } from "@/components/Snackbar";
 
 type Filter = "all" | CategoryType;
 
@@ -32,8 +33,10 @@ export default function Categories() {
   const result = useQuery(api.categories.list);
   const updateCategory = useMutation(api.categories.update);
   const removeCategory = useMutation(api.categories.remove);
+  const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState<string | null>(null);
+  const C = useThemeColors();
 
   const categories = result?.categories ?? null;
   const isOwner = result?.isOwner ?? false;
@@ -49,14 +52,17 @@ export default function Categories() {
     (category: { _id: Id<"categories">; hidden: boolean }) => {
       setError(null);
       updateCategory({ categoryId: category._id, hidden: !category.hidden })
-        .then(() => setError(null))
+        .then(() => {
+          setError(null);
+          show(category.hidden ? "Category visible to members" : "Category hidden from members");
+        })
         .catch((e: unknown) => {
           setError(
             e instanceof Error ? e.message : "Failed to update category.",
           );
         });
     },
-    [updateCategory],
+    [updateCategory, show],
   );
 
   const handleDelete = useCallback(
@@ -72,7 +78,10 @@ export default function Categories() {
             style: "destructive",
             onPress: () => {
               removeCategory({ categoryId: category._id })
-                .then(() => setError(null))
+                .then(() => {
+                  setError(null);
+                  show(`"${category.name}" deleted`);
+                })
                 .catch((e: unknown) => {
                   setError(
                     e instanceof Error
@@ -85,21 +94,21 @@ export default function Categories() {
         ],
       );
     },
-    [removeCategory],
+    [removeCategory, show],
   );
 
   if (result === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
       </SafeAreaView>
     );
   }
 
   if (categories === null) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
-        <Text className="text-center text-sm text-text-secondary">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
           You are not a member of a household.
         </Text>
       </SafeAreaView>
@@ -107,24 +116,24 @@ export default function Categories() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
         <View className="flex-row items-center gap-2">
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 48, height: 48 }}
             className="items-center justify-center"
           >
-            <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
+            <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
             Categories
           </Text>
         </View>
         {error ? (
-          <Text className="mt-2 text-sm text-error">{error}</Text>
+          <Text className="mt-2 text-sm text-error dark:text-error-dark">{error}</Text>
         ) : null}
       </View>
 
@@ -141,7 +150,10 @@ export default function Categories() {
 
       {visibleCategories !== null && visibleCategories.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
-          <View style={Shadow.card} className="rounded-[16px] bg-background">
+          <View
+            style={{ backgroundColor: C.background }}
+            className="rounded-[16px]"
+          >
             <EmptyState
               icon="tag"
               title="No categories yet"

@@ -14,11 +14,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Colors } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
+import { useSnackbar } from "@/components/Snackbar";
 
 export default function CategoryForm() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function CategoryForm() {
   const result = useQuery(api.categories.list);
   const createCategory = useMutation(api.categories.create);
   const updateCategory = useMutation(api.categories.update);
+  const { show } = useSnackbar();
+  const C = useThemeColors();
 
   const [name, setName] = useState("");
   const [type, setType] = useState<CategoryType>("expense");
@@ -87,6 +90,7 @@ export default function CategoryForm() {
           hidden,
         });
       }
+      show(isEdit ? "Category updated" : "Category created");
       router.back();
     } catch (e) {
       const message =
@@ -103,8 +107,8 @@ export default function CategoryForm() {
 
   if (result !== undefined && result.isOwner === false) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
-        <Text className="text-center text-sm text-text-secondary">
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
           You are not the owner of this household.
         </Text>
       </SafeAreaView>
@@ -113,22 +117,22 @@ export default function CategoryForm() {
 
   if (isEdit && result !== undefined && editingCategory === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">Category not found.</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Category not found.</Text>
       </SafeAreaView>
     );
   }
 
   if (isEdit && editingCategory === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-sm text-text-secondary">Loading category…</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Loading category…</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -138,12 +142,12 @@ export default function CategoryForm() {
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 48, height: 48 }}
             className="items-center justify-center"
           >
-            <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
+            <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
             {isEdit ? "Edit Category" : "Create Category"}
           </Text>
         </View>
@@ -162,7 +166,7 @@ export default function CategoryForm() {
           />
 
           <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary">
+            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
               Category type
             </Text>
             <View className="flex-row flex-wrap gap-2">
@@ -178,22 +182,22 @@ export default function CategoryForm() {
           </View>
 
           <View
-            style={{ borderColor: Colors.border }}
-            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3"
+            style={{ borderColor: C.border }}
+            className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
           >
             <View className="flex-1">
-              <Text className="text-base font-medium text-text-primary">
+              <Text className="text-base font-medium text-text-primary dark:text-text-primary-dark">
                 Visible to members
               </Text>
-              <Text className="text-sm text-text-secondary">
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
                 Members can see and use this category.
               </Text>
             </View>
             <Switch
               value={!hidden}
               onValueChange={(value) => setHidden(!value)}
-              trackColor={{ true: Colors.primary, false: Colors.border }}
-              thumbColor={Colors.background}
+              trackColor={{ true: C.primary, false: C.border }}
+              thumbColor={C.background}
             />
           </View>
 

@@ -2,7 +2,7 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
 import { formatDateShort } from "@/utils/date";
@@ -26,11 +26,14 @@ export function DateField({
   const [show, setShow] = useState(false);
   const [draft, setDraft] = useState<Date | null>(null);
   const [pressed, setPressed] = useState(false);
+  const C = useThemeColors();
 
   return (
     <View className="w-full gap-1.5">
       {label ? (
-        <Text className="text-sm font-medium text-text-primary">{label}</Text>
+        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+          {label}
+        </Text>
       ) : null}
       <Pressable
         onPress={() => {
@@ -44,8 +47,8 @@ export function DateField({
           {
             borderRadius: Radius.sm,
             borderWidth: 1,
-            borderColor: error ? Colors.error : Colors.border,
-            backgroundColor: Colors.background,
+            borderColor: error ? C.error : C.border,
+            backgroundColor: C.background,
             height: 48,
             paddingHorizontal: 16,
           },
@@ -53,12 +56,14 @@ export function DateField({
         ]}
         className="flex-row items-center justify-between"
       >
-        <Text className="text-base text-text-primary">
+        <Text className="text-base text-text-primary dark:text-text-primary-dark">
           {formatDateShort(value.getTime())}
         </Text>
-        <Feather name="calendar" size={18} color={Colors.textSecondary} />
+        <Feather name="calendar" size={18} color={C.textSecondary} />
       </Pressable>
-      {error ? <Text className="text-sm text-error">{error}</Text> : null}
+      {error ? (
+        <Text className="text-sm text-error dark:text-error-dark">{error}</Text>
+      ) : null}
 
       {show ? (
         Platform.OS === "ios" ? (
@@ -76,7 +81,7 @@ export function DateField({
               <Pressable
                 style={[
                   Shadow.card,
-                  { borderRadius: Radius.md, backgroundColor: Colors.background, padding: 16 },
+                  { borderRadius: Radius.md, backgroundColor: C.background, padding: 16 },
                 ]}
                 className="gap-2"
                 onPress={(e) => e.stopPropagation()}

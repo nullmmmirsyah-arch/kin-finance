@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { Colors, Shadow } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
@@ -28,6 +28,7 @@ export default function Home() {
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [signOutPressed, setSignOutPressed] = useState(false);
+  const C = useThemeColors();
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -51,8 +52,8 @@ export default function Home() {
 
   if (syncError) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6">
-        <Text className="mb-4 text-center text-sm text-error">{syncError}</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="mb-4 text-center text-sm text-error dark:text-error-dark">{syncError}</Text>
         <Button title="Try Again" onPress={() => void sync()} />
       </SafeAreaView>
     );
@@ -60,16 +61,16 @@ export default function Home() {
 
   if (!synced || household === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
       </SafeAreaView>
     );
   }
 
   if (!household) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
       </SafeAreaView>
     );
   }
@@ -79,11 +80,15 @@ export default function Home() {
   const memberLabel =
     memberCount === 1 ? "1 member" : `${memberCount} members`;
 
+  const totalBalance =
+    accountData?.accounts?.reduce((sum, account) => sum + account.balance, 0) ??
+    undefined;
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <ScrollView contentContainerClassName="px-5 pb-10 pt-4">
         <View className="mb-5 flex-row items-center justify-between">
-          <Text className="text-xl font-semibold text-text-primary">
+          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
             Hello, {email.split("@")[0]}!
           </Text>
           <Pressable
@@ -92,53 +97,70 @@ export default function Home() {
             onPressOut={() => setSignOutPressed(false)}
             accessibilityRole="button"
             accessibilityLabel="Sign out"
-            className="h-10 w-10 items-center justify-center rounded-xl"
-            style={signOutPressed ? { backgroundColor: Colors.surface } : undefined}
+            className="h-12 w-12 items-center justify-center rounded-xl"
+            style={signOutPressed ? { backgroundColor: C.surface } : undefined}
           >
-            <Feather name="log-out" size={20} color={Colors.textSecondary} />
+            <Feather name="log-out" size={20} color={C.textSecondary} />
           </Pressable>
         </View>
 
-        <GradientCard>
-          <View className="items-center gap-3 py-2">
-            <Text className="text-center text-[28px] font-bold text-text-primary">
-              {household.name}
+        <View className="mb-4 items-center gap-1.5">
+          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+            {household.name}
+          </Text>
+          <View
+            style={[
+              {
+                borderRadius: 999,
+                backgroundColor: C.primaryLight,
+              },
+            ]}
+            className="flex-row items-center gap-1.5 px-3 py-1"
+          >
+            <Feather name="users" size={14} color={C.primary} />
+            <Text className="text-xs font-medium text-primary dark:text-primary-dark">
+              {memberLabel}
             </Text>
-            <View
-              style={[
-                Shadow.card,
-                {
-                  borderRadius: 999,
-                  backgroundColor: Colors.primaryLight,
-                },
-              ]}
-              className="flex-row items-center gap-1.5 px-3 py-1"
-            >
-              <Feather name="users" size={14} color={Colors.primary} />
-              <Text className="text-xs font-medium text-primary">
-                {memberLabel}
+          </View>
+        </View>
+
+        <GradientCard>
+          <View className="items-center gap-1 py-2">
+            <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+              Total Balance
+            </Text>
+            {totalBalance === undefined ? (
+              <View className="py-2">
+                <ActivityIndicator size="small" color={C.primary} />
+              </View>
+            ) : (
+              <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+                {formatNumber(totalBalance)}
               </Text>
-            </View>
+            )}
           </View>
         </GradientCard>
 
         <View className="mt-8">
           <View className="flex-row items-center justify-between">
-            <Text className="mb-1 text-xl font-semibold text-text-primary">
+            <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
               My Accounts
             </Text>
             <Pressable
               onPress={() => router.push("/accounts")}
               accessibilityRole="button"
-              className="min-h-11 items-center justify-center"
+              className="min-h-12 items-center justify-center"
             >
-              <Text className="text-sm font-medium text-primary">Manage</Text>
+              <Text className="text-sm font-medium text-primary dark:text-primary-dark">Manage</Text>
             </Pressable>
           </View>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
+          <View
+            style={{ backgroundColor: C.background }}
+            className="mt-2 rounded-[16px]"
+          >
             {accountData === undefined || accountData.accounts === null ? (
               <View className="items-center px-4 py-4">
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={C.primary} />
               </View>
             ) : accountData.accounts.length === 0 ? (
               <EmptyState
@@ -156,11 +178,11 @@ export default function Home() {
               />
             ) : (
               <View className="gap-2 px-4 py-4">
-                <Text className="text-base font-semibold text-text-primary">
+                <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
                   {accountData.accounts.length}{" "}
                   {accountData.accounts.length === 1 ? "account" : "accounts"}
                 </Text>
-                <Text className="text-sm text-text-secondary">
+                <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
                   Total balance:{" "}
                   {formatNumber(
                     accountData.accounts.reduce(
@@ -175,10 +197,13 @@ export default function Home() {
         </View>
 
         <View className="mt-8">
-          <Text className="mb-1 text-xl font-semibold text-text-primary">
+          <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
             Recent Transactions
           </Text>
-          <View style={Shadow.card} className="mt-2 rounded-[16px] bg-background">
+          <View
+            style={{ backgroundColor: C.background }}
+            className="mt-2 rounded-[16px]"
+          >
             <EmptyState
               icon="book-open"
               title="No transactions yet"
