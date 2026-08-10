@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Share, Text, View } from "react-native";
+import { Platform, Share, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
@@ -53,7 +53,7 @@ export function InviteCodeDisplay({ code, onDone }: Props) {
         </Text>
         <Text
           className="text-[28px] font-bold tracking-wider text-text-primary dark:text-text-primary-dark"
-          style={{ fontFamily: "monospace" }}
+          style={{ fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }) }}
         >
           {code}
         </Text>

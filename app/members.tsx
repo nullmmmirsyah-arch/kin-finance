@@ -53,16 +53,22 @@ export default function Members() {
       (m) => m.userId === me?._id && m.role === "owner",
     ) ?? false;
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleGenerateCode = useCallback(async () => {
+    if (isGenerating) return;
     setError(null);
+    setIsGenerating(true);
     try {
       const result = await createInvite();
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate invite code.");
+    } finally {
+      setIsGenerating(false);
     }
-  }, [createInvite]);
+  }, [createInvite, isGenerating]);
 
   const handleRemoveMember = useCallback(
     (member: { userId: string; name?: string }) => {
@@ -166,8 +172,18 @@ export default function Members() {
   if (
     members === undefined ||
     members === null ||
-    household === undefined
+    household === undefined ||
+    me === undefined
   ) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (household === null) {
+    router.replace("/onboarding");
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
         <ActivityIndicator size="large" color={C.primary} />

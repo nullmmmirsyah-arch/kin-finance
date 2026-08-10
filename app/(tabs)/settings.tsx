@@ -26,6 +26,15 @@ export default function Settings() {
     );
   }
 
+  if (household === null) {
+    router.replace("/onboarding");
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+        <ActivityIndicator size="large" color={C.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
@@ -41,8 +50,7 @@ export default function Settings() {
 
         <Pressable
           onPress={() => router.push("/members")}
-          accessibilityRole="button"
-          accessibilityLabel="Members"
+          accessibilityLabel={null}
           style={[
             Shadow.card,
             {

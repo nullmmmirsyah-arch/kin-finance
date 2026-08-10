@@ -18,7 +18,6 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
     <Pressable
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      accessibilityRole="button"
       style={[
         Shadow.card,
         {
@@ -81,7 +80,7 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
             onPress={onRemove}
             accessibilityRole="button"
             accessibilityLabel="Remove member"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 48, height: 48 }}
             className="items-center justify-center"
           >
             <Feather name="x-circle" size={20} color={C.error} />
