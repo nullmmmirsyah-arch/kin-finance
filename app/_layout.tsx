@@ -42,6 +42,7 @@ function RootNavigator() {
         <Stack.Screen name="category-form" />
         <Stack.Screen name="transaction-form" />
         <Stack.Screen name="budget-form" />
+        <Stack.Screen name="members" />
       </Stack.Protected>
       <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="index" />
