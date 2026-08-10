@@ -67,4 +67,19 @@ export default defineSchema({
     .index("by_accountId", ["accountId"])
     .index("by_toAccountId", ["toAccountId"])
     .index("by_categoryId", ["categoryId"]),
+
+  budgets: defineTable({
+    householdId: v.id("households"),
+    categoryId: v.id("categories"),
+    periodStart: v.number(),
+    amount: v.number(),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_householdId", ["householdId"])
+    .index("by_categoryId", ["categoryId"])
+    .index("by_category_period", ["categoryId", "periodStart"])
+    .index("by_household_period", ["householdId", "periodStart"]),
 });
