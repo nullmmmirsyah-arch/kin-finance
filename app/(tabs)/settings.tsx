@@ -50,7 +50,7 @@ export default function Settings() {
 
         <Pressable
           onPress={() => router.push("/members")}
-          accessibilityLabel={null}
+          accessibilityLabel={`${household?.name}, ${memberCount} member${memberCount === 1 ? "" : "s"}`}
           style={[
             Shadow.card,
             {
@@ -96,7 +96,6 @@ export default function Settings() {
 
         <Pressable
           onPress={() => router.push("/categories")}
-          accessibilityRole="button"
           accessibilityLabel="Categories"
           style={[
             Shadow.card,
