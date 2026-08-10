@@ -64,12 +64,8 @@ export default function Settings() {
       await updateHousehold({ householdId: household._id, name: trimmed });
       setIsRenaming(false);
       show("Household renamed");
-    } catch (e) {
-      setRenameError(
-        e instanceof Error
-          ? e.message
-          : "Failed to rename household.",
-      );
+    } catch (e: any) {
+      setRenameError(e?.message ?? "Failed to rename household.");
     } finally {
       setIsSaving(false);
     }

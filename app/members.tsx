@@ -53,12 +53,8 @@ export default function Members() {
       const result = await createInvite();
       setInviteCode(result.code);
       setScreen("invite");
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Failed to generate invite code.",
-      );
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to generate invite code.");
     } finally {
       setIsGenerating(false);
     }
@@ -82,12 +78,8 @@ export default function Members() {
                   userId: member.userId as Id<"users">,
                 });
                 show(`${member.name ?? "Member"} removed`);
-              } catch (e) {
-                setError(
-                  e instanceof Error
-                    ? e.message
-                    : "Failed to remove member.",
-                );
+              } catch (e: any) {
+                setError(e?.message ?? "Failed to remove member.");
               }
             },
           },

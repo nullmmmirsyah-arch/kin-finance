@@ -52,12 +52,8 @@ export default function Onboarding() {
     try {
       await createHousehold({ name: trimmedName });
       router.replace("/home");
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Failed to create household. Please try again.",
-      );
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to create household. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -69,12 +65,8 @@ export default function Onboarding() {
     try {
       await redeemInvite({ code: trimmedCode });
       router.replace("/home");
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Failed to join household. Please try again.",
-      );
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to join household. Please try again.");
     } finally {
       setIsLoading(false);
     }
