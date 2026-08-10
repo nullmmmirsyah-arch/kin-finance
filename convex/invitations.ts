@@ -137,3 +137,106 @@ export const revoke = mutation({
     });
   },
 });
+
+export const redeem = mutation({
+  args: { code: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new ConvexError("You are not signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      throw new ConvexError("User not found.");
+    }
+
+    const existingMembership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (existingMembership !== null) {
+      throw new ConvexError("You are already a member of a household.");
+    }
+
+    const secret = process.env.INVITE_SECRET;
+    if (!secret) {
+      throw new ConvexError("Server configuration error.");
+    }
+
+    const normalizedCode = args.code.trim().toUpperCase();
+    const codeHash = await hmacHash(normalizedCode.toLowerCase(), secret);
+
+    const invitations = await ctx.db
+      .query("invitations")
+      .withIndex("by_codeHash", (q) => q.eq("codeHash", codeHash))
+      .collect();
+
+    if (invitations.length === 0) {
+      throw new ConvexError("Invalid invite code.");
+    }
+
+    if (invitations.length > 1) {
+      throw new ConvexError("Invalid invite code.");
+    }
+
+    const invitation = invitations[0];
+    const now = Date.now();
+    const ATTEMPT_WINDOW_MS = 60 * 1000;
+    const MAX_ATTEMPTS = 5;
+
+    if (
+      invitation.lastAttemptAt > now - ATTEMPT_WINDOW_MS &&
+      invitation.redemptionAttempts >= MAX_ATTEMPTS
+    ) {
+      await ctx.db.patch(invitation._id, {
+        redemptionAttempts: invitation.redemptionAttempts + 1,
+        lastAttemptAt: now,
+        updatedAt: now,
+      });
+      throw new ConvexError(
+        "Too many attempts. Please try again later.",
+      );
+    }
+
+    const resetCounter =
+      invitation.lastAttemptAt <= now - ATTEMPT_WINDOW_MS;
+    await ctx.db.patch(invitation._id, {
+      redemptionAttempts: resetCounter
+        ? 1
+        : invitation.redemptionAttempts + 1,
+      lastAttemptAt: now,
+      updatedAt: now,
+    });
+
+    if (invitation.expiresAt < now) {
+      throw new ConvexError("This invite code has expired.");
+    }
+
+    if (invitation.revoked) {
+      throw new ConvexError("This invite code has been revoked.");
+    }
+
+    if (invitation.useCount >= invitation.maxUses) {
+      throw new ConvexError("This invite code has already been used.");
+    }
+
+    await ctx.db.insert("householdMemberships", {
+      householdId: invitation.householdId,
+      userId: user._id,
+      role: "member",
+    });
+
+    await ctx.db.patch(invitation._id, {
+      useCount: invitation.useCount + 1,
+      updatedAt: now,
+    });
+  },
+});
