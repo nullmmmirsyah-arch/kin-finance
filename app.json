@@ -56,7 +56,7 @@
     },
     "owner": "nullmm",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b"
