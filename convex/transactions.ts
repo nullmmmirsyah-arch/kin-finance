@@ -311,7 +311,7 @@ export const recent = query({
         q.eq("householdId", membership.householdId),
       )
       .order("desc")
-      .take(limit);
+      .take(isOwner ? limit : limit * 4);
 
     const transactions = [];
     for (const row of rows) {
@@ -330,7 +330,7 @@ export const recent = query({
       transactions.push({ ...row, category, account, toAccount });
     }
 
-    return { transactions, isOwner };
+    return { transactions: transactions.slice(0, limit), isOwner };
   },
 });
 
