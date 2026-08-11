@@ -273,6 +273,67 @@ export const list = query({
   },
 });
 
+export const recent = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const membership = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (membership === null) {
+      return { transactions: null, isOwner: false };
+    }
+
+    const isOwner = membership.role === "owner";
+    const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q.eq("householdId", membership.householdId),
+      )
+      .order("desc")
+      .take(limit);
+
+    const transactions = [];
+    for (const row of rows) {
+      const category =
+        row.categoryId === undefined
+          ? undefined
+          : ((await ctx.db.get(row.categoryId)) ?? undefined);
+      if (!isOwner && category !== undefined && category.hidden) {
+        continue;
+      }
+      const account = (await ctx.db.get(row.accountId)) ?? undefined;
+      const toAccount =
+        row.toAccountId === undefined
+          ? undefined
+          : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+      transactions.push({ ...row, category, account, toAccount });
+    }
+
+    return { transactions, isOwner };
+  },
+});
+
 export const get = query({
   args: { transactionId: v.id("transactions") },
   handler: async (ctx, args) => {
