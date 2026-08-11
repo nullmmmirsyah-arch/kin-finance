@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.kinfinance.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -53,6 +54,12 @@
         "projectId": "3d0f78fd-4210-4c6b-832b-f56ebadc380b"
       }
     },
-    "owner": "nullmm"
+    "owner": "nullmm",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b"
+    }
   }
 }
