@@ -1,9 +1,20 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      run_build:
+        description: "Build APK baru (memakai kuota EAS Build). Centang hanya untuk perubahan major/native."
+        type: boolean
+        default: false
+      deploy_convex:
+        description: "Deploy backend Convex ke production"
+        type: boolean
+        default: true
+      publish_update:
+        description: "Publish EAS Update (OTA) ke channel production"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -31,6 +42,7 @@ jobs:
   convex-deploy:
     name: Deploy Convex (prod)
     needs: check
+    if: inputs.deploy_convex == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +61,7 @@ jobs:
   build-apk:
     name: Build Android APK
     needs: check
+    if: inputs.run_build == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +86,7 @@ jobs:
   publish-update:
     name: Publish EAS Update
     needs: [build-apk, convex-deploy]
+    if: ${{ always() && inputs.publish_update == true && !cancelled() && needs.convex-deploy.result != 'failure' && needs.build-apk.result != 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
