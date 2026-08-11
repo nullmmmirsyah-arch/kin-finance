@@ -2,16 +2,18 @@ import { useAuth, useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { useThemeColors } from "@/constants/theme";
 import { GradientCard } from "@/components/GradientCard";
+import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { formatNumber } from "@/utils/format";
+import { formatDateHeader } from "@/utils/date";
 
 export default function Home() {
   const { signOut } = useAuth();
@@ -25,6 +27,28 @@ export default function Home() {
     household?._id ? { householdId: household._id } : "skip",
   );
   const accountData = useQuery(api.accounts.list);
+  const recent = useQuery(api.transactions.recent, { limit: 5 });
+
+  const recentGroups = useMemo(() => {
+    const transactions = recent?.transactions ?? null;
+    if (transactions === null) return null;
+    const groups = new Map<string, typeof transactions>();
+    for (const tx of transactions) {
+      const key = formatDateHeader(tx.date);
+      const list = groups.get(key);
+      if (list) {
+        list.push(tx);
+      } else {
+        groups.set(key, [tx]);
+      }
+    }
+    return Array.from(groups.entries()).map(([title, data]) => ({
+      title,
+      data,
+      total: data.reduce((sum, tx) => sum + tx.amount, 0),
+    }));
+  }, [recent]);
+
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [signOutPressed, setSignOutPressed] = useState(false);
@@ -197,18 +221,75 @@ export default function Home() {
         </View>
 
         <View className="mt-8">
-          <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            Recent Transactions
-          </Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+              Recent Transactions
+            </Text>
+            <Pressable
+              onPress={() => router.push("/transactions")}
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center"
+            >
+              <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
+            </Pressable>
+          </View>
           <View
             style={{ backgroundColor: C.background }}
             className="mt-2 rounded-[16px]"
           >
-            <EmptyState
-              icon="book-open"
-              title="No transactions yet"
-              description="Start by recording your first transaction"
-            />
+            {recent === undefined ? (
+              <View className="items-center px-4 py-4">
+                <ActivityIndicator size="small" color={C.primary} />
+              </View>
+            ) : recentGroups === null || recentGroups.length === 0 ? (
+              <EmptyState
+                icon="book-open"
+                title="No transactions yet"
+                description="Start by recording your first transaction"
+              />
+            ) : (
+              recentGroups.map((group) => (
+                <View key={group.title} className="py-1">
+                  <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
+                    <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                      {group.title}
+                    </Text>
+                    <Text
+                      className="text-sm font-semibold"
+                      style={{
+                        color:
+                          group.total > 0
+                            ? C.success
+                            : group.total < 0
+                              ? C.error
+                              : C.textSecondary,
+                      }}
+                    >
+                      {group.total > 0 ? "+" : ""}
+                      {formatNumber(group.total)}
+                    </Text>
+                  </View>
+                  {group.data.map((tx) => (
+                    <TransactionCard
+                      key={tx._id}
+                      categoryName={tx.category?.name ?? null}
+                      isTransfer={tx.type === "transfer"}
+                      toAccountName={tx.toAccount?.name}
+                      note={tx.note ?? null}
+                      amount={tx.amount}
+                      type={tx.type}
+                      date={tx.date}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/transaction-form",
+                          params: { id: tx._id },
+                        })
+                      }
+                    />
+                  ))}
+                </View>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
