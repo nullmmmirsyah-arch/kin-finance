@@ -385,7 +385,10 @@ export const recent = query({
 
       if (collected.length >= limit) break;
       if (rows.length < batchSize) break;
-      if (!cursorFound) break;
+      if (!cursorFound) {
+        atBoundary = true;
+        continue;
+      }
 
       const lastRow = rows[rows.length - 1];
       atBoundary = lastRow.date === cursorDate;

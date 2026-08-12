@@ -2,7 +2,7 @@ import { useAuth, useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
@@ -35,9 +35,41 @@ export default function Home() {
     limit: 5,
     cursor: recentCursor,
   });
+  type RecentTransaction = NonNullable<
+    NonNullable<typeof recent>["transactions"]
+  >[number];
+  const [recentTransactions, setRecentTransactions] = useState<
+    RecentTransaction[] | null
+  >(null);
+  const [followingRecent, setFollowingRecent] = useState(false);
+  const recentCursorRef = useRef(recentCursor);
+  recentCursorRef.current = recentCursor;
+  const recentTransactionsRef = useRef(recentTransactions);
+  recentTransactionsRef.current = recentTransactions;
+
+  useEffect(() => {
+    if (recent === undefined) return;
+    if (recent.transactions === null) {
+      setRecentTransactions(null);
+      setRecentCursor(undefined);
+      setFollowingRecent(false);
+      return;
+    }
+    const firstPage = recentCursorRef.current === undefined;
+    const next = firstPage
+      ? recent.transactions
+      : [...(recentTransactionsRef.current ?? []), ...recent.transactions];
+    setRecentTransactions(next);
+    if (recent.cursor && next.length < 5) {
+      setRecentCursor(recent.cursor);
+      setFollowingRecent(true);
+    } else {
+      setFollowingRecent(false);
+    }
+  }, [recent]);
 
   const recentGroups = useMemo(() => {
-    const transactions = recent?.transactions ?? null;
+    const transactions = recentTransactions;
     if (transactions === null) return null;
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
@@ -54,18 +86,7 @@ export default function Home() {
       data,
       total: data.reduce((sum, tx) => sum + tx.amount, 0),
     }));
-  }, [recent]);
-
-  useEffect(() => {
-    if (
-      recent?.transactions !== null &&
-      recent?.transactions !== undefined &&
-      recent.transactions.length === 0 &&
-      recent.cursor !== undefined
-    ) {
-      setRecentCursor(recent.cursor);
-    }
-  }, [recent]);
+  }, [recentTransactions]);
 
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -255,12 +276,12 @@ export default function Home() {
             style={{ backgroundColor: C.background }}
             className="mt-2 rounded-[16px]"
           >
-            {recent === undefined ? (
+            {recent === undefined && recentTransactions === null ? (
               <View className="items-center px-4 py-4">
                 <ActivityIndicator size="small" color={C.primary} />
               </View>
             ) : recentGroups === null || recentGroups.length === 0 ? (
-              recent?.cursor ? (
+              followingRecent ? (
                 <View className="items-center px-4 py-4">
                   <ActivityIndicator size="small" color={C.primary} />
                 </View>

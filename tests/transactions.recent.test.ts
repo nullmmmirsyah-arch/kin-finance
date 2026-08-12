@@ -401,4 +401,153 @@ describe("transactions.recent", () => {
       "visible-0",
     ]);
   });
+
+  it("returns a partial page with cursor and continuation recovers remaining visible transactions", async () => {
+    const member = t.withIdentity({
+      tokenIdentifier: MEMBER_TOKEN,
+      subject: "member",
+    });
+
+    await t.run(async (ctx) => {
+      const householdId = await ctx.db.insert("households", {
+        name: "Partial-Page Household",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const ownerId = await ctx.db.insert("users", {
+        tokenIdentifier: OWNER_TOKEN,
+        clerkUserId: "clerk-owner-partial",
+      });
+      await ctx.db.insert("users", {
+        tokenIdentifier: MEMBER_TOKEN,
+        clerkUserId: "clerk-member-partial",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId: ownerId,
+        role: "owner",
+      });
+      const allUsers = await ctx.db.query("users").collect();
+      const memberUser = allUsers.find(
+        (u) => u.tokenIdentifier === MEMBER_TOKEN,
+      );
+      if (memberUser === undefined) throw new Error("member user not found");
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId: memberUser._id,
+        role: "member",
+      });
+      const accountId = await ctx.db.insert("accounts", {
+        householdId,
+        name: "Cash",
+        type: "cash",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const hiddenCategoryId = await ctx.db.insert("categories", {
+        householdId,
+        name: "Hidden",
+        type: "expense",
+        hidden: true,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const visibleCategoryId = await ctx.db.insert("categories", {
+        householdId,
+        name: "Visible",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      for (let i = 0; i < 21; i++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: hiddenCategoryId,
+          amount: -100,
+          type: "expense",
+          note: `hidden-${i}`,
+          date: 1000,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 1000,
+          updatedAt: 1000,
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: hiddenCategoryId,
+          amount: -100,
+          type: "expense",
+          note: `hidden-900-${i}`,
+          date: 900,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 900,
+          updatedAt: 900,
+        });
+      }
+      for (let i = 0; i < 2; i++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: visibleCategoryId,
+          amount: -50,
+          type: "expense",
+          note: `visible-900-${i}`,
+          date: 900,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 900,
+          updatedAt: 900,
+        });
+      }
+      for (let j = 0; j < 3; j++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: visibleCategoryId,
+          amount: -50,
+          type: "expense",
+          note: `visible-${j}`,
+          date: 100 + j,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 100 + j,
+          updatedAt: 100 + j,
+        });
+      }
+    });
+
+    const first = await member.query(api.transactions.recent, { limit: 5 });
+    expect(first.transactions!.length).toBe(2);
+    expect(first.cursor).toBeDefined();
+    expect(first.cursor!.date).toBe(900);
+
+    const accumulated: string[] = first.transactions!.map((tx) => tx.note!);
+    let cursor: typeof first.cursor = first.cursor;
+
+    for (let i = 0; i < 10; i++) {
+      const result = await member.query(api.transactions.recent, {
+        limit: 5,
+        cursor,
+      });
+      for (const tx of result.transactions!) {
+        accumulated.push(tx.note!);
+      }
+      cursor = result.cursor;
+      if (!cursor) break;
+    }
+
+    expect(accumulated.length).toBe(5);
+    expect(new Set(accumulated)).toEqual(
+      new Set(["visible-900-0", "visible-900-1", "visible-0", "visible-1", "visible-2"]),
+    );
+  });
 });
