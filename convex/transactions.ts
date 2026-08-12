@@ -305,32 +305,47 @@ export const recent = query({
 
     const isOwner = membership.role === "owner";
     const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
-    const rows = await ctx.db
-      .query("transactions")
-      .withIndex("by_household_date", (q) =>
-        q.eq("householdId", membership.householdId),
-      )
-      .order("desc")
-      .take(isOwner ? limit : limit * 4);
 
-    const transactions = [];
-    for (const row of rows) {
-      const category =
-        row.categoryId === undefined
-          ? undefined
-          : ((await ctx.db.get(row.categoryId)) ?? undefined);
-      if (!isOwner && category !== undefined && category.hidden) {
-        continue;
+    const collected = [];
+    const seen = new Set<string>();
+    let batchSize = isOwner ? limit : limit * 4;
+
+    while (collected.length < limit) {
+      const rows = await ctx.db
+        .query("transactions")
+        .withIndex("by_household_date", (q) =>
+          q.eq("householdId", membership.householdId),
+        )
+        .order("desc")
+        .take(batchSize);
+
+      for (const row of rows) {
+        if (seen.has(row._id)) continue;
+        seen.add(row._id);
+
+        const category =
+          row.categoryId === undefined
+            ? undefined
+            : ((await ctx.db.get(row.categoryId)) ?? undefined);
+        if (!isOwner && category !== undefined && category.hidden) {
+          continue;
+        }
+        const account = (await ctx.db.get(row.accountId)) ?? undefined;
+        const toAccount =
+          row.toAccountId === undefined
+            ? undefined
+            : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+        collected.push({ ...row, category, account, toAccount });
+
+        if (collected.length >= limit) break;
       }
-      const account = (await ctx.db.get(row.accountId)) ?? undefined;
-      const toAccount =
-        row.toAccountId === undefined
-          ? undefined
-          : ((await ctx.db.get(row.toAccountId)) ?? undefined);
-      transactions.push({ ...row, category, account, toAccount });
+
+      if (collected.length >= limit) break;
+      if (rows.length < batchSize) break;
+      batchSize *= 2;
     }
 
-    return { transactions: transactions.slice(0, limit), isOwner };
+    return { transactions: collected, isOwner };
   },
 });
 
