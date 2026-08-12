@@ -57,7 +57,7 @@
     "eslint-config-expo": "~10.0.0",
     "eslint-import-resolver-typescript": "^3.10.1",
     "typescript": "~5.9.2",
-    "vite": "^8.2.1",
+    "vite": "~8.2.1",
     "vitest": "^4.1.10"
   },
   "private": true
