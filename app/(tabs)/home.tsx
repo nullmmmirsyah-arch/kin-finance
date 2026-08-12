@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { useThemeColors } from "@/constants/theme";
+import type { Id } from "@/convex/_generated/dataModel";
 import { GradientCard } from "@/components/GradientCard";
 import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -27,7 +28,13 @@ export default function Home() {
     household?._id ? { householdId: household._id } : "skip",
   );
   const accountData = useQuery(api.accounts.list);
-  const recent = useQuery(api.transactions.recent, { limit: 5 });
+  const [recentCursor, setRecentCursor] = useState<
+    { date: number; id: Id<"transactions"> } | undefined
+  >(undefined);
+  const recent = useQuery(api.transactions.recent, {
+    limit: 5,
+    cursor: recentCursor,
+  });
 
   const recentGroups = useMemo(() => {
     const transactions = recent?.transactions ?? null;
@@ -47,6 +54,17 @@ export default function Home() {
       data,
       total: data.reduce((sum, tx) => sum + tx.amount, 0),
     }));
+  }, [recent]);
+
+  useEffect(() => {
+    if (
+      recent?.transactions !== null &&
+      recent?.transactions !== undefined &&
+      recent.transactions.length === 0 &&
+      recent.cursor !== undefined
+    ) {
+      setRecentCursor(recent.cursor);
+    }
   }, [recent]);
 
   const [synced, setSynced] = useState(false);
@@ -242,11 +260,17 @@ export default function Home() {
                 <ActivityIndicator size="small" color={C.primary} />
               </View>
             ) : recentGroups === null || recentGroups.length === 0 ? (
-              <EmptyState
-                icon="book-open"
-                title="No transactions yet"
-                description="Start by recording your first transaction"
-              />
+              recent?.cursor ? (
+                <View className="items-center px-4 py-4">
+                  <ActivityIndicator size="small" color={C.primary} />
+                </View>
+              ) : (
+                <EmptyState
+                  icon="book-open"
+                  title="No transactions yet"
+                  description="Start by recording your first transaction"
+                />
+              )
             ) : (
               recentGroups.map((group) => (
                 <View key={group.title} className="py-1">

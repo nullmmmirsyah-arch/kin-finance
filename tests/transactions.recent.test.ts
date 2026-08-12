@@ -255,12 +255,142 @@ describe("transactions.recent", () => {
     const first = await member.query(api.transactions.recent, { limit: 5 });
     expect(first.transactions!.length).toBe(0);
     expect(first.cursor).toBeDefined();
-    expect(first.cursor!.date).toBe(1010);
+    expect(first.cursor!.date).toBe(1012);
+    expect(first.cursor!.id).toBeDefined();
 
     const second = await member.query(api.transactions.recent, {
       limit: 5,
       cursor: first.cursor!,
     });
+    expect(second.transactions!.length).toBe(5);
+    expect(second.cursor).toBeUndefined();
+    expect(second.transactions!.map((tx) => tx.note)).toEqual([
+      "visible-4",
+      "visible-3",
+      "visible-2",
+      "visible-1",
+      "visible-0",
+    ]);
+  });
+
+  it("paginates past >limit*4 same-date hidden rows without losing visible transactions", async () => {
+    const member = t.withIdentity({
+      tokenIdentifier: MEMBER_TOKEN,
+      subject: "member",
+    });
+
+    await t.run(async (ctx) => {
+      const householdId = await ctx.db.insert("households", {
+        name: "Same-Date Household",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const ownerId = await ctx.db.insert("users", {
+        tokenIdentifier: OWNER_TOKEN,
+        clerkUserId: "clerk-owner-samedate",
+      });
+      await ctx.db.insert("users", {
+        tokenIdentifier: MEMBER_TOKEN,
+        clerkUserId: "clerk-member-samedate",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId: ownerId,
+        role: "owner",
+      });
+      const allUsers = await ctx.db.query("users").collect();
+      const memberUser = allUsers.find(
+        (u) => u.tokenIdentifier === MEMBER_TOKEN,
+      );
+      if (memberUser === undefined) throw new Error("member user not found");
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId: memberUser._id,
+        role: "member",
+      });
+      const accountId = await ctx.db.insert("accounts", {
+        householdId,
+        name: "Cash",
+        type: "cash",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const hiddenCategoryId = await ctx.db.insert("categories", {
+        householdId,
+        name: "Hidden",
+        type: "expense",
+        hidden: true,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const visibleCategoryId = await ctx.db.insert("categories", {
+        householdId,
+        name: "Visible",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      for (let i = 0; i < 50; i++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: hiddenCategoryId,
+          amount: -100,
+          type: "expense",
+          note: `same-date-hidden-${i}`,
+          date: 1000,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 1000,
+          updatedAt: 1000,
+        });
+      }
+      for (let i = 0; i < 30; i++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: hiddenCategoryId,
+          amount: -100,
+          type: "expense",
+          note: `mid-hidden-${i}`,
+          date: 900,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 900,
+          updatedAt: 900,
+        });
+      }
+      for (let j = 0; j < 5; j++) {
+        await ctx.db.insert("transactions", {
+          householdId,
+          accountId,
+          categoryId: visibleCategoryId,
+          amount: -50,
+          type: "expense",
+          note: `visible-${j}`,
+          date: 100 + j,
+          createdBy: ownerId,
+          updatedBy: ownerId,
+          createdAt: 100 + j,
+          updatedAt: 100 + j,
+        });
+      }
+    });
+
+    const first = await member.query(api.transactions.recent, { limit: 5 });
+
+    const second = await member.query(api.transactions.recent, {
+      limit: 5,
+      cursor: first.cursor!,
+    });
+
+    expect(first.transactions!.length).toBe(0);
+    expect(first.cursor).toBeDefined();
+
     expect(second.transactions!.length).toBe(5);
     expect(second.cursor).toBeUndefined();
     expect(second.transactions!.map((tx) => tx.note)).toEqual([
