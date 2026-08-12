@@ -276,6 +276,7 @@ export const list = query({
 export const recent = query({
   args: {
     limit: v.optional(v.number()),
+    cursor: v.optional(v.object({ date: v.number() })),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -306,28 +307,59 @@ export const recent = query({
     const isOwner = membership.role === "owner";
     const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
 
-    const collected = [];
-    const seen = new Set<string>();
-    let batchSize = isOwner ? limit : limit * 4;
-
-    while (collected.length < limit) {
+    if (isOwner) {
       const rows = await ctx.db
         .query("transactions")
         .withIndex("by_household_date", (q) =>
           q.eq("householdId", membership.householdId),
         )
         .order("desc")
+        .take(limit);
+
+      const transactions = [];
+      for (const row of rows) {
+        const category =
+          row.categoryId === undefined
+            ? undefined
+            : ((await ctx.db.get(row.categoryId)) ?? undefined);
+        const account = (await ctx.db.get(row.accountId)) ?? undefined;
+        const toAccount =
+          row.toAccountId === undefined
+            ? undefined
+            : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+        transactions.push({ ...row, category, account, toAccount });
+      }
+
+      return { transactions, isOwner, cursor: undefined };
+    }
+
+    const SCAN_BUDGET = limit * 10;
+    let scanned = 0;
+    let cursorDate = args.cursor?.date;
+    const collected = [];
+
+    while (collected.length < limit && scanned < SCAN_BUDGET) {
+      const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
+      const rows = await ctx.db
+        .query("transactions")
+        .withIndex("by_household_date", (q) => {
+          const base = q.eq("householdId", membership.householdId);
+          return cursorDate !== undefined ? base.lt("date", cursorDate) : base;
+        })
+        .order("desc")
         .take(batchSize);
 
+      scanned += rows.length;
+      let batchMinDate = Infinity;
+
       for (const row of rows) {
-        if (seen.has(row._id)) continue;
-        seen.add(row._id);
+        if (row.date < batchMinDate) batchMinDate = row.date;
 
         const category =
           row.categoryId === undefined
             ? undefined
             : ((await ctx.db.get(row.categoryId)) ?? undefined);
-        if (!isOwner && category !== undefined && category.hidden) {
+        if (category !== undefined && category.hidden) {
           continue;
         }
         const account = (await ctx.db.get(row.accountId)) ?? undefined;
@@ -340,12 +372,16 @@ export const recent = query({
         if (collected.length >= limit) break;
       }
 
-      if (collected.length >= limit) break;
-      if (rows.length < batchSize) break;
-      batchSize *= 2;
+      if (collected.length >= limit || rows.length < batchSize) break;
+      cursorDate = batchMinDate;
     }
 
-    return { transactions: collected, isOwner };
+    const hasMore = collected.length < limit && scanned >= SCAN_BUDGET;
+    return {
+      transactions: collected,
+      isOwner,
+      cursor: hasMore ? { date: cursorDate! } : undefined,
+    };
   },
 });
 
