@@ -13,7 +13,6 @@
   "dependencies": {
     "@babel/core": "^7.26.0",
     "@clerk/expo": "^4.2.2",
-    "@expo/config-plugins": "~54.0.4",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/bottom-tabs": "^7.4.0",
@@ -62,6 +61,13 @@
     "typescript": "~5.9.2",
     "vite": "~8.2.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@clerk/clerk-js": {
+      "react": "19.1.0"
+    }
   },
   "private": true
 }
