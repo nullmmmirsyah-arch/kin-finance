@@ -405,10 +405,12 @@ retype/delete; they never appear in user-facing category selection.
 
 ## 6. Database Schema
 
-Source of truth: `convex/schema.ts`. All financial entities (households,
-memberships, invitations, accounts, categories, transactions, budgets) are
-scoped to a Household. `users` is the exception — a global identity record,
-linked to households only through `householdMemberships`.
+Source of truth: `convex/schema.ts`. `households` is the root entity for all
+financial data. `accounts`, `categories`, `transactions`, and `budgets` are
+household-scoped financial entities. `householdMemberships` and `invitations`
+are household-scoped relationship/access records (who belongs and who may
+join). `users` is the global identity record — not household-scoped — linked to
+households only through `householdMemberships`.
 
 ### `users`
 
