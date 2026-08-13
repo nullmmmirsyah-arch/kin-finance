@@ -28,14 +28,12 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 
 - Path alias: `@/*` → repo root.
 - `app/` is expo-router. Auth gating uses `<Stack.Protected guard={...}>` in `app/_layout.tsx`, where Clerk + Convex providers live. Tabs live in `app/(tabs)/`; forms are top-level routes (`account-form`, `category-form`, `transaction-form`).
-- `convex/schema.ts` is the executable source of truth. `docs/ARCHITECTURE.md` describes tables (`invitations`, `budgets`) that are NOT yet in the schema — check `schema.ts` before assuming a table/function exists.
-- Backend invariants (see `docs/ARCHITECTURE.md`): amounts are signed (+income, −expense, +transfer magnitude); owner vs member permission matrix; hidden account/category visibility rules. Every `convex/*.ts` handler requires sign-in via `ctx.auth.getUserIdentity()` and throws `ConvexError`.
+- `convex/schema.ts` is the executable source of truth — check `schema.ts` before assuming a table/function exists.
+- Backend invariants (see `docs/Product Requirement Document/PRD.md`): amounts are signed (+income, −expense, +transfer magnitude); owner vs member permission matrix; hidden account/category visibility rules. Every `convex/*.ts` handler requires sign-in via `ctx.auth.getUserIdentity()` and throws `ConvexError`.
 - NativeWind wiring: `babel.config.js`, `metro.config.js`, `global.css`, `tailwind.config.js`; `cssInterop(LinearGradient, { className: "style" })` is required in `app/_layout.tsx`.
 
 # Documentation
 
-- PRDs: `docs/Product Requirement Document/`
-- Architecture: `docs/ARCHITECTURE.md`
-- Design system + screens: `docs/DESIGN.md`
+- PRD / Product Specification: `docs/Product Requirement Document/PRD.md`
 - Colors, typography, spacing: `constants/theme.ts`
 - Feature plans & specs: `docs/superpowers/plans/`, `docs/superpowers/specs/` (they record the verification workflow above)
