@@ -47,4 +47,4 @@ app-example
 /.claude
 CLAUDE.md
 .impeccable/*
-docs/*
+AGENTS.md
