@@ -140,11 +140,12 @@ visible) without exposing transaction detail.
 
 ### 2.4 Visibility Rules
 
-- **Hidden Account:** balance not visible to Members; Members cannot select or
-  reassign transactions to it, but CAN edit existing transactions already
-  referencing it.
+- **Hidden Account:** balance not visible to Members. Members cannot create a
+  transaction on it or reassign an existing transaction to it; they may edit an
+  existing transaction whose hidden account reference is unchanged.
 - **Hidden Category:** transactions on that category are fully invisible and
-  untouchable by Members. Transfers have no category and are unaffected.
+  untouchable by Members (no view/create/edit/delete). Transfers have no
+  category and are unaffected.
 - **Hidden Category Budgets (exception):** budget category name and amount are
   visible to Members; spending breakdown is not shown.
 
@@ -264,10 +265,16 @@ App Open → Clerk Auth Gate → signed in → households.getActive found → Ho
 
 ```text
 Accounts tab → "+" → fill name/type/opening balance
-  → accounts.create (balance 0)
-  → if openingBalance != 0: transactions.create with "Initial Balance" category
-  → account appears with balance
+  → accounts.create({ name, type, openingBalance, hidden })
+  → account inserted with balance 0
+  → if openingBalance != 0, accounts.create posts the "Initial Balance"
+    transaction server-side within the same atomic mutation
+  → account appears with opening balance reflected
 ```
+
+The opening-balance transaction is created internally by `accounts.create`
+(against the reserved "Initial Balance" category matching the balance sign),
+not by a separate client call. A zero opening balance skips that step entirely.
 
 ### 4.4 Create Transaction
 
@@ -398,7 +405,10 @@ retype/delete; they never appear in user-facing category selection.
 
 ## 6. Database Schema
 
-Source of truth: `convex/schema.ts`. All entities are scoped to a Household.
+Source of truth: `convex/schema.ts`. All financial entities (households,
+memberships, invitations, accounts, categories, transactions, budgets) are
+scoped to a Household. `users` is the exception — a global identity record,
+linked to households only through `householdMemberships`.
 
 ### `users`
 
@@ -443,7 +453,16 @@ lastAttemptAt: number
 createdAt: number
 updatedAt: number
 ```
-**Indexes:** `by_codeHash` (globally unique), `by_householdId`
+**Indexes:** `by_codeHash`, `by_householdId`
+
+**Uniqueness note:** Convex indexes are not unique constraints. Uniqueness is
+enforced at the mutation layer: `invitations.create` retries with a fresh code
+on `codeHash` collision, and `invitations.redeem` rejects redemption when more
+than one invitation matches the hash. Account names (unique per household) and
+category names (unique per household + type) are likewise enforced via
+transactional existence checks in `accounts.*` / `categories.*`, not by
+database indexes. The same applies to the budget identity
+`(householdId, categoryId, periodStart)`.
 
 ### `accounts`
 
@@ -583,6 +602,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-13 | Docs | Consolidate all fragmented docs into this single Product Specification |
 | 2026-08-13 | Feature | Theme preference (System/Light/Dark) with `ThemeProvider` + SecureStore persistence |
 | 2026-08-12 | Feature | Home Recent Transactions — live data, day-grouped with net totals, cursor pagination, "See All" |
 | 2026-08-11 | Feature | Invite revoke UI — Pending Invites section; auto-revoke previous active invite on new code |
@@ -595,7 +615,6 @@ sections above; fixes are logged here only.
 | 2026-08-07 | Feature | Household — create/rename/members; onboarding flow |
 | 2026-08-07 | Feature | Convex + Clerk integration, auth gate |
 | 2026-08-07 | Feature | Initial app scaffold (Expo Router, NativeWind, theme tokens) |
-| 2026-08-13 | Docs | Consolidate all fragmented docs into this single Product Specification |
 
 ---
 
