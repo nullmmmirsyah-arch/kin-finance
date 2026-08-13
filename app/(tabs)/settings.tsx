@@ -5,8 +5,20 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { ThemePreference, useTheme } from "@/components/ThemeProvider";
+
+const THEME_OPTIONS: {
+  id: ThemePreference;
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}[] = [
+  { id: "system", label: "System", icon: "smartphone" },
+  { id: "light", label: "Light", icon: "sun" },
+  { id: "dark", label: "Dark", icon: "moon" },
+];
 
 export default function Settings() {
+  const { preference, setPreference } = useTheme();
   const router = useRouter();
   const C = useThemeColors();
 
@@ -87,6 +99,45 @@ export default function Settings() {
           </View>
           <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Appearance
+        </Text>
+
+        <View className="flex-row overflow-hidden rounded-[12px] border border-border dark:border-border-dark">
+          {THEME_OPTIONS.map((option) => {
+            const selected = preference === option.id;
+            return (
+              <Pressable
+                key={option.id}
+                onPress={() => setPreference(option.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                className="flex-1 items-center gap-1 py-3"
+                style={{
+                  backgroundColor: selected ? C.primary : "transparent",
+                }}
+              >
+                <Feather
+                  name={option.icon}
+                  size={18}
+                  color={selected ? C.background : C.textSecondary}
+                />
+                <Text
+                  className={`text-sm font-medium ${
+                    selected
+                      ? "text-background dark:text-background-dark"
+                      : "text-text-secondary dark:text-text-secondary-dark"
+                  }`}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <View className="mt-6 px-5">

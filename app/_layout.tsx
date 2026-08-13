@@ -10,6 +10,7 @@ import { cssInterop } from "nativewind";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useThemeColors } from "@/constants/theme";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
 
 cssInterop(LinearGradient, { className: "style" });
@@ -55,20 +56,22 @@ export default function RootLayout() {
   const C = useThemeColors();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <SnackbarProvider>
-            <ClerkLoading>
-              <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-                <ActivityIndicator size="large" color={C.primary} />
-              </View>
-            </ClerkLoading>
-            <ClerkLoaded>
-              <RootNavigator />
-            </ClerkLoaded>
-          </SnackbarProvider>
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
+      <ThemeProvider>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <SnackbarProvider>
+              <ClerkLoading>
+                <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+                  <ActivityIndicator size="large" color={C.primary} />
+                </View>
+              </ClerkLoading>
+              <ClerkLoaded>
+                <RootNavigator />
+              </ClerkLoaded>
+            </SnackbarProvider>
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
