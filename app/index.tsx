@@ -19,6 +19,7 @@ import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/t
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { getLastAuthMethod, setLastAuthMethod } from "@/lib/auth-preference";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -36,6 +37,18 @@ function useWarmUpBrowser() {
 type Mode = "sign-in" | "sign-up";
 type ResetStep = "email" | "code" | "password";
 type SuccessScreen = "verify" | "reset" | null;
+
+function Divider({ text }: { text: string }) {
+  return (
+    <View className="flex-row items-center gap-3">
+      <View className="h-px flex-1 bg-border dark:bg-border-dark" />
+      <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+        {text}
+      </Text>
+      <View className="h-px flex-1 bg-border dark:bg-border-dark" />
+    </View>
+  );
+}
 
 export default function Index() {
   useWarmUpBrowser();
@@ -70,6 +83,7 @@ export default function Index() {
   const [resetStep, setResetStep] = useState<ResetStep | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [successScreen, setSuccessScreen] = useState<SuccessScreen>(null);
+  const [preferred, setPreferred] = useState<"google" | "email" | null>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
@@ -78,6 +92,12 @@ export default function Index() {
       router.replace("/home");
     }
   }, [isSignedIn, router, successScreen]);
+
+  useEffect(() => {
+    void getLastAuthMethod().then((method) => {
+      if (method) setPreferred(method);
+    });
+  }, []);
 
   useEffect(() => {
     if (!successScreen) return;
@@ -114,6 +134,8 @@ export default function Index() {
         const { error: finalizeError } = await signIn.finalize();
         if (finalizeError) {
           setError(finalizeError.message);
+        } else {
+          void setLastAuthMethod("email");
         }
       } else if (signIn.status === "needs_client_trust") {
         const emailCodeFactor = signIn.supportedSecondFactors?.find(
@@ -208,6 +230,7 @@ export default function Index() {
         setError(finalizeError.message);
         return;
       }
+      void setLastAuthMethod("email");
       setSuccessScreen("verify");
     } catch {
       setError("A network error occurred. Please try again.");
@@ -237,6 +260,7 @@ export default function Index() {
             return;
           }
           await ssoSetActive({ session: updated.createdSessionId });
+          void setLastAuthMethod("google");
           return;
         }
         setError("Verification is not complete. Please try again.");
@@ -251,6 +275,8 @@ export default function Index() {
         const { error: finalizeError } = await signIn.finalize();
         if (finalizeError) {
           setError(finalizeError.message);
+        } else {
+          void setLastAuthMethod("email");
         }
       } else {
         setError("Verification is not complete. Please try again.");
@@ -274,6 +300,7 @@ export default function Index() {
         });
       if (createdSessionId) {
         await setActive?.({ session: createdSessionId });
+        void setLastAuthMethod("google");
         return;
       }
       if (ssoSignIn?.status === "needs_client_trust") {
@@ -306,6 +333,7 @@ export default function Index() {
           const updated = await ssoSignUp.update(updateParams);
           if (updated.status === "complete" && updated.createdSessionId) {
             await setActive?.({ session: updated.createdSessionId });
+            void setLastAuthMethod("google");
             return;
           }
         }
@@ -424,6 +452,7 @@ export default function Index() {
           setError(finalizeError.message);
           return;
         }
+        void setLastAuthMethod("email");
         setSuccessScreen("reset");
       } else {
         setError("Password reset is not complete. Please try again.");
@@ -495,6 +524,98 @@ export default function Index() {
         "Pick something you'll remember — your family's money stays safe.",
     },
   };
+
+  const googlePrimary = preferred === "google";
+
+  const subtitle =
+    mode === "sign-in"
+      ? googlePrimary
+        ? "One tap to get back in with Google."
+        : "Welcome back. Sign in to your family's ledger."
+      : googlePrimary
+        ? "Join in one tap with Google."
+        : "Create an account and start your family's ledger.";
+
+  const dividerEmail =
+    mode === "sign-in" ? "or sign in with email" : "or sign up with email";
+
+  const emailInputs = (
+    <>
+      <Input
+        label="Email"
+        accessibilityLabel="Email"
+        value={emailAddress}
+        placeholder="you@example.com"
+        onChangeText={setEmailAddress}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        error={emailError}
+      />
+      <Input
+        ref={passwordRef}
+        label="Password"
+        accessibilityLabel="Password"
+        value={password}
+        placeholder={
+          mode === "sign-in" ? "Your password" : "Create a password"
+        }
+        secureTextEntry
+        onChangeText={setPassword}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete={
+          mode === "sign-in" ? "current-password" : "new-password"
+        }
+        textContentType={mode === "sign-in" ? "password" : "newPassword"}
+        returnKeyType={mode === "sign-in" ? "go" : "next"}
+        onSubmitEditing={
+          mode === "sign-in"
+            ? handleSignIn
+            : () => confirmRef.current?.focus()
+        }
+        error={passwordError}
+      />
+      {mode === "sign-up" ? (
+        <Input
+          ref={confirmRef}
+          label="Confirm password"
+          accessibilityLabel="Confirm password"
+          value={confirmPassword}
+          placeholder="Re-enter password"
+          secureTextEntry
+          onChangeText={setConfirmPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          onSubmitEditing={handleSignUp}
+          error={confirmError}
+        />
+      ) : null}
+      {mode === "sign-in" ? (
+        <Pressable
+          onPress={startReset}
+          accessibilityRole="button"
+          className="min-h-12 items-end justify-center"
+        >
+          <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+            Forgot password?
+          </Text>
+        </Pressable>
+      ) : null}
+      {error ? (
+        <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
+          {error}
+        </Text>
+      ) : null}
+    </>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
@@ -695,110 +816,52 @@ export default function Index() {
                     Kin Finance
                   </Text>
                   <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
-                    {mode === "sign-in"
-                      ? "Welcome back. Sign in to your family's ledger."
-                      : "Create an account and start your family's ledger."}
+                    {subtitle}
                   </Text>
                 </View>
 
-                <Button
-                  title="Continue with Google"
-                  variant="secondary"
-                  icon={<FontAwesome name="google" size={18} color={C.textPrimary} />}
-                  onPress={handleGoogle}
-                  loading={isGoogleLoading}
-                  disabled={isLoading}
-                />
+                {googlePrimary ? (
+                  <>
+                    {emailInputs}
+                    <Button
+                      title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                      variant="secondary"
+                      onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+                      loading={isLoading}
+                      disabled={isGoogleLoading}
+                    />
+                    <Divider text="or continue with Google" />
+                    <Button
+                      title="Continue with Google"
+                      icon={<FontAwesome name="google" size={18} color={C.background} />}
+                      badge="Last used"
+                      onPress={handleGoogle}
+                      loading={isGoogleLoading}
+                      disabled={isLoading}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      title="Continue with Google"
+                      variant="secondary"
+                      icon={<FontAwesome name="google" size={18} color={C.textPrimary} />}
+                      onPress={handleGoogle}
+                      loading={isGoogleLoading}
+                      disabled={isLoading}
+                    />
+                    <Divider text={dividerEmail} />
+                    {emailInputs}
+                    <Button
+                      title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                      onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+                      loading={isLoading}
+                      disabled={isGoogleLoading}
+                      badge={preferred === "email" ? "Last used" : undefined}
+                    />
+                  </>
+                )}
 
-                <View className="flex-row items-center gap-3">
-                  <View className="h-px flex-1 bg-border dark:bg-border-dark" />
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                    {mode === "sign-in"
-                      ? "or sign in with email"
-                      : "or sign up with email"}
-                  </Text>
-                  <View className="h-px flex-1 bg-border dark:bg-border-dark" />
-                </View>
-
-                <Input
-                  label="Email"
-                  accessibilityLabel="Email"
-                  value={emailAddress}
-                  placeholder="you@example.com"
-                  onChangeText={setEmailAddress}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  error={emailError}
-                />
-                <Input
-                  ref={passwordRef}
-                  label="Password"
-                  accessibilityLabel="Password"
-                  value={password}
-                  placeholder={
-                    mode === "sign-in" ? "Your password" : "Create a password"
-                  }
-                  secureTextEntry
-                  onChangeText={setPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete={
-                    mode === "sign-in" ? "current-password" : "new-password"
-                  }
-                  textContentType={mode === "sign-in" ? "password" : "newPassword"}
-                  returnKeyType={mode === "sign-in" ? "go" : "next"}
-                  onSubmitEditing={
-                    mode === "sign-in"
-                      ? handleSignIn
-                      : () => confirmRef.current?.focus()
-                  }
-                  error={passwordError}
-                />
-                {mode === "sign-up" ? (
-                  <Input
-                    ref={confirmRef}
-                    label="Confirm password"
-                    accessibilityLabel="Confirm password"
-                    value={confirmPassword}
-                    placeholder="Re-enter password"
-                    secureTextEntry
-                    onChangeText={setConfirmPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                    returnKeyType="go"
-                    onSubmitEditing={handleSignUp}
-                    error={confirmError}
-                  />
-                ) : null}
-                {mode === "sign-in" ? (
-                  <Pressable
-                    onPress={startReset}
-                    accessibilityRole="button"
-                    className="min-h-12 items-end justify-center"
-                  >
-                    <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                      Forgot password?
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {error ? (
-                  <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
-                    {error}
-                  </Text>
-                ) : null}
-                <Button
-                  title={mode === "sign-in" ? "Sign In" : "Sign Up"}
-                  onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-                  loading={isLoading}
-                  disabled={isGoogleLoading}
-                />
                 <Pressable
                   onPress={() => {
                     setMode(mode === "sign-in" ? "sign-up" : "sign-in");
