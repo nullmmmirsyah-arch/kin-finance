@@ -20,6 +20,7 @@ import { Fab } from "@/components/Fab";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { useSnackbar } from "@/components/Snackbar";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 type Filter = "all" | CategoryType;
 
@@ -57,9 +58,7 @@ export default function Categories() {
           show(category.hidden ? "Category visible to members" : "Category hidden from members");
         })
         .catch((e: unknown) => {
-          setError(
-            e instanceof Error ? e.message : "Failed to update category.",
-          );
+          setError(getConvexErrorMessage(e, "Failed to update category."));
         });
     },
     [updateCategory, show],
@@ -84,9 +83,7 @@ export default function Categories() {
                 })
                 .catch((e: unknown) => {
                   setError(
-                    e instanceof Error
-                      ? e.message
-                      : "Failed to delete category.",
+                    getConvexErrorMessage(e, "Failed to delete category."),
                   );
                 });
             },

@@ -20,6 +20,7 @@ import { GradientCard } from "@/components/GradientCard";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber } from "@/utils/format";
 import { addMonths, startOfMonth } from "@/utils/date";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 const monthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -79,7 +80,10 @@ export default function Budgets() {
                   show(`Budget for "${budget.category?.name ?? "Unknown"}" deleted`);
                 })
                 .catch((e: unknown) => {
-                  const message = e instanceof Error ? e.message : "Failed to delete budget.";
+                  const message = getConvexErrorMessage(
+                    e,
+                    "Failed to delete budget.",
+                  );
                   Alert.alert("Error", message);
                 });
             },

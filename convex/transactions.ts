@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
+import { mutation, query, QueryCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { getUserAndMembership } from "./helpers";
 
 const transactionType = v.union(
   v.literal("income"),
@@ -10,38 +11,12 @@ const transactionType = v.union(
 
 const MAX_NOTE_LENGTH = 200;
 
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
-
 function validateAmount(amount: number, type: "income" | "expense" | "transfer") {
   if (!Number.isFinite(amount)) {
     throw new ConvexError("Amount must be a finite number.");
+  }
+  if (!Number.isSafeInteger(amount)) {
+    throw new ConvexError("Amount must be a whole number.");
   }
   if (amount === 0) {
     throw new ConvexError("Amount must be a non-zero number.");

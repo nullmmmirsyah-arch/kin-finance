@@ -18,6 +18,7 @@ import { Fab } from "@/components/Fab";
 import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
 import { useSnackbar } from "@/components/Snackbar";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 type Filter = "all" | AccountType;
 
@@ -63,8 +64,10 @@ export default function Accounts() {
                   show(`"${account.name}" deleted`);
                 })
                 .catch((e: unknown) => {
-                  const message =
-                    e instanceof Error ? e.message : "Failed to delete account.";
+                  const message = getConvexErrorMessage(
+                    e,
+                    "Failed to delete account.",
+                  );
                   setError(message);
                 });
             },
@@ -72,13 +75,23 @@ export default function Accounts() {
         ],
       );
     },
-    [removeAccount],
+    [removeAccount, show],
   );
 
-  if (accounts === null) {
+  if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
         <ActivityIndicator size="large" color={C.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (accounts === null) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+          You are not a member of a household.
+        </Text>
       </SafeAreaView>
     );
   }
