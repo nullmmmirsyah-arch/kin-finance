@@ -41,14 +41,14 @@ Every visit to the login screen shows both Google SSO and email/password with eq
 | Subtitle sign-up | "Join in one tap with Google." | "Create an account and start your family's ledger." |
 | Order | Email fields → Sign In/Sign Up (secondary) → divider → Google (primary) | Google (secondary) → divider → Email fields → Sign In/Sign Up (primary) |
 | Divider | "or continue with Google" | "or sign in with email" / "or sign up with email" |
-| "Last used" flag | beside Google CTA | beside Sign In/Sign Up CTA |
+| "Last used" flag | beside Google CTA | next to the "Email" input label |
 
 - Divider present in both states; only order and label swap.
 - Forgot-password link (sign-in), mode toggle, and verification/reset flows are unaffected.
 
 ### "Last used" flag
-- Small caption (`text-xs`, `text-secondary`), label "Last used", rendered beside the primary CTA label — does not change button height.
-- Placements: right side of the primary CTA, vertically centered with the label.
+- Small pill (12px/500), label "Last used", rendered without changing surrounding heights.
+- Placement: Google path → beside the Google CTA label; email path → next to the "Email" input label (not on the Sign In button).
 
 ## Edge cases
 - First run (null preference): default email-primary layout, no flag.
