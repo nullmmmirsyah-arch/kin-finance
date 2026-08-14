@@ -21,7 +21,7 @@ export async function getUserAndMembership(ctx: MutationCtx) {
   const membership = await ctx.db
     .query("householdMemberships")
     .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
+    .unique();
 
   if (membership === null) {
     throw new ConvexError("You are not a member of a household.");

@@ -17,7 +17,7 @@ Track income, expenses, and transfers across accounts in a shared household. Own
 1. Install dependencies:
 
    ```sh
-   npx expo install
+   npm install
    ```
 
 2. Configure environment variables:
@@ -44,12 +44,12 @@ Track income, expenses, and transfers across accounts in a shared household. Own
 | `npm run web`      | Start Expo web                                    |
 | `npm run lint`     | Run `expo lint`                                   |
 | `npm test`         | Run the Convex unit tests (Vitest + convex-test)  |
-| `npx convex codegen` | Regenerate `convex/_generated/` after function changes |
+| `npx convex codegen` | Regenerate `convex/_generated/` after any change to `convex/*.ts`; then run `npx tsc --noEmit` |
 | `npx tsc --noEmit` | Typecheck                                         |
 
 ## Structure
 
-```
+```text
 app/            Expo Router screens (tabs, forms, auth, onboarding)
 components/     Shared UI components (cards, inputs, fields, snackbar)
 constants/      Theme tokens + account/category/transaction constants

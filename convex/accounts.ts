@@ -91,6 +91,9 @@ export const create = mutation({
     if (!Number.isFinite(openingBalance)) {
       throw new ConvexError("Opening balance must be a valid number.");
     }
+    if (!Number.isSafeInteger(openingBalance)) {
+      throw new ConvexError("Opening balance must be a whole number.");
+    }
 
     const now = Date.now();
     const accountId = await ctx.db.insert("accounts", {

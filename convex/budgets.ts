@@ -200,7 +200,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    if (!Number.isFinite(args.amount) || !Number.isInteger(args.amount) || args.amount < 1) {
+    if (!Number.isFinite(args.amount) || !Number.isSafeInteger(args.amount) || args.amount < 1) {
       throw new ConvexError("Amount must be a whole number of at least 1.");
     }
 
@@ -258,7 +258,7 @@ export const update = mutation({
       throw new ConvexError("Budget not found.");
     }
 
-    if (!Number.isFinite(args.amount) || !Number.isInteger(args.amount) || args.amount < 1) {
+    if (!Number.isFinite(args.amount) || !Number.isSafeInteger(args.amount) || args.amount < 1) {
       throw new ConvexError("Amount must be a whole number of at least 1.");
     }
 

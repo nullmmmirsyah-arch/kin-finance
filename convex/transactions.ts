@@ -15,7 +15,7 @@ function validateAmount(amount: number, type: "income" | "expense" | "transfer")
   if (!Number.isFinite(amount)) {
     throw new ConvexError("Amount must be a finite number.");
   }
-  if (!Number.isInteger(amount)) {
+  if (!Number.isSafeInteger(amount)) {
     throw new ConvexError("Amount must be a whole number.");
   }
   if (amount === 0) {
