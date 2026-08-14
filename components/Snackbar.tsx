@@ -99,7 +99,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
     <SnackbarContext.Provider value={{ show }}>
       {children}
       {message ? (
-        <View pointerEvents="none" className="absolute bottom-24 left-5 right-5">
+        <View pointerEvents="box-none" className="absolute bottom-24 left-5 right-5">
           <Animated.View
             style={[
               Shadow.elevated,

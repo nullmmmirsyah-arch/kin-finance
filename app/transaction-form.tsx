@@ -216,7 +216,7 @@ export default function TransactionForm() {
     if (transactionId === undefined) return;
     Alert.alert(
       "Delete Transaction",
-      "Delete this transaction? This cannot be undone.",
+      "Delete this transaction? You can undo this right after.",
       [
         { text: "Cancel", style: "cancel" },
         {

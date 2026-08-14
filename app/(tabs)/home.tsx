@@ -403,47 +403,54 @@ export default function Home() {
                 />
               )
             ) : (
-              recentGroups.map((group) => (
-                <View key={group.title} className="py-1">
-                  <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
-                    <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-                      {group.title}
-                    </Text>
-                    <Text
-                      className="text-sm font-semibold"
-                      style={{
-                        color:
-                          group.total > 0
-                            ? C.success
-                            : group.total < 0
-                              ? C.error
-                              : C.textSecondary,
-                      }}
-                    >
-                      {group.total > 0 ? "+" : ""}
-                      {formatNumber(group.total)}
-                    </Text>
+              <>
+                {recentGroups.map((group) => (
+                  <View key={group.title} className="py-1">
+                    <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
+                      <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                        {group.title}
+                      </Text>
+                      <Text
+                        className="text-sm font-semibold"
+                        style={{
+                          color:
+                            group.total > 0
+                              ? C.success
+                              : group.total < 0
+                                ? C.error
+                                : C.textSecondary,
+                        }}
+                      >
+                        {group.total > 0 ? "+" : ""}
+                        {formatNumber(group.total)}
+                      </Text>
+                    </View>
+                    {group.data.map((tx) => (
+                      <TransactionCard
+                        key={tx._id}
+                        categoryName={tx.category?.name ?? null}
+                        isTransfer={tx.type === "transfer"}
+                        toAccountName={tx.toAccount?.name}
+                        note={tx.note ?? null}
+                        amount={tx.amount}
+                        type={tx.type}
+                        date={tx.date}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/transaction-form",
+                            params: { id: tx._id },
+                          })
+                        }
+                      />
+                    ))}
                   </View>
-                  {group.data.map((tx) => (
-                    <TransactionCard
-                      key={tx._id}
-                      categoryName={tx.category?.name ?? null}
-                      isTransfer={tx.type === "transfer"}
-                      toAccountName={tx.toAccount?.name}
-                      note={tx.note ?? null}
-                      amount={tx.amount}
-                      type={tx.type}
-                      date={tx.date}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/transaction-form",
-                          params: { id: tx._id },
-                        })
-                      }
-                    />
-                  ))}
-                </View>
-              ))
+                ))}
+                {followingRecent ? (
+                  <View className="px-4 py-4">
+                    <Skeleton style={{ width: "100%", height: 16 }} />
+                  </View>
+                ) : null}
+              </>
             )}
           </View>
         </View>

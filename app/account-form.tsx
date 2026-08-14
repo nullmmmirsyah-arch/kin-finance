@@ -190,7 +190,7 @@ export default function AccountForm() {
               placeholder="0"
               value={openingBalance}
               onChangeText={setOpeningBalance}
-              keyboardType="number-pad"
+              keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"}
               amount
             />
           ) : null}
