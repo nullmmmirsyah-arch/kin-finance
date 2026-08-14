@@ -51,7 +51,7 @@ Track income, expenses, and transfers across accounts in a shared household. Own
 
 ```text
 app/            Expo Router screens (tabs, forms, auth, onboarding)
-components/     Shared UI components (cards, inputs, fields, snackbar)
+components/     Shared UI components (cards, inputs, fields, snackbar, skeleton)
 constants/      Theme tokens + account/category/transaction constants
 convex/         Backend: schema.ts, per-domain functions, helpers.ts
 docs/           PRD + design specs and implementation plans

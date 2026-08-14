@@ -3,16 +3,26 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { ACCOUNT_TYPES } from "@/constants/accounts";
 import type { Id } from "@/convex/_generated/dataModel";
 import { GradientCard } from "@/components/GradientCard";
 import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
+import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
 import { formatDateHeader } from "@/utils/date";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -148,6 +158,17 @@ export default function Home() {
     accountData?.accounts?.reduce((sum, account) => sum + account.balance, 0) ??
     undefined;
 
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <ScrollView contentContainerClassName="px-5 pb-10 pt-4">
@@ -156,7 +177,7 @@ export default function Home() {
             Hello, {email.split("@")[0]}!
           </Text>
           <Pressable
-            onPress={() => void signOut()}
+            onPress={handleSignOut}
             onPressIn={() => setSignOutPressed(true)}
             onPressOut={() => setSignOutPressed(false)}
             accessibilityRole="button"
@@ -194,8 +215,8 @@ export default function Home() {
               Total Balance
             </Text>
             {totalBalance === undefined ? (
-              <View className="py-2">
-                <ActivityIndicator size="small" color={C.primary} />
+              <View className="w-full items-center py-1">
+                <Skeleton style={{ width: 160, height: 32 }} />
               </View>
             ) : (
               <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
@@ -218,46 +239,125 @@ export default function Home() {
               <Text className="text-sm font-medium text-primary dark:text-primary-dark">Manage</Text>
             </Pressable>
           </View>
-          <View
-            style={{ backgroundColor: C.background }}
-            className="mt-2 rounded-[16px]"
-          >
-            {accountData === undefined || accountData.accounts === null ? (
-              <View className="items-center px-4 py-4">
-                <ActivityIndicator size="small" color={C.primary} />
-              </View>
-            ) : accountData.accounts.length === 0 ? (
-              <EmptyState
-                icon="credit-card"
-                title="No accounts yet"
-                description="Add your first account to start tracking"
-                actionLabel={
-                  accountData.isOwner ? "Add Account" : undefined
-                }
-                onAction={
-                  accountData.isOwner
-                    ? () => router.push("/account-form")
-                    : undefined
-                }
-              />
-            ) : (
-              <View className="gap-2 px-4 py-4">
-                <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                  {accountData.accounts.length}{" "}
-                  {accountData.accounts.length === 1 ? "account" : "accounts"}
-                </Text>
-                <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                  Total balance:{" "}
-                  {formatNumber(
-                    accountData.accounts.reduce(
-                      (sum, account) => sum + account.balance,
-                      0,
-                    ),
-                  )}
-                </Text>
-              </View>
-            )}
-          </View>
+
+          {accountData === undefined || accountData.accounts === null ? (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mt-2"
+              contentContainerClassName="gap-3 pr-5"
+              data={[0, 1]}
+              keyExtractor={(item) => String(item)}
+              renderItem={() => (
+                <Skeleton
+                  style={{
+                    width: 160,
+                    height: 96,
+                    borderRadius: Radius.md,
+                  }}
+                />
+              )}
+            />
+          ) : accountData.accounts.length === 0 ? (
+            <EmptyState
+              icon="credit-card"
+              title="No accounts yet"
+              description="Add your first account to start tracking"
+              actionLabel={accountData.isOwner ? "Add Account" : undefined}
+              onAction={
+                accountData.isOwner
+                  ? () => router.push("/account-form")
+                  : undefined
+              }
+            />
+          ) : (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mt-2"
+              contentContainerClassName="gap-3 pr-5"
+              data={accountData.accounts}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => {
+                const meta =
+                  ACCOUNT_TYPES.find((t) => t.id === item.type) ??
+                  ACCOUNT_TYPES[0];
+                return (
+                  <Pressable
+                    onPress={() =>
+                      accountData.isOwner
+                        ? router.push({
+                            pathname: "/account-form",
+                            params: { id: item._id },
+                          })
+                        : router.push("/accounts")
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.name}, balance ${formatNumber(item.balance)}`}
+                    style={[
+                      Shadow.card,
+                      {
+                        width: 160,
+                        borderRadius: Radius.md,
+                        backgroundColor: C.background,
+                        borderWidth: 1,
+                        borderColor: C.border,
+                      },
+                    ]}
+                    className="p-4"
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: Radius.sm,
+                        backgroundColor: C.surface,
+                      }}
+                      className="items-center justify-center"
+                    >
+                      <Feather name={meta.icon} size={18} color={C.primary} />
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      className="mt-3 text-base font-semibold text-text-primary dark:text-text-primary-dark"
+                    >
+                      {item.name}
+                    </Text>
+                    <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                      {formatNumber(item.balance)}
+                    </Text>
+                  </Pressable>
+                );
+              }}
+              ListFooterComponent={
+                accountData.isOwner ? (
+                  <Pressable
+                    onPress={() => router.push("/account-form")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add account"
+                    style={[
+                      Shadow.card,
+                      {
+                        width: 160,
+                        borderRadius: Radius.md,
+                        backgroundColor: C.surface,
+                        borderWidth: 1,
+                        borderColor: C.border,
+                      },
+                    ]}
+                    className="items-center justify-center p-4"
+                  >
+                    <View className="h-10 w-10 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
+                      <Feather name="plus" size={18} color={C.background} />
+                    </View>
+                    <Text className="mt-2 text-sm font-medium text-primary dark:text-primary-dark">
+                      Add Account
+                    </Text>
+                  </Pressable>
+                ) : null
+              }
+            />
+          )}
         </View>
 
         <View className="mt-8">
@@ -278,13 +378,22 @@ export default function Home() {
             className="mt-2 rounded-[16px]"
           >
             {recent === undefined && recentTransactions === null ? (
-              <View className="items-center px-4 py-4">
-                <ActivityIndicator size="small" color={C.primary} />
+              <View className="gap-3 px-4 py-4">
+                {[0, 1, 2].map((i) => (
+                  <View key={i} className="flex-row items-center gap-3">
+                    <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
+                    <View className="flex-1 gap-2">
+                      <Skeleton style={{ width: "70%", height: 14 }} />
+                      <Skeleton style={{ width: "40%", height: 12 }} />
+                    </View>
+                    <Skeleton style={{ width: 64, height: 14 }} />
+                  </View>
+                ))}
               </View>
             ) : recentGroups === null || recentGroups.length === 0 ? (
               followingRecent ? (
-                <View className="items-center px-4 py-4">
-                  <ActivityIndicator size="small" color={C.primary} />
+                <View className="px-4 py-4">
+                  <Skeleton style={{ width: "100%", height: 16 }} />
                 </View>
               ) : (
                 <EmptyState
@@ -294,47 +403,54 @@ export default function Home() {
                 />
               )
             ) : (
-              recentGroups.map((group) => (
-                <View key={group.title} className="py-1">
-                  <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
-                    <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-                      {group.title}
-                    </Text>
-                    <Text
-                      className="text-sm font-semibold"
-                      style={{
-                        color:
-                          group.total > 0
-                            ? C.success
-                            : group.total < 0
-                              ? C.error
-                              : C.textSecondary,
-                      }}
-                    >
-                      {group.total > 0 ? "+" : ""}
-                      {formatNumber(group.total)}
-                    </Text>
+              <>
+                {recentGroups.map((group) => (
+                  <View key={group.title} className="py-1">
+                    <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
+                      <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                        {group.title}
+                      </Text>
+                      <Text
+                        className="text-sm font-semibold"
+                        style={{
+                          color:
+                            group.total > 0
+                              ? C.success
+                              : group.total < 0
+                                ? C.error
+                                : C.textSecondary,
+                        }}
+                      >
+                        {group.total > 0 ? "+" : ""}
+                        {formatNumber(group.total)}
+                      </Text>
+                    </View>
+                    {group.data.map((tx) => (
+                      <TransactionCard
+                        key={tx._id}
+                        categoryName={tx.category?.name ?? null}
+                        isTransfer={tx.type === "transfer"}
+                        toAccountName={tx.toAccount?.name}
+                        note={tx.note ?? null}
+                        amount={tx.amount}
+                        type={tx.type}
+                        date={tx.date}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/transaction-form",
+                            params: { id: tx._id },
+                          })
+                        }
+                      />
+                    ))}
                   </View>
-                  {group.data.map((tx) => (
-                    <TransactionCard
-                      key={tx._id}
-                      categoryName={tx.category?.name ?? null}
-                      isTransfer={tx.type === "transfer"}
-                      toAccountName={tx.toAccount?.name}
-                      note={tx.note ?? null}
-                      amount={tx.amount}
-                      type={tx.type}
-                      date={tx.date}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/transaction-form",
-                          params: { id: tx._id },
-                        })
-                      }
-                    />
-                  ))}
-                </View>
-              ))
+                ))}
+                {followingRecent ? (
+                  <View className="px-4 py-4">
+                    <Skeleton style={{ width: "100%", height: 16 }} />
+                  </View>
+                ) : null}
+              </>
             )}
           </View>
         </View>
