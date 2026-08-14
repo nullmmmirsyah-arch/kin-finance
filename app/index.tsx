@@ -541,21 +541,22 @@ export default function Index() {
 
   const emailInputs = (
     <>
-      <Input
-        label="Email"
-        accessibilityLabel="Email"
-        value={emailAddress}
-        placeholder="you@example.com"
-        onChangeText={setEmailAddress}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="email"
-        textContentType="emailAddress"
-        returnKeyType="next"
-        onSubmitEditing={() => passwordRef.current?.focus()}
-        error={emailError}
-      />
+    <Input
+      label="Email"
+      labelBadge={preferred === "email" ? "Last used" : undefined}
+      accessibilityLabel="Email"
+      value={emailAddress}
+      placeholder="you@example.com"
+      onChangeText={setEmailAddress}
+      keyboardType="email-address"
+      autoCapitalize="none"
+      autoCorrect={false}
+      autoComplete="email"
+      textContentType="emailAddress"
+      returnKeyType="next"
+      onSubmitEditing={() => passwordRef.current?.focus()}
+      error={emailError}
+    />
       <Input
         ref={passwordRef}
         label="Password"
@@ -851,16 +852,15 @@ export default function Index() {
                       disabled={isLoading}
                     />
                     <Divider text={dividerEmail} />
-                    {emailInputs}
-                    <Button
-                      title={mode === "sign-in" ? "Sign In" : "Sign Up"}
-                      onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-                      loading={isLoading}
-                      disabled={isGoogleLoading}
-                      badge={preferred === "email" ? "Last used" : undefined}
-                    />
-                  </>
-                )}
+      {emailInputs}
+      <Button
+        title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+        onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+        loading={isLoading}
+        disabled={isGoogleLoading}
+      />
+    </>
+  )}
 
                 <Pressable
                   onPress={() => {

@@ -5,6 +5,7 @@ import { formatAmountInput } from "@/utils/format";
 
 type Props = TextInputProps & {
   label?: string;
+  labelBadge?: string;
   error?: string | null;
   amount?: boolean;
   ref?: Ref<TextInput>;
@@ -12,6 +13,7 @@ type Props = TextInputProps & {
 
 export function Input({
   label,
+  labelBadge,
   error,
   style,
   amount = false,
@@ -32,9 +34,24 @@ export function Input({
   return (
     <View className="w-full gap-1.5">
       {label ? (
-        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-          {label}
-        </Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+            {label}
+          </Text>
+          {labelBadge ? (
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: C.surface }}
+            >
+              <Text
+                className="text-xs font-medium"
+                style={{ color: C.primary }}
+              >
+                {labelBadge}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       ) : null}
       <TextInput
         placeholderTextColor={C.textSecondary}
