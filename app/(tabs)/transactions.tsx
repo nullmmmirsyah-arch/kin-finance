@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   SectionList,
   Text,
   View,
@@ -9,13 +8,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
 import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { DateField } from "@/components/DateField";
 import { GradientCard } from "@/components/GradientCard";
+import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
 import {
   addDays,
@@ -101,8 +101,25 @@ export default function Transactions() {
 
   if (result === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+            Transactions
+          </Text>
+        </View>
+        <View className="mt-4 flex-row flex-wrap gap-2 px-5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} style={{ width: 96, height: 40, borderRadius: 999 }} />
+          ))}
+        </View>
+        <View className="mt-4 px-5">
+          <Skeleton style={{ height: 88, borderRadius: Radius.md }} />
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} style={{ height: 64, borderRadius: Radius.md }} />
+          ))}
+        </View>
       </SafeAreaView>
     );
   }

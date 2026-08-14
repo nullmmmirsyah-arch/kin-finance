@@ -224,8 +224,10 @@ visible (name + amount, no breakdown).
 ### 3.8 Home Dashboard
 
 - Household card (name + member count).
-- **My Accounts**: horizontal account cards with balances; "Add Account" card
-  for Owner.
+- **Total Balance**: gradient card showing the sum of all account balances.
+- **My Accounts**: horizontal account cards with balance; "Add Account" card for
+  Owner; "Manage" link to the Accounts tab. For Members, tapping a card goes to
+  the Accounts tab (owner-only edit/delete stays in the Accounts tab).
 - **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
   day net total, "See All" link to the Transactions tab.
 - Empty/loading states for each section.
@@ -239,7 +241,7 @@ visible (name + amount, no breakdown).
 | Spacing | XS 4 / SM 8 / MD 16 / LG 24 / XL 32 |
 | Radius | SM 12 / MD 16 / LG 24 |
 | Shadow | Card `0 2 8 rgba(0,0,0,0.04)`, Elevated `0 4 16 rgba(0,0,0,0.08)` |
-| Components | Button (48px, full width, solid), Input (48px outlined), Card (gradient, 16px radius), Header |
+| Components | Button (48px, full width, solid), Input (48px outlined), Card (gradient, 16px radius), Header, Skeleton (pulse loading placeholder) |
 | Icons | Feather, 24px default / 20px small |
 | Theme | System / Light / Dark via `Appearance.setColorScheme`; NativeWind `dark:` variants + `useThemeColors()` / `useThemeGradients()` |
 
@@ -356,7 +358,7 @@ Settings → Appearance → System / Light / Dark
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
-| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar, ThemeProvider, TransactionCard, Chip, DateField, GradientCard) |
+| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard) |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
@@ -388,6 +390,11 @@ All operations within one mutation — atomic.
 - Client must never display `error.message` (technical). Use
   `getConvexErrorMessage(e, fallback)` in every `catch`.
 - Server-side `Server Error` console output for thrown errors is expected.
+- **Feedback standardization:** validation errors render inline next to the
+  field; operational errors (create/update/delete failures) surface via
+  `Snackbar`; destructive actions (delete, remove member, revoke invite,
+  sign out) require an `Alert.alert` confirmation first. Delete transaction
+  shows a Snackbar with an **Undo** action that re-creates the transaction.
 
 ### 5.5 Invitation Security Model
 
@@ -594,7 +601,8 @@ updatedAt: number
 - Gradient cards: `expo-linear-gradient` + `Gradients.card`; shadows
   `Shadow.card` / `Shadow.elevated`; icons Feather.
 - Money inputs: shared `Input` component with `amount` prop (thousand-separator
-  formatting).
+  formatting); `number-pad` keyboard and `formatAmountInput` block decimal
+  input, so whole-number-only is enforced at the keyboard, not as a submit error.
 - **NativeWind v4 gotcha:** never use `style={({ pressed }) => [...]}` on
   `Pressable` — it breaks `className`. Use `useState` + static style.
 
@@ -607,6 +615,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-14 | Polish | UX polish pass: Home My Accounts renders horizontal account cards (per §3.8) with owner "Add Account" card; Skeleton pulse loading on dashboard + list screens; Snackbar supports action buttons (undo delete transaction); sign-out confirmation; decimal input blocked at the keyboard + `formatAmountInput` strips decimals; operational errors unified to Snackbar across accounts/categories/budgets/members |
 | 2026-08-14 | Polish | Hardening pass: whole-number amount enforcement (client + server), unified error handling via `getConvexErrorMessage` across all screens, extracted shared `getUserAndMembership` helper, removed dead theme tokens, project README + `npm test` script, unused asset cleanup |
 | 2026-08-13 | Docs | Consolidate all fragmented docs into this single Product Specification |
 | 2026-08-13 | Feature | Theme preference (System/Light/Dark) with `ThemeProvider` + SecureStore persistence |

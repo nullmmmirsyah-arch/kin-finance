@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Text,
@@ -11,12 +10,13 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
 import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { getConvexErrorMessage } from "@/lib/errors";
 
@@ -33,7 +33,6 @@ export default function Accounts() {
   const removeAccount = useMutation(api.accounts.remove);
   const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
-  const [error, setError] = useState<string | null>(null);
   const C = useThemeColors();
 
   const accounts = result?.accounts ?? null;
@@ -48,7 +47,6 @@ export default function Accounts() {
 
   const handleDelete = useCallback(
     (account: { _id: Id<"accounts">; name: string }) => {
-      setError(null);
       Alert.alert(
         "Delete Account",
         `Delete "${account.name}"? This cannot be undone.`,
@@ -60,7 +58,6 @@ export default function Accounts() {
             onPress: () => {
               removeAccount({ accountId: account._id })
                 .then(() => {
-                  setError(null);
                   show(`"${account.name}" deleted`);
                 })
                 .catch((e: unknown) => {
@@ -68,7 +65,7 @@ export default function Accounts() {
                     e,
                     "Failed to delete account.",
                   );
-                  setError(message);
+                  show(message);
                 });
             },
           },
@@ -80,8 +77,20 @@ export default function Accounts() {
 
   if (result === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
+        </View>
+        <View className="mt-4 flex-row flex-wrap gap-2 px-5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
+          ))}
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} style={{ height: 72, borderRadius: Radius.md }} />
+          ))}
+        </View>
       </SafeAreaView>
     );
   }
@@ -100,9 +109,6 @@ export default function Accounts() {
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
         <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
-        {error ? (
-          <Text className="mt-2 text-sm text-error dark:text-error-dark">{error}</Text>
-        ) : null}
       </View>
 
       <View className="mt-4 flex-row flex-wrap gap-2 px-5">

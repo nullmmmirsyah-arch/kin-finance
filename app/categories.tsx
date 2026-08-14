@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -13,12 +12,13 @@ import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { getConvexErrorMessage } from "@/lib/errors";
 
@@ -36,7 +36,6 @@ export default function Categories() {
   const removeCategory = useMutation(api.categories.remove);
   const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
-  const [error, setError] = useState<string | null>(null);
   const C = useThemeColors();
 
   const categories = result?.categories ?? null;
@@ -51,14 +50,12 @@ export default function Categories() {
 
   const handleToggleVisibility = useCallback(
     (category: { _id: Id<"categories">; hidden: boolean }) => {
-      setError(null);
       updateCategory({ categoryId: category._id, hidden: !category.hidden })
         .then(() => {
-          setError(null);
           show(category.hidden ? "Category visible to members" : "Category hidden from members");
         })
         .catch((e: unknown) => {
-          setError(getConvexErrorMessage(e, "Failed to update category."));
+          show(getConvexErrorMessage(e, "Failed to update category."));
         });
     },
     [updateCategory, show],
@@ -66,7 +63,6 @@ export default function Categories() {
 
   const handleDelete = useCallback(
     (category: { _id: Id<"categories">; name: string }) => {
-      setError(null);
       Alert.alert(
         "Delete Category",
         `Delete "${category.name}"? This cannot be undone.`,
@@ -78,11 +74,10 @@ export default function Categories() {
             onPress: () => {
               removeCategory({ categoryId: category._id })
                 .then(() => {
-                  setError(null);
                   show(`"${category.name}" deleted`);
                 })
                 .catch((e: unknown) => {
-                  setError(
+                  show(
                     getConvexErrorMessage(e, "Failed to delete category."),
                   );
                 });
@@ -96,8 +91,25 @@ export default function Categories() {
 
   if (result === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <View className="flex-row items-center gap-2">
+            <View style={{ width: 48, height: 48 }} />
+            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              Categories
+            </Text>
+          </View>
+        </View>
+        <View className="mt-4 flex-row flex-wrap gap-2 px-5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
+          ))}
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} style={{ height: 72, borderRadius: Radius.md }} />
+          ))}
+        </View>
       </SafeAreaView>
     );
   }
@@ -129,9 +141,6 @@ export default function Categories() {
             Categories
           </Text>
         </View>
-        {error ? (
-          <Text className="mt-2 text-sm text-error dark:text-error-dark">{error}</Text>
-        ) : null}
       </View>
 
       <View className="mt-4 flex-row flex-wrap gap-2 px-5">

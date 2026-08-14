@@ -223,13 +223,36 @@ export default function TransactionForm() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
+            if (editingTx === undefined) return;
+            const deletedPayload = {
+              accountId: editingTx.accountId,
+              categoryId: editingTx.categoryId,
+              toAccountId: editingTx.toAccountId,
+              amount: editingTx.amount,
+              type: editingTx.type,
+              note: editingTx.note,
+              date: editingTx.date,
+            };
             setIsLoading(true);
             removeTransaction({
               transactionId: transactionId as Id<"transactions">,
             })
               .then(() => {
-                show("Transaction deleted");
                 router.back();
+                show("Transaction deleted", {
+                  label: "Undo",
+                  onPress: () => {
+                    createTransaction(deletedPayload)
+                      .then(() => {
+                        show("Transaction restored");
+                      })
+                      .catch((e: unknown) =>
+                        show(
+                          getConvexErrorMessage(e, "Failed to restore transaction."),
+                        ),
+                      );
+                  },
+                });
               })
               .catch((e: unknown) =>
                 setError(
@@ -317,9 +340,7 @@ export default function TransactionForm() {
             placeholder="0"
             value={amountText}
             onChangeText={setAmountText}
-            keyboardType={
-              Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"
-            }
+            keyboardType="number-pad"
             amount
             error={amountError}
           />

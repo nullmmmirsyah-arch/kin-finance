@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -22,6 +21,7 @@ import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
 import { PendingInviteCard } from "@/components/PendingInviteCard";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 
 type Screen = "list" | "invite";
@@ -48,7 +48,7 @@ export default function Members() {
   const updateHousehold = useMutation(api.households.update);
 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -80,22 +80,19 @@ export default function Members() {
       </View>
     );
 
-  const [isGenerating, setIsGenerating] = useState(false);
-
   const handleGenerateCode = useCallback(async () => {
     if (isGenerating) return;
-    setError(null);
     setIsGenerating(true);
     try {
       const result = await createInvite();
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
-      setError(getConvexErrorMessage(e, "Failed to generate invite code."));
+      show(getConvexErrorMessage(e, "Failed to generate invite code."));
     } finally {
       setIsGenerating(false);
     }
-  }, [createInvite, isGenerating]);
+  }, [createInvite, isGenerating, show]);
 
   const handleRevoke = useCallback(
     (invitationId: Id<"invitations">) => {
@@ -112,7 +109,7 @@ export default function Members() {
                 await revokeInvite({ invitationId });
                 show("Invite revoked");
               } catch (e: any) {
-                setError(getConvexErrorMessage(e, "Failed to revoke invite."));
+                show(getConvexErrorMessage(e, "Failed to revoke invite."));
               }
             },
           },
@@ -141,7 +138,7 @@ export default function Members() {
                 });
                 show(`${member.name ?? "Member"} removed`);
               } catch (e: any) {
-                setError(getConvexErrorMessage(e, "Failed to remove member."));
+                show(getConvexErrorMessage(e, "Failed to remove member."));
               }
             },
           },
@@ -228,8 +225,20 @@ export default function Members() {
     me === undefined
   ) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <View className="flex-row items-center gap-2">
+            <View style={{ width: 48, height: 48 }} />
+            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              Household Members
+            </Text>
+          </View>
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          <Skeleton style={{ height: 88, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 72, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 72, borderRadius: Radius.md }} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -238,7 +247,7 @@ export default function Members() {
     router.replace("/onboarding");
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+        <Skeleton style={{ width: 120, height: 120, borderRadius: 999 }} />
       </SafeAreaView>
     );
   }
@@ -260,11 +269,6 @@ export default function Members() {
             Household Members
           </Text>
         </View>
-        {error ? (
-          <Text className="mt-2 text-sm text-error dark:text-error-dark">
-            {error}
-          </Text>
-        ) : null}
       </View>
 
       <View className="mt-4 px-5">
