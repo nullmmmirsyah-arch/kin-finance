@@ -24,6 +24,7 @@ import { getLastAuthMethod, setLastAuthMethod } from "@/lib/auth-preference";
 WebBrowser.maybeCompleteAuthSession();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CODE_REGEX = /^\d{6}$/;
 
 function useWarmUpBrowser() {
   useEffect(() => {
@@ -212,7 +213,7 @@ export default function Index() {
     if (isLoading || isGoogleLoading) return;
     setError(null);
     const trimmedCode = code.trim();
-    if (trimmedCode.length !== 6) {
+    if (!CODE_REGEX.test(trimmedCode)) {
       setError("Enter the 6-digit code from your email.");
       return;
     }
@@ -243,7 +244,7 @@ export default function Index() {
     if (isLoading || isGoogleLoading) return;
     setError(null);
     const trimmedCode = code.trim();
-    if (trimmedCode.length !== 6) {
+    if (!CODE_REGEX.test(trimmedCode)) {
       setError("Enter the 6-digit code from your email.");
       return;
     }
@@ -299,7 +300,13 @@ export default function Index() {
           redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
         });
       if (createdSessionId) {
-        await setActive?.({ session: createdSessionId });
+        if (!setActive) {
+          setError(
+            "Google sign in could not be completed. Please try again.",
+          );
+          return;
+        }
+        await setActive({ session: createdSessionId });
         void setLastAuthMethod("google");
         return;
       }
@@ -332,7 +339,13 @@ export default function Index() {
         if (Object.keys(updateParams).length > 0) {
           const updated = await ssoSignUp.update(updateParams);
           if (updated.status === "complete" && updated.createdSessionId) {
-            await setActive?.({ session: updated.createdSessionId });
+            if (!setActive) {
+              setError(
+                "Google sign in could not be completed. Please try again.",
+              );
+              return;
+            }
+            await setActive({ session: updated.createdSessionId });
             void setLastAuthMethod("google");
             return;
           }
@@ -403,7 +416,7 @@ export default function Index() {
     if (isLoading || isGoogleLoading) return;
     setError(null);
     const trimmedCode = code.trim();
-    if (trimmedCode.length !== 6) {
+    if (!CODE_REGEX.test(trimmedCode)) {
       setError("Enter the 6-digit code from your email.");
       return;
     }
