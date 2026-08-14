@@ -1,6 +1,7 @@
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import type { ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -11,6 +12,7 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  icon?: ReactNode;
 };
 
 const variantStyles: Record<Variant, string> = {
@@ -38,6 +40,7 @@ export function Button({
   loading = false,
   disabled = false,
   className = "",
+  icon,
 }: Props) {
   const isDisabled = disabled || loading;
   const [pressed, setPressed] = useState(false);
@@ -67,9 +70,12 @@ export function Button({
       {loading ? (
         <ActivityIndicator size="small" color={indicatorColor} />
       ) : (
-        <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
-          {title}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          {icon}
+          <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
+            {title}
+          </Text>
+        </View>
       )}
     </Pressable>
   );

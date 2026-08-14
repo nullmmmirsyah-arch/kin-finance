@@ -64,3 +64,11 @@ export const Radius = {
   md: 16,
   lg: 24,
 } as const;
+
+export const FontSize = {
+  display: 28,
+  heading: 18,
+  body: 16,
+  label: 14,
+  caption: 12,
+} as const;

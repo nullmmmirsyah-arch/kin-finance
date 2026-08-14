@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { useThemeColors, useThemeGradients, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -87,7 +87,7 @@ export default function Onboarding() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          contentContainerClassName="flex-grow justify-center px-4 py-10"
           keyboardShouldPersistTaps="handled"
         >
           <View className="items-center gap-6">
@@ -96,20 +96,20 @@ export default function Onboarding() {
               style={[
                 Shadow.card,
                 {
-                  width: 200,
-                  height: 200,
-                  borderRadius: 100,
+                  width: 96,
+                  height: 96,
+                  borderRadius: Radius.lg,
                   borderWidth: 1,
                   borderColor: C.primaryLight,
                 },
               ]}
               className="items-center justify-center"
             >
-              <Feather name="users" size={72} color={C.primary} />
+              <Feather name="users" size={40} color={C.primary} />
             </LinearGradient>
 
             <View className="items-center gap-2">
-              <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
                 Welcome to Kin Finance
               </Text>
               <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
