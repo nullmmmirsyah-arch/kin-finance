@@ -86,7 +86,7 @@ visible) without exposing transaction detail.
 
 | Feature | Requirements |
 |---------|--------------|
-| Authentication | Sign in, sign up, email verification, MFA email code, Google SSO (Clerk). Auth gate in `app/_layout.tsx`. |
+| Authentication | Sign in, sign up (with confirm password), email verification, MFA email code, Google SSO, forgot-password reset (Clerk). Last-used method remembered per device (SecureStore) and leads the login CTA order. Auth gate in `app/_layout.tsx`. |
 | Household | Create (first user becomes Owner), get active household, rename (Owner only), list members, remove member (Owner only; owner cannot be removed). |
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
@@ -155,10 +155,30 @@ visible) without exposing transaction detail.
 
 ### 3.1 Authentication (Clerk)
 
-Clerk handles sign-in/up, email verification, MFA email code, and Google SSO.
-`app/_layout.tsx` wraps the app in `ClerkProvider` + `ConvexProviderWithClerk`.
-`Stack.Protected` gates signed-in routes (`(tabs)`, forms, members) vs the
-signed-out index. `users.store` upserts the user profile on first load.
+Clerk handles sign-in/up, email verification, MFA email code, Google SSO, and
+forgot-password resets. `app/_layout.tsx` wraps the app in `ClerkProvider` +
+`ConvexProviderWithClerk`. `Stack.Protected` gates signed-in routes (`(tabs)`,
+forms, members) vs the signed-out index. `users.store` upserts the user
+profile on first load.
+
+#### Login screen (`app/index.tsx`)
+
+- **Sign-in / Sign-up toggle** with confirm-password on sign-up (a mismatch
+  blocks submission; toggling clears both password fields).
+- **Google SSO** with a brand glyph, promoted above the email form behind an
+  "or sign in with email" divider.
+- **Forgot password** — three-step reset: email → emailed 6-digit code
+  (with resend) → new password (`signIn.resetPasswordEmailCode`).
+- **Email verification / MFA** — emailed 6-digit codes; verify submits once a
+  full code is entered, with warm, reassuring copy.
+- **Last-used method** — the successful method (Google vs email) is persisted
+  in `expo-secure-store` via `lib/auth-preference.ts` and drives the login CTA
+  order: the last-used method becomes the primary action near the thumb with a
+  "Last used" badge — on the Google CTA when Google leads, or next to the
+  "Email" field label when email leads — and an adapted subtitle. The
+  preference is updated on every successful auth and never cleared.
+- **Transient success beat** — after email verification or password reset, a
+  short confirmation screen shows before routing into the app.
 
 ### 3.2 Household
 

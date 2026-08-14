@@ -55,7 +55,7 @@ components/     Shared UI components (cards, inputs, fields, snackbar, skeleton)
 constants/      Theme tokens + account/category/transaction constants
 convex/         Backend: schema.ts, per-domain functions, helpers.ts
 docs/           PRD + design specs and implementation plans
-lib/            Client utilities (error extraction)
+lib/            Client utilities (error extraction, auth preference)
 utils/          Date and number formatting helpers
 tests/          Vitest suites (convex-test)
 ```
