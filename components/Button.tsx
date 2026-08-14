@@ -13,6 +13,7 @@ type Props = {
   disabled?: boolean;
   className?: string;
   icon?: ReactNode;
+  badge?: string;
 };
 
 const variantStyles: Record<Variant, string> = {
@@ -41,6 +42,7 @@ export function Button({
   disabled = false,
   className = "",
   icon,
+  badge,
 }: Props) {
   const isDisabled = disabled || loading;
   const [pressed, setPressed] = useState(false);
@@ -75,6 +77,19 @@ export function Button({
           <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
             {title}
           </Text>
+          {badge ? (
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: C.surface }}
+            >
+              <Text
+                className="text-xs font-medium"
+                style={{ color: C.primary }}
+              >
+                {badge}
+              </Text>
+            </View>
+          ) : null}
         </View>
       )}
     </Pressable>
