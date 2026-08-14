@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-13
+> Last updated: 2026-08-14
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -103,16 +103,16 @@ visible) without exposing transaction detail.
 | Household name | Required; 3–50 chars after trim |
 | Account name | Required; 2–30 chars; unique within household |
 | Account type | `cash` \| `bank` \| `ewallet` \| `credit_card` |
-| Opening balance | Optional number (sign determines income/expense type) |
+| Opening balance | Optional whole number (sign determines income/expense type) |
 | Category name | Required; 2–30 chars; unique within household **and type**; `"Initial Balance"` reserved |
 | Category type | `income` \| `expense` |
-| Transaction amount | Non-zero; positive for income, negative for expense, positive magnitude for transfer; \|amount\| ≥ 1 |
+| Transaction amount | Whole number; non-zero; positive for income, negative for expense, positive magnitude for transfer; \|amount\| ≥ 1 |
 | Transaction account | Required; visible for Member on create; reassignment requires visible account |
 | Transfer accounts | Both required, must differ, same household |
 | Transaction category | Required for income/expense; must match transaction type; visible for Member |
 | Transaction date | Required; cannot be in the future |
 | Note | Optional; ≤ 200 chars |
-| Budget amount | Positive number ≥ 1 |
+| Budget amount | Positive whole number ≥ 1 |
 | Budget category | Required; must be **expense** type; unique per (household, category, month) |
 | Invite code | 8 alphanumeric chars; case-normalized before hashing |
 
@@ -184,7 +184,8 @@ Accounts are where money lives: `cash`, `bank`, `ewallet`, `credit_card`. Each
 has an auto-maintained balance. Owner creates accounts with an optional opening
 balance — the sign of the balance posts an initial transaction against a
 reserved "Initial Balance" category so the balance is applied exactly once
-through the standard path. Owner edits name/type and toggles visibility. Owner
+through the standard path. Opening balances are whole numbers. Owner edits
+name/type and toggles visibility. Owner
 deletes accounts only when no transactions reference them.
 
 ### 3.5 Categories
@@ -201,7 +202,7 @@ reference the category.
 Core records of financial activity: income, expense, or transfer.
 
 - **Income/Expense:** linked to one Account and one Category; amount signed
-  (+income, −expense); category type must match transaction type.
+  (+income, −expense), a whole number; category type must match transaction type.
 - **Transfer:** links two Accounts (from → to), no category; amount is a
   positive magnitude; `from.balance -= amount`, `to.balance += amount`.
 - **Balance auto-update:** create applies; update reverses old + applies new
@@ -214,7 +215,8 @@ Core records of financial activity: income, expense, or transfer.
 
 Monthly spending limits per expense category. Identified by
 `(householdId, categoryId, periodStart)` — one budget per category per month.
-`periodStart` is the first day of the UTC month. Spending = sum of expense
+`periodStart` is the first day of the UTC month. Budget amounts are whole
+numbers. Spending = sum of expense
 transactions in that category during the month; progress = spent / amount.
 Both Owner and Member can manage budgets. Budgets for hidden categories remain
 visible (name + amount, no breakdown).
@@ -358,6 +360,7 @@ Settings → Appearance → System / Light / Dark
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
+| `convex/helpers.ts` | Shared auth/membership helper (`getUserAndMembership`) used by mutation handlers |
 | `convex/*.ts` | Query/mutation functions |
 
 ### 5.3 Account Balance Auto-Update
@@ -604,6 +607,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-14 | Polish | Hardening pass: whole-number amount enforcement (client + server), unified error handling via `getConvexErrorMessage` across all screens, extracted shared `getUserAndMembership` helper, removed dead theme tokens, project README + `npm test` script, unused asset cleanup |
 | 2026-08-13 | Docs | Consolidate all fragmented docs into this single Product Specification |
 | 2026-08-13 | Feature | Theme preference (System/Light/Dark) with `ThemeProvider` + SecureStore persistence |
 | 2026-08-12 | Feature | Home Recent Transactions — live data, day-grouped with net totals, cursor pagination, "See All" |

@@ -15,6 +15,7 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { formatNumber } from "@/utils/format";
 import { formatDateHeader } from "@/utils/date";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function Home() {
   const { signOut } = useAuth();
@@ -99,7 +100,7 @@ export default function Home() {
       await store();
       setSynced(true);
     } catch (e) {
-      setSyncError(e instanceof Error ? e.message : "Failed to sync user.");
+      setSyncError(getConvexErrorMessage(e, "Failed to sync user."));
     }
   }, [store]);
 

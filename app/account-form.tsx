@@ -20,6 +20,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function AccountForm() {
   const router = useRouter();
@@ -107,12 +108,10 @@ export default function AccountForm() {
       show(isEdit ? "Account updated" : "Account created");
       router.back();
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update account."
-            : "Failed to create account.";
+      const message = getConvexErrorMessage(
+        e,
+        isEdit ? "Failed to update account." : "Failed to create account.",
+      );
       setError(message);
     } finally {
       setIsLoading(false);

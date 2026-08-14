@@ -1,34 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "./_generated/server";
-
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
+import { mutation, query } from "./_generated/server";
+import { getUserAndMembership } from "./helpers";
 
 export const list = query({
   args: {
@@ -228,8 +200,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    if (!Number.isFinite(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be at least 1.");
+    if (!Number.isFinite(args.amount) || !Number.isInteger(args.amount) || args.amount < 1) {
+      throw new ConvexError("Amount must be a whole number of at least 1.");
     }
 
     const category = await ctx.db.get(args.categoryId);
@@ -286,8 +258,8 @@ export const update = mutation({
       throw new ConvexError("Budget not found.");
     }
 
-    if (!Number.isFinite(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be at least 1.");
+    if (!Number.isFinite(args.amount) || !Number.isInteger(args.amount) || args.amount < 1) {
+      throw new ConvexError("Amount must be a whole number of at least 1.");
     }
 
     const now = Date.now();

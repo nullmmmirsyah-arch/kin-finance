@@ -20,6 +20,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function CategoryForm() {
   const router = useRouter();
@@ -93,12 +94,10 @@ export default function CategoryForm() {
       show(isEdit ? "Category updated" : "Category created");
       router.back();
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update category."
-            : "Failed to create category.";
+      const message = getConvexErrorMessage(
+        e,
+        isEdit ? "Failed to update category." : "Failed to create category.",
+      );
       setError(message);
     } finally {
       setIsLoading(false);

@@ -21,6 +21,7 @@ import { Input } from "@/components/Input";
 import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
+import { PendingInviteCard } from "@/components/PendingInviteCard";
 import { useSnackbar } from "@/components/Snackbar";
 
 type Screen = "list" | "invite";
@@ -39,6 +40,11 @@ export default function Members() {
   );
   const removeMember = useMutation(api.households.removeMember);
   const createInvite = useMutation(api.invitations.create);
+  const revokeInvite = useMutation(api.invitations.revoke);
+  const invites = useQuery(
+    api.invitations.listActive,
+    household?._id ? { householdId: household._id } : "skip",
+  );
   const updateHousehold = useMutation(api.households.update);
 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -53,6 +59,26 @@ export default function Members() {
     members?.members.some(
       (m) => m.userId === me?._id && m.role === "owner",
     ) ?? false;
+
+  const pendingInvites =
+    isOwner && Array.isArray(invites) && invites.length > 0 ? invites : null;
+
+  const pendingInvitesSection =
+    pendingInvites === null ? null : (
+      <View className="gap-3">
+        <Text className="text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Pending Invites
+        </Text>
+        {pendingInvites.map((inv) => (
+          <PendingInviteCard
+            key={inv._id}
+            createdAt={inv.createdAt}
+            expiresAt={inv.expiresAt}
+            onRevoke={() => handleRevoke(inv._id)}
+          />
+        ))}
+      </View>
+    );
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -70,6 +96,31 @@ export default function Members() {
       setIsGenerating(false);
     }
   }, [createInvite, isGenerating]);
+
+  const handleRevoke = useCallback(
+    (invitationId: Id<"invitations">) => {
+      Alert.alert(
+        "Revoke Invite",
+        "Revoke this invite code? Anyone with this code will no longer be able to join.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Revoke",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await revokeInvite({ invitationId });
+                show("Invite revoked");
+              } catch (e: any) {
+                setError(getConvexErrorMessage(e, "Failed to revoke invite."));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [revokeInvite, show],
+  );
 
   const handleRemoveMember = useCallback(
     (member: { userId: string; name?: string }) => {
@@ -130,7 +181,7 @@ export default function Members() {
       setIsRenaming(false);
       show("Household renamed");
     } catch (e: any) {
-      setRenameError(e?.message ?? "Failed to rename household.");
+      setRenameError(getConvexErrorMessage(e, "Failed to rename household."));
     } finally {
       setIsSaving(false);
     }
@@ -288,9 +339,12 @@ export default function Members() {
 
       {members.members.length === 1 ? (
         <View className="mt-6 flex-1 px-5">
+          {pendingInvitesSection ? (
+            <View className="mb-4">{pendingInvitesSection}</View>
+          ) : null}
           <View
             style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
+            className="flex-1 rounded-[16px]"
           >
             <EmptyState
               icon="users"
@@ -307,6 +361,7 @@ export default function Members() {
           contentContainerClassName="gap-3 px-5 pb-28"
           data={members.members}
           keyExtractor={(item) => item.userId}
+          ListHeaderComponent={pendingInvitesSection ?? undefined}
           renderItem={({ item }) => (
             <MemberCard
               name={item.name ?? "User"}

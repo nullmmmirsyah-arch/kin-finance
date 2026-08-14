@@ -23,6 +23,7 @@ import { SelectField } from "@/components/SelectField";
 import { DateField } from "@/components/DateField";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber } from "@/utils/format";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function TransactionForm() {
   const router = useRouter();
@@ -149,6 +150,10 @@ export default function TransactionForm() {
       setAmountError("Amount is required and must be greater than zero.");
       return;
     }
+    if (!Number.isInteger(amountValue)) {
+      setAmountError("Amount must be a whole number.");
+      return;
+    }
     if (type === "transfer") {
       if (accountId === null || toAccountId === null) {
         setError("From and To accounts are required.");
@@ -196,11 +201,10 @@ export default function TransactionForm() {
       router.back();
     } catch (e) {
       setError(
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update transaction."
-            : "Failed to create transaction.",
+        getConvexErrorMessage(
+          e,
+          isEdit ? "Failed to update transaction." : "Failed to create transaction.",
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -229,9 +233,7 @@ export default function TransactionForm() {
               })
               .catch((e: unknown) =>
                 setError(
-                  e instanceof Error
-                    ? e.message
-                    : "Failed to delete transaction.",
+                  getConvexErrorMessage(e, "Failed to delete transaction."),
                 ),
               )
               .finally(() => setIsLoading(false));

@@ -20,6 +20,7 @@ import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatAmountInput } from "@/utils/format";
 import { startOfMonth } from "@/utils/date";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function BudgetForm() {
   const router = useRouter();
@@ -87,6 +88,10 @@ export default function BudgetForm() {
       setError("Amount must be a valid number.");
       return;
     }
+    if (!Number.isInteger(parsedAmount)) {
+      setError("Amount must be a whole number.");
+      return;
+    }
     if (parsedAmount < 1) {
       setError("Amount must be at least 1.");
       return;
@@ -113,12 +118,10 @@ export default function BudgetForm() {
       show(isEdit ? "Budget updated" : "Budget created");
       router.back();
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update budget."
-            : "Failed to create budget.";
+      const message = getConvexErrorMessage(
+        e,
+        isEdit ? "Failed to update budget." : "Failed to create budget.",
+      );
       setError(message);
     } finally {
       setIsLoading(false);
