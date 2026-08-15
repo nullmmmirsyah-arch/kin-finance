@@ -16,6 +16,13 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { TRANSACTION_TYPES, TransactionType } from "@/constants/transactions";
+import {
+  validateNote,
+  validateTransactionAmount,
+  validateTransactionDate,
+  NOTE_MAX_LENGTH,
+  AMOUNT_MIN_ABS,
+} from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -163,7 +170,7 @@ export default function TransactionForm() {
 
   const canSubmit =
     amountValue !== null &&
-    amountValue > 0 &&
+    amountValue >= AMOUNT_MIN_ABS &&
     Number.isFinite(amountValue) &&
     !isLoading &&
     (type === "transfer"
@@ -245,8 +252,9 @@ export default function TransactionForm() {
       setAmountError("Enter an amount greater than zero.");
       return;
     }
-    if (!Number.isInteger(amountValue)) {
-      setAmountError("Amount must be a whole number.");
+    const err = validateTransactionAmount(signedAmount, type);
+    if (err) {
+      setAmountError(err);
       return;
     }
     if (type === "transfer") {
@@ -264,8 +272,14 @@ export default function TransactionForm() {
         return;
       }
     }
-    if (date.getTime() > Date.now()) {
-      setError("Pick a date today or earlier.");
+    const dateErr = validateTransactionDate(date.getTime());
+    if (dateErr) {
+      setError(dateErr);
+      return;
+    }
+    const noteErr = validateNote(note.trim());
+    if (noteErr) {
+      setError(noteErr);
       return;
     }
 
@@ -565,14 +579,14 @@ export default function TransactionForm() {
                 Note (optional)
               </Text>
               <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
-                {note.length}/200
+                {note.length}/{NOTE_MAX_LENGTH}
               </Text>
             </View>
             <Input
               placeholder="e.g. Lunch with colleagues"
               value={note}
               onChangeText={setNote}
-              maxLength={200}
+              maxLength={NOTE_MAX_LENGTH}
             />
           </View>
 

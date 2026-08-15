@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { validateInviteCode, INVITE_CODE_LENGTH } from "@/constants/validation";
 import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -45,7 +46,7 @@ export default function Onboarding() {
     !isLoading &&
     (mode === "create"
       ? trimmedName.length >= 3
-      : trimmedCode.length === 8);
+      : validateInviteCode(trimmedCode) === null);
 
   const handleCreate = async () => {
     setError(null);
@@ -62,6 +63,11 @@ export default function Onboarding() {
 
   const handleJoin = async () => {
     setError(null);
+    const err = validateInviteCode(trimmedCode);
+    if (err) {
+      setError(err);
+      return;
+    }
     setIsLoading(true);
     try {
       await redeemInvite({ code: trimmedCode });
@@ -176,11 +182,11 @@ export default function Onboarding() {
                 <>
                   <Input
                     value={code}
-                    placeholder="Enter 8-character invite code"
+                    placeholder={`Enter ${INVITE_CODE_LENGTH}-character invite code`}
                     onChangeText={(text) =>
                       setCode(text.toUpperCase().replace(/[^A-Z0-9]/g, ""))
                     }
-                    maxLength={8}
+                    maxLength={INVITE_CODE_LENGTH}
                     autoCapitalize="characters"
                     error={error}
                   />

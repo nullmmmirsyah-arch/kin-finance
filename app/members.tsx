@@ -14,6 +14,7 @@ import { api } from "@/convex/_generated/api";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { validateHouseholdName, HOUSEHOLD_NAME_MAX } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Input } from "@/components/Input";
@@ -162,12 +163,9 @@ export default function Members() {
   const handleSaveRename = async () => {
     setRenameError(null);
     const trimmed = renameValue.trim();
-    if (trimmed.length < 3) {
-      setRenameError("Household name must be at least 3 characters.");
-      return;
-    }
-    if (trimmed.length > 50) {
-      setRenameError("Household name must be at most 50 characters.");
+    const err = validateHouseholdName(trimmed);
+    if (err) {
+      setRenameError(err);
       return;
     }
     if (!household?._id) return;
@@ -294,7 +292,7 @@ export default function Members() {
                 value={renameValue}
                 onChangeText={setRenameValue}
                 placeholder="Household name"
-                maxLength={50}
+                maxLength={HOUSEHOLD_NAME_MAX}
                 error={renameError}
               />
               <View className="flex-row gap-2">
