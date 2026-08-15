@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, QueryCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { getUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership } from "./helpers";
 import {
   validateNote,
   validateTransactionAmount,
@@ -54,6 +54,30 @@ async function hydrate(
   return { category, account, toAccount };
 }
 
+async function applyBalanceDelta(
+  ctx: MutationCtx,
+  accountId: Id<"accounts">,
+  delta: number,
+  now: number,
+) {
+  if (delta === 0) return;
+  const account = await ctx.db.get(accountId);
+  if (account === null) return;
+  await ctx.db.patch(account._id, {
+    balance: account.balance + delta,
+    updatedAt: now,
+  });
+}
+
+async function reverseBalances(ctx: MutationCtx, tx: Doc<"transactions">, now: number) {
+  if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+    await applyBalanceDelta(ctx, tx.accountId, tx.amount, now);
+    await applyBalanceDelta(ctx, tx.toAccountId, -tx.amount, now);
+  } else {
+    await applyBalanceDelta(ctx, tx.accountId, -tx.amount, now);
+  }
+}
+
 export const create = mutation({
   args: {
     accountId: v.id("accounts"),
@@ -79,29 +103,8 @@ export const create = mutation({
       throw new ConvexError("Account not found.");
     }
 
-    let category:
-      | {
-          _id: Id<"categories">;
-          householdId: Id<"households">;
-          name: string;
-          type: "income" | "expense";
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
-    let toAccount:
-      | {
-          _id: Id<"accounts">;
-          householdId: Id<"households">;
-          name: string;
-          type: "cash" | "bank" | "ewallet" | "credit_card";
-          balance: number;
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let category: Doc<"categories"> | undefined;
+    let toAccount: Doc<"accounts"> | undefined;
 
     if (args.type === "transfer") {
       if (args.categoryId !== undefined) {
@@ -172,19 +175,15 @@ export const create = mutation({
     });
 
     if (args.type === "transfer") {
-      await ctx.db.patch(args.accountId, {
-        balance: account.balance - args.amount,
-        updatedAt: now,
-      });
-      await ctx.db.patch(args.toAccountId as Id<"accounts">, {
-        balance: toAccount!.balance + args.amount,
-        updatedAt: now,
-      });
+      await applyBalanceDelta(ctx, args.accountId, -args.amount, now);
+      await applyBalanceDelta(
+        ctx,
+        args.toAccountId as Id<"accounts">,
+        args.amount,
+        now,
+      );
     } else {
-      await ctx.db.patch(args.accountId, {
-        balance: account.balance + args.amount,
-        updatedAt: now,
-      });
+      await applyBalanceDelta(ctx, args.accountId, args.amount, now);
     }
 
     return transactionId;
@@ -198,30 +197,11 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { transactions: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { transactions: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { transactions: null, isOwner: false };
-    }
+    const { membership } = result;
 
     const isOwner = membership.role === "owner";
     const limit = Math.min(
@@ -324,30 +304,11 @@ export const recent = query({
     cursor: v.optional(v.object({ date: v.number(), id: v.id("transactions") })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { transactions: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { transactions: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { transactions: null, isOwner: false };
-    }
+    const { membership } = result;
 
     const isOwner = membership.role === "owner";
     const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
@@ -442,30 +403,11 @@ export const recent = query({
 export const get = query({
   args: { transactionId: v.id("transactions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return null;
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return null;
-    }
+    const { membership } = result;
 
     const tx = await ctx.db.get(args.transactionId);
     if (tx === null || tx.householdId !== membership.householdId) {
@@ -479,15 +421,7 @@ export const get = query({
       }
     }
 
-    const category =
-      tx.categoryId === undefined
-        ? undefined
-        : ((await ctx.db.get(tx.categoryId)) ?? undefined);
-    const account = (await ctx.db.get(tx.accountId)) ?? undefined;
-    const toAccount =
-      tx.toAccountId === undefined
-        ? undefined
-        : ((await ctx.db.get(tx.toAccountId)) ?? undefined);
+    const { category, account, toAccount } = await hydrate(ctx, tx);
 
     return {
       transaction: { ...tx, category, account, toAccount },
@@ -560,17 +494,7 @@ export const update = mutation({
       throw new ConvexError("Account not found.");
     }
 
-    let category:
-      | {
-          _id: Id<"categories">;
-          householdId: Id<"households">;
-          name: string;
-          type: "income" | "expense";
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let category: Doc<"categories"> | undefined;
     if (categoryId !== undefined) {
       const cat = await ctx.db.get(categoryId);
       if (cat === null || cat.householdId !== membership.householdId) {
@@ -582,18 +506,7 @@ export const update = mutation({
       category = cat;
     }
 
-    let toAccount:
-      | {
-          _id: Id<"accounts">;
-          householdId: Id<"households">;
-          name: string;
-          type: "cash" | "bank" | "ewallet" | "credit_card";
-          balance: number;
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let toAccount: Doc<"accounts"> | undefined;
     if (toAccountId !== undefined) {
       const to = await ctx.db.get(toAccountId);
       if (to === null || to.householdId !== membership.householdId) {
@@ -653,14 +566,7 @@ export const update = mutation({
     }
 
     for (const [id, delta] of deltas) {
-      if (delta === 0) continue;
-      const doc = await ctx.db.get(id as Id<"accounts">);
-      if (doc !== null) {
-        await ctx.db.patch(doc._id, {
-          balance: doc.balance + delta,
-          updatedAt: now,
-        });
-      }
+      await applyBalanceDelta(ctx, id as Id<"accounts">, delta, now);
     }
 
     await ctx.db.patch(args.transactionId, {
@@ -699,31 +605,7 @@ export const remove = mutation({
     }
 
     const now = Date.now();
-    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
-      const from = await ctx.db.get(tx.accountId);
-      const to = await ctx.db.get(tx.toAccountId);
-      if (from !== null) {
-        await ctx.db.patch(from._id, {
-          balance: from.balance + tx.amount,
-          updatedAt: now,
-        });
-      }
-      if (to !== null) {
-        await ctx.db.patch(to._id, {
-          balance: to.balance - tx.amount,
-          updatedAt: now,
-        });
-      }
-    } else {
-      const account = await ctx.db.get(tx.accountId);
-      if (account !== null) {
-        await ctx.db.patch(account._id, {
-          balance: account.balance - tx.amount,
-          updatedAt: now,
-        });
-      }
-    }
-
+    await reverseBalances(ctx, tx, now);
     await ctx.db.delete(args.transactionId);
   },
 });

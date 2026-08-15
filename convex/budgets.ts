@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership } from "./helpers";
 import { validateBudgetAmount } from "../constants/validation";
 
 export const list = query({
@@ -9,31 +9,11 @@ export const list = query({
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return { budgets: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { budgets: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { budgets: null, isOwner: false };
-    }
-
+    const { membership } = auth;
     const isOwner = membership.role === "owner";
 
     if (args.periodEnd <= args.periodStart) {
@@ -107,30 +87,11 @@ export const list = query({
 export const get = query({
   args: { budgetId: v.id("budgets") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return null;
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return null;
-    }
+    const { membership } = auth;
 
     const budget = await ctx.db.get(args.budgetId);
     if (budget === null || budget.householdId !== membership.householdId) {
@@ -151,30 +112,11 @@ export const get = query({
 export const categoryOptions = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return [];
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return [];
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return [];
-    }
+    const { membership } = auth;
 
     const categories = await ctx.db
       .query("categories")

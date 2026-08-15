@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { findUser } from "./helpers";
 
 export const store = mutation({
   args: {},
@@ -32,15 +33,6 @@ export const store = mutation({
 export const getMe = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      return null;
-    }
-    return await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    return await findUser(ctx);
   },
 });

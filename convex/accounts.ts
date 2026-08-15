@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
-import { getUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership } from "./helpers";
 import { validateAccountName } from "../constants/validation";
 
 const accountType = v.union(
@@ -14,31 +14,11 @@ const accountType = v.union(
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { accounts: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { accounts: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { accounts: null, isOwner: false };
-    }
-
+    const { membership } = result;
     const isOwner = membership.role === "owner";
     const all = await ctx.db
       .query("accounts")

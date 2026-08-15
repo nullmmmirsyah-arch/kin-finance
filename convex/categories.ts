@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership } from "./helpers";
 import { validateCategoryName } from "../constants/validation";
 
 const categoryType = v.union(v.literal("income"), v.literal("expense"));
@@ -10,31 +10,11 @@ const RESERVED_CATEGORY_NAME = "Initial Balance";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { categories: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { categories: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { categories: null, isOwner: false };
-    }
-
+    const { membership } = result;
     const isOwner = membership.role === "owner";
     const all = await ctx.db
       .query("categories")
