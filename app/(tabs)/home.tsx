@@ -26,18 +26,18 @@ import { formatNumber } from "@/utils/format";
 import { formatDateHeader, startOfMonth, addMonths } from "@/utils/date";
 import { getConvexErrorMessage } from "@/lib/errors";
 
-const ACCOUNT_TYPE_TINTS: Record<AccountType, string> = {
-  cash: "#065F46",
-  bank: "#92400E",
-  ewallet: "#1D4ED8",
-  credit_card: "#991B1B",
+const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
+  cash: "accountCash",
+  bank: "accountBank",
+  ewallet: "accountEwallet",
+  credit_card: "accountCreditCard",
 };
 
 function BudgetPill({
   pill,
   onPress,
 }: {
-  pill: { id: string; name: string; budgeted: number; spent: number; progress: number };
+  pill: { id: string; name: string; budgeted: number; spent?: number; progress?: number };
   onPress: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -49,7 +49,7 @@ function BudgetPill({
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
-      accessibilityLabel={`${pill.name}: ${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}`}
+      accessibilityLabel={`${pill.name}: ${pill.spent !== undefined ? `${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}` : "details unavailable"}`}
       style={[
         Shadow.card,
         {
@@ -64,19 +64,23 @@ function BudgetPill({
           {pill.name}
         </Text>
         <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-          {formatNumber(pill.spent)} of {formatNumber(pill.budgeted)}
+          {pill.spent !== undefined
+            ? `${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}`
+            : "Details unavailable"}
         </Text>
       </View>
-      <View className="h-2 w-16 overflow-hidden rounded-full bg-border dark:bg-border-dark">
-        <View
-          style={{
-            width: `${Math.min(pill.progress * 100, 100)}%`,
-            backgroundColor:
-              pill.progress > 1 ? C.error : pill.progress > 0.8 ? "#D97706" : C.primary,
-          }}
-          className="h-full rounded-full"
-        />
-      </View>
+      {pill.progress !== undefined && (
+        <View className="h-2 w-16 overflow-hidden rounded-full bg-border dark:bg-border-dark">
+          <View
+            style={{
+              width: `${Math.min(pill.progress * 100, 100)}%`,
+              backgroundColor:
+                pill.progress > 1 ? C.error : pill.progress > 0.8 ? "#D97706" : C.success,
+            }}
+            className="h-full rounded-full"
+          />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -156,14 +160,27 @@ export default function Home() {
   const monthStart = startOfMonth(now).getTime();
   const monthEnd = addMonths(startOfMonth(now), 1).getTime();
 
+  const utcMonthStart = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    1,
+    0, 0, 0, 0,
+  );
+  const utcMonthEnd = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    1,
+    0, 0, 0, 0,
+  );
+
   const monthTransactions = useQuery(api.transactions.list, {
     startDate: monthStart,
     endDate: monthEnd,
   });
 
   const monthBudgets = useQuery(api.budgets.list, {
-    periodStart: monthStart,
-    periodEnd: monthEnd,
+    periodStart: utcMonthStart,
+    periodEnd: utcMonthEnd,
   });
 
   const monthlySummary = useMemo(() => {
@@ -188,8 +205,8 @@ export default function Home() {
       id: b._id,
       name: b.category?.name ?? "Budget",
       budgeted: b.amount,
-      spent: b.spent ?? 0,
-      progress: b.progress ?? 0,
+      spent: b.spent,
+      progress: b.progress,
     }));
   }, [monthBudgets]);
 
@@ -388,7 +405,8 @@ export default function Home() {
                 const meta =
                   ACCOUNT_TYPES.find((t) => t.id === item.type) ??
                   ACCOUNT_TYPES[0];
-                const tint = ACCOUNT_TYPE_TINTS[item.type] ?? C.primary;
+                const tintKey = ACCOUNT_TYPE_THEME_KEY[item.type] ?? "primary";
+                const tint = C[tintKey] ?? C.primary;
                 return (
                   <Pressable
                     onPress={() =>

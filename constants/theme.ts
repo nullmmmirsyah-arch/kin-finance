@@ -10,6 +10,10 @@ export const Colors = {
   success: "#065F46",
   error: "#991B1B",
   border: "#E7E5E4",
+  accountCash: "#065F46",
+  accountBank: "#92400E",
+  accountEwallet: "#1D4ED8",
+  accountCreditCard: "#991B1B",
 } as const;
 
 export const DarkColors = {
@@ -22,6 +26,10 @@ export const DarkColors = {
   success: "#34D399",
   error: "#F87171",
   border: "#44403C",
+  accountCash: "#34D399",
+  accountBank: "#F59E0B",
+  accountEwallet: "#60A5FA",
+  accountCreditCard: "#F87171",
 } as const;
 
 export function useThemeColors() {
