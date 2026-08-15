@@ -180,23 +180,44 @@ export default function TransactionForm() {
       : accountId !== null && categoryId !== null);
 
   const hasInteracted = useMemo(() => {
-    if (amountText !== "" || accountId !== null || toAccountId !== null || categoryId !== null || note !== "") {
-      return true;
-    }
     if (!isEdit) {
-      return type !== "expense" || date.toDateString() !== new Date().toDateString();
+      return (
+        amountText !== "" ||
+        accountId !== null ||
+        toAccountId !== null ||
+        categoryId !== null ||
+        note !== "" ||
+        type !== "expense" ||
+        date.toDateString() !== new Date().toDateString()
+      );
     }
+    if (!editingTx) return false;
     return (
-      editingTx !== undefined &&
-      (date.getTime() !== new Date(editingTx.date).getTime() ||
-        note !== (editingTx.note ?? ""))
+      type !== editingTx.type ||
+      amountValue !== Math.abs(editingTx.amount) ||
+      accountId !== editingTx.accountId ||
+      toAccountId !== (editingTx.toAccountId ?? null) ||
+      categoryId !== (editingTx.categoryId ?? null) ||
+      date.getTime() !== editingTx.date ||
+      note !== (editingTx.note ?? "")
     );
-  }, [amountText, accountId, toAccountId, categoryId, note, date, type, isEdit, editingTx]);
+  }, [
+    isEdit,
+    editingTx,
+    type,
+    amountValue,
+    amountText,
+    accountId,
+    toAccountId,
+    categoryId,
+    date,
+    note,
+  ]);
 
   const intentionalBack = useRef(false);
 
   const handleBack = useCallback(() => {
-    if (!hasInteracted || isEdit) {
+    if (!hasInteracted) {
       router.back();
       return;
     }
@@ -215,7 +236,7 @@ export default function TransactionForm() {
         },
       ],
     );
-  }, [hasInteracted, isEdit, router]);
+  }, [hasInteracted, router]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -223,7 +244,7 @@ export default function TransactionForm() {
         intentionalBack.current = false;
         return;
       }
-      if (!hasInteracted || isEdit) return;
+      if (!hasInteracted) return;
       e.preventDefault();
       Alert.alert(
         "Discard unsaved changes?",
@@ -239,7 +260,7 @@ export default function TransactionForm() {
       );
     });
     return unsubscribe;
-  }, [hasInteracted, isEdit, navigation]);
+  }, [hasInteracted, navigation]);
 
   const handleSubmit = async () => {
     setError(null);
