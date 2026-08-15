@@ -186,6 +186,8 @@ export default function TransactionForm() {
     );
   }, [amountText, accountId, toAccountId, categoryId, note, date, type, isEdit, editingTx]);
 
+  const intentionalBack = useRef(false);
+
   const handleBack = useCallback(() => {
     if (!hasInteracted || isEdit) {
       router.back();
@@ -196,13 +198,24 @@ export default function TransactionForm() {
       "You have unsaved changes that will be lost.",
       [
         { text: "Keep editing", style: "cancel" },
-        { text: "Discard", style: "destructive", onPress: () => router.back() },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            intentionalBack.current = true;
+            router.back();
+          },
+        },
       ],
     );
   }, [hasInteracted, isEdit, router]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (intentionalBack.current) {
+        intentionalBack.current = false;
+        return;
+      }
       if (!hasInteracted || isEdit) return;
       e.preventDefault();
       Alert.alert(
@@ -287,6 +300,7 @@ export default function TransactionForm() {
         };
       }
       show(isEdit ? "Transaction updated" : "Transaction added");
+      intentionalBack.current = true;
       router.back();
     } catch (e) {
       setError(
@@ -327,6 +341,7 @@ export default function TransactionForm() {
               transactionId: transactionId as Id<"transactions">,
             })
               .then(() => {
+                intentionalBack.current = true;
                 router.back();
                 show("Transaction deleted", {
                   label: "Undo",
