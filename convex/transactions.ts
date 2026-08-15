@@ -2,6 +2,11 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { getUserAndMembership } from "./helpers";
+import {
+  validateNote,
+  validateTransactionAmount,
+  validateTransactionDate,
+} from "../constants/validation";
 
 const transactionType = v.union(
   v.literal("income"),
@@ -9,66 +14,43 @@ const transactionType = v.union(
   v.literal("transfer"),
 );
 
-const MAX_NOTE_LENGTH = 200;
-
-function validateAmount(amount: number, type: "income" | "expense" | "transfer") {
-  if (!Number.isFinite(amount)) {
-    throw new ConvexError("Amount must be a finite number.");
-  }
-  if (!Number.isSafeInteger(amount)) {
-    throw new ConvexError("Amount must be a whole number.");
-  }
-  if (amount === 0) {
-    throw new ConvexError("Amount must be a non-zero number.");
-  }
-  if (type === "income" && amount <= 0) {
-    throw new ConvexError("Amount must be positive for income transactions.");
-  }
-  if (type === "expense" && amount >= 0) {
-    throw new ConvexError("Amount must be negative for expense transactions.");
-  }
-  if (type === "transfer" && amount <= 0) {
-    throw new ConvexError("Amount must be positive for transfers.");
-  }
-  if (Math.abs(amount) < 1) {
-    throw new ConvexError("Amount must be at least 1.");
-  }
-}
-
-function validateNote(note: string | undefined) {
-  if (note !== undefined && note.length > MAX_NOTE_LENGTH) {
-    throw new ConvexError("Note must be at most 200 characters.");
-  }
-}
-
-function validateDate(date: number) {
-  if (!Number.isFinite(date)) {
-    throw new ConvexError("Date must be a valid timestamp.");
-  }
-  if (date > Date.now()) {
-    throw new ConvexError("Transaction date cannot be in the future.");
-  }
-}
+const MAX_LIST_ROWS = 1000;
 
 async function hydrate(
   ctx: QueryCtx,
   row: Doc<"transactions">,
-  categoryCache?: Map<string, any>,
+  cache?: Map<string, Doc<"accounts"> | Doc<"categories"> | undefined>,
 ) {
-  let category: any;
-  if (row.categoryId === undefined) {
-    category = undefined;
-  } else if (categoryCache?.has(row.categoryId)) {
-    category = categoryCache.get(row.categoryId);
-  } else {
-    category = (await ctx.db.get(row.categoryId)) ?? undefined;
-    categoryCache?.set(row.categoryId, category);
-  }
-  const account = (await ctx.db.get(row.accountId)) ?? undefined;
+  const getEntity = async <T>(
+    key: string,
+    id: Id<"accounts"> | Id<"categories">,
+  ): Promise<T | undefined> => {
+    if (cache?.has(key)) return cache.get(key) as T | undefined;
+    const doc = (await ctx.db.get(id)) as T | null;
+    const value = doc ?? undefined;
+    cache?.set(key, value as Doc<"accounts"> | Doc<"categories"> | undefined);
+    return value;
+  };
+
+  const category =
+    row.categoryId === undefined
+      ? undefined
+      : await getEntity<Doc<"categories">>(
+          `category:${row.categoryId}`,
+          row.categoryId,
+        );
+  const account = await getEntity<Doc<"accounts">>(
+    `account:${row.accountId}`,
+    row.accountId,
+  );
   const toAccount =
     row.toAccountId === undefined
       ? undefined
-      : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+      : await getEntity<Doc<"accounts">>(
+          `account:${row.toAccountId}`,
+          row.toAccountId,
+        );
+
   return { category, account, toAccount };
 }
 
@@ -85,9 +67,12 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    validateAmount(args.amount, args.type);
-    validateNote(args.note);
-    validateDate(args.date);
+    const err = validateTransactionAmount(args.amount, args.type);
+    if (err) throw new ConvexError(err);
+    const noteErr = validateNote(args.note);
+    if (noteErr) throw new ConvexError(noteErr);
+    const dateErr = validateTransactionDate(args.date);
+    if (dateErr) throw new ConvexError(dateErr);
 
     const account = await ctx.db.get(args.accountId);
     if (account === null || account.householdId !== membership.householdId) {
@@ -210,6 +195,7 @@ export const list = query({
   args: {
     startDate: v.number(),
     endDate: v.number(),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -238,6 +224,10 @@ export const list = query({
     }
 
     const isOwner = membership.role === "owner";
+    const limit = Math.min(
+      Math.max(Math.floor(args.limit ?? MAX_LIST_ROWS), 1),
+      MAX_LIST_ROWS,
+    );
     const rows = await ctx.db
       .query("transactions")
       .withIndex("by_household_date", (q) =>
@@ -248,9 +238,13 @@ export const list = query({
       )
       .collect();
 
+    const entityCache = new Map<
+      string,
+      Doc<"accounts"> | Doc<"categories"> | undefined
+    >();
     const transactions = [];
     for (const row of rows) {
-      const { category, account, toAccount } = await hydrate(ctx, row);
+      const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
       if (!isOwner && category !== undefined && category.hidden) {
         continue;
       }
@@ -258,7 +252,7 @@ export const list = query({
     }
 
     transactions.sort((a, b) => b.date - a.date);
-    return { transactions, isOwner };
+    return { transactions: transactions.slice(0, limit), isOwner };
   },
 });
 
@@ -320,7 +314,7 @@ export const recent = query({
     let cursorId = args.cursor?.id;
     let atBoundary = false;
     const collected = [];
-    const categoryCache = new Map<string, any>();
+    const entityCache = new Map<string, any>();
 
     while (collected.length < limit && scanned < SCAN_BUDGET) {
       const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
@@ -349,7 +343,7 @@ export const recent = query({
           continue;
         }
 
-        const { category, account, toAccount } = await hydrate(ctx, row, categoryCache);
+        const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
         if (category !== undefined && category.hidden) {
           continue;
         }
@@ -490,12 +484,13 @@ export const update = mutation({
       }
     }
 
-    validateAmount(amount, type);
-    if (args.note !== undefined) {
-      validateNote(args.note);
-    }
+    const err = validateTransactionAmount(amount, type);
+    if (err) throw new ConvexError(err);
+    const noteErr = validateNote(args.note);
+    if (noteErr) throw new ConvexError(noteErr);
     if (args.date !== undefined) {
-      validateDate(args.date);
+      const dateErr = validateTransactionDate(args.date);
+      if (dateErr) throw new ConvexError(dateErr);
     }
 
     const account = await ctx.db.get(accountId);

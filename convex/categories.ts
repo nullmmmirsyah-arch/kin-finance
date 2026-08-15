@@ -1,24 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUserAndMembership } from "./helpers";
+import { validateCategoryName } from "../constants/validation";
 
 const categoryType = v.union(v.literal("income"), v.literal("expense"));
 
 const RESERVED_CATEGORY_NAME = "Initial Balance";
-
-function validateName(name: string): string {
-  const trimmed = name.trim();
-  if (trimmed.length === 0) {
-    throw new ConvexError("Category name is required.");
-  }
-  if (trimmed.length < 2) {
-    throw new ConvexError("Category name must be at least 2 characters.");
-  }
-  if (trimmed.length > 30) {
-    throw new ConvexError("Category name must be at most 30 characters.");
-  }
-  return trimmed;
-}
 
 export const list = query({
   args: {},
@@ -79,7 +66,9 @@ export const create = mutation({
       throw new ConvexError("You are not the owner of this household.");
     }
 
-    const name = validateName(args.name);
+    const err = validateCategoryName(args.name);
+    if (err) throw new ConvexError(err);
+    const name = args.name.trim();
 
     if (name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category name is reserved.");
@@ -143,7 +132,9 @@ export const update = mutation({
     } = { updatedAt: Date.now() };
 
     if (args.name !== undefined) {
-      const name = validateName(args.name);
+      const err = validateCategoryName(args.name);
+      if (err) throw new ConvexError(err);
+      const name = args.name.trim();
       if (name === RESERVED_CATEGORY_NAME) {
         throw new ConvexError("This category name is reserved.");
       }

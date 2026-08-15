@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUserAndMembership } from "./helpers";
+import { validateBudgetAmount } from "../constants/validation";
 
 export const list = query({
   args: {
@@ -88,13 +89,14 @@ export const list = query({
       const category = categoryMap.get(budget.categoryId);
       const spent = spendingByCategory.get(budget.categoryId) ?? 0;
       const progress = budget.amount > 0 ? spent / budget.amount : 0;
+      const redacted = !isOwner && category?.hidden === true;
       return {
         ...budget,
         category: category
           ? { _id: category._id, name: category.name, hidden: category.hidden }
           : undefined,
-        spent,
-        progress,
+        spent: redacted ? undefined : spent,
+        progress: redacted ? undefined : progress,
       };
     });
 
@@ -200,9 +202,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    if (!Number.isFinite(args.amount) || !Number.isSafeInteger(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be a whole number of at least 1.");
-    }
+    const err = validateBudgetAmount(args.amount);
+    if (err) throw new ConvexError(err);
 
     const category = await ctx.db.get(args.categoryId);
     if (
@@ -258,9 +259,8 @@ export const update = mutation({
       throw new ConvexError("Budget not found.");
     }
 
-    if (!Number.isFinite(args.amount) || !Number.isSafeInteger(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be a whole number of at least 1.");
-    }
+    const err = validateBudgetAmount(args.amount);
+    if (err) throw new ConvexError(err);
 
     const now = Date.now();
     await ctx.db.patch(args.budgetId, {
