@@ -49,7 +49,7 @@ export default function Budgets() {
     let spent = 0;
     for (const b of budgets) {
       budgeted += b.amount;
-      spent += b.spent;
+      spent += b.spent ?? 0;
     }
     return { budgeted, spent };
   }, [budgets]);

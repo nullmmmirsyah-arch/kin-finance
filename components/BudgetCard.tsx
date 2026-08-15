@@ -6,7 +6,7 @@ type Props = {
   categoryName: string;
   categoryHidden: boolean;
   budgetAmount: number;
-  spent: number;
+  spent?: number;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -20,8 +20,9 @@ export function BudgetCard({
   onDelete,
 }: Props) {
   const C = useThemeColors();
-  const overBudget = spent > budgetAmount;
-  const progress = budgetAmount > 0 ? Math.min(spent / budgetAmount, 1) : 0;
+  const overBudget = spent !== undefined && spent > budgetAmount;
+  const progress =
+    spent === undefined ? 0 : budgetAmount > 0 ? Math.min(spent / budgetAmount, 1) : 0;
 
   return (
     <View
@@ -71,7 +72,8 @@ export function BudgetCard({
         <Text
           className={`text-sm ${overBudget ? "text-error dark:text-error-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
         >
-          {spent.toLocaleString("en-US")} / {budgetAmount.toLocaleString("en-US")}
+          {spent === undefined ? "—" : spent.toLocaleString("en-US")} /{" "}
+          {budgetAmount.toLocaleString("en-US")}
         </Text>
         {overBudget ? (
           <Text className="text-xs font-medium text-error dark:text-error-dark">
