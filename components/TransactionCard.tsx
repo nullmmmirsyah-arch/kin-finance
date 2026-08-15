@@ -5,6 +5,34 @@ import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
 import { formatTime } from "@/utils/date";
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Groceries: "shopping-cart",
+  Food: "coffee",
+  Dining: "coffee",
+  Transport: "car",
+  Rent: "home",
+  Utilities: "zap",
+  Salary: "briefcase",
+  Freelance: "briefcase",
+  Shopping: "shopping-bag",
+  Entertainment: "film",
+  Health: "heart",
+  Education: "book",
+  Savings: "piggy-bank",
+  Gifts: "gift",
+  Travel: "map",
+  Subscriptions: "repeat",
+  Insurance: "shield",
+  Debt: "credit-card",
+  Investments: "trending-up",
+  Other: "tag",
+};
+
+function getCategoryIcon(categoryName: string | null): string {
+  if (!categoryName) return "tag";
+  return CATEGORY_ICONS[categoryName] ?? "tag";
+}
+
 type Props = {
   categoryName: string | null;
   isTransfer: boolean;
@@ -71,9 +99,9 @@ export function TransactionCard({
         className="items-center justify-center"
       >
         <Feather
-          name={isTransfer ? "arrow-right" : "tag"}
+          name={(isTransfer ? "arrow-right" : getCategoryIcon(categoryName)) as any}
           size={18}
-          color={C.primary}
+          color={isTransfer ? C.primary : type === "income" ? C.success : C.error}
         />
       </View>
       <View className="flex-1">

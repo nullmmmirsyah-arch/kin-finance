@@ -251,14 +251,28 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
 
 ### 3.8 Home Dashboard
 
-- Household card (name + member count).
-- **Total Balance**: gradient card showing the sum of all account balances.
-- **My Accounts**: horizontal account cards with balance; "Add Account" card for
-  Owner; "Manage" link to the Accounts tab. For Members, tapping a card goes to
-  the Accounts tab (owner-only edit/delete stays in the Accounts tab).
+- Greeting uses the user's first name (from Clerk `user.firstName`, falling back
+  to profile name, then email prefix with dots replaced by spaces).
+- Household card (name + member count badge).
+- **Total Balance**: gradient card showing the sum of all account balances, with
+  a secondary line showing this month's net income/expense in semantic color
+  (green for positive, red for negative).
+- **Budgets** (when budgets exist): up to 3 budget pills showing category name,
+  spent/budgeted amounts, and a color-threshold progress bar (green → amber →
+  red). "See All" links to the Budgets tab.
+- **My Accounts**: horizontal account cards with type-specific tinted icon
+  backgrounds (green for cash, amber for bank, blue for e-wallet, red for credit
+  card); "Add Account" card for Owner; "Manage" link to the Accounts tab. For
+  Members, tapping a card goes to the Accounts tab (owner-only edit/delete stays
+  in the Accounts tab).
 - **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
-  day net total, "See All" link to the Transactions tab.
-- Empty/loading states for each section.
+  day net total, "See All" link to the Transactions tab. Transaction icons map
+  category names to relevant Feather icons (shopping-cart, coffee, car, home,
+  briefcase, etc.) with semantic colors (green for income, red for expense).
+- Empty states include action CTAs (e.g., "Add Transaction" on empty transaction
+  list, "Add Account" for Owners on empty accounts).
+- FAB uses reanimated spring animation (scale on press) for tactile feedback.
+- Sign-out is accessible only via the Settings tab, not the home header.
 
 ### 3.9 Design System
 
@@ -326,9 +340,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   and shows a snackbar when category is cleared.
 - Amount input uses `formatAmountInput` for automatic thousand-separator
   display. Contextual hint below explains sign convention per type.
-- "Repeat last" chip appears when a transaction was created in the same
-  session — pre-fills type, amount, account, category (does not survive
-  unmount).
+- "Repeat last" standalone row (below type chips, above amount) appears when
+  a transaction was created in the same session — pre-fills type, amount,
+  account, category (does not survive unmount). Includes icon, label, and
+  description for self-explanatory power-user shortcut.
 - Date field shows "Today's date is pre-filled — you can backdate
   transactions".
 - Note field has a character counter (`0/200`) with amber/red color feedback
@@ -337,6 +352,14 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - Discard guard: header back button and Android hardware back button both
   show an Alert when the form has unsaved changes (type change from default
   or date change from today counts as interaction for new transactions).
+- **Inline validation:** field-specific error states (`amountError`,
+  `accountError`, `categoryError`, `dateError`) display directly beneath
+  each field on blur or submit attempt. Type change clears all error states.
+- **Three-section layout:** Type + Amount (bordered container),
+  Account + Category or From/To Account (bordered container with
+  `bg-surface`), Date + Note (bordered container). Consistent bordered
+  treatment without gradient card — clean visual rhythm with background
+  color differentiation for account/category emphasis.
 
 ### 4.5 Owner Invites Member
 
@@ -399,7 +422,7 @@ Settings → Appearance → System / Light / Dark
 |-----------|---------------|
 | `app/_layout.tsx` | ThemeProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, root Stack + auth gating |
 | `app/index.tsx` | Signed-out entry |
-| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions) |
+| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
 | `app/(tabs)/transactions.tsx` | Transactions list (date filters, summary, grouped) |
 | `app/(tabs)/budgets.tsx` | Budgets list (month selector, progress) |
@@ -670,6 +693,8 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-15 | UX | Home dashboard redesign (critique score 21→target): balance card now shows monthly net income/expense with semantic color; budget pills row with progress bars; type-specific tinted account icons; category-mapped transaction icons with semantic colors; greeting uses first name; sign-out moved to Settings; empty states include action CTAs; FAB uses reanimated spring animation; dark mode badge contrast fixed |
+| 2026-08-15 | UX | Transaction form design critique cycle (v1–v5, score 29→31/40): inline field-specific validation (amount, account, category, date errors show beneath each field); three-section layout with differentiated backgrounds (Account/Category `bg-surface`, Date/Note `bg-background`); removed GradientCard for consistent bordered treatment; "Repeat last" moved from type chip row to standalone icon+label+description row; date errors now inline under DateField instead of generic banner |
 | 2026-08-15 | Hardening | Shared validation module (constants/validation.ts) used by client + server, fixing isInteger/isSafeInteger drift; transactions.list hydration cache + 1 000-row cap; discard guard fixed for edit mode (all fields tracked); invitations.listActive owner-gated; budgets.list redacts spent/progress for Members on hidden-category budgets; onboarding redirect moved out of render (members/settings); new convex-test specs for list cap, budget redaction, and invite owner-gate |
 | 2026-08-15 | Polish | Transaction form UX: contextual subtitle/type icon, discard guard (header back + Android hardware back via `beforeRemove`), type-change snackbar on category clear, "Repeat last" chip (same-session `useRef`), amount thousand-separator formatting preserved, contextual sign-convention hint, date backdate hint, note character counter with amber/red feedback, rewritten error messages, `hasInteracted` triggers on type/date change for new transactions; SelectField: search (>8 options), NativeWind styling, `Shadow.card` token, `keyboardShouldPersistTaps="handled"`, `min-h-12` options, accessibility labels |
 | 2026-08-14 | Polish | UX polish pass: Home My Accounts renders horizontal account cards (per §3.8) with owner "Add Account" card; Skeleton pulse loading on dashboard + list screens; Snackbar supports action buttons (undo delete transaction); sign-out confirmation; decimal input blocked at the keyboard + `formatAmountInput` strips decimals; operational errors unified to Snackbar across accounts/categories/budgets/members |

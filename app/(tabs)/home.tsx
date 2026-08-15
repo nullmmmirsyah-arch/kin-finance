@@ -1,11 +1,10 @@
-import { useAuth, useUser } from "@clerk/expo";
+import { useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -15,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { ACCOUNT_TYPES } from "@/constants/accounts";
+import { ACCOUNT_TYPES, type AccountType } from "@/constants/accounts";
 import type { Id } from "@/convex/_generated/dataModel";
 import { GradientCard } from "@/components/GradientCard";
 import { TransactionCard } from "@/components/TransactionCard";
@@ -24,11 +23,69 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
-import { formatDateHeader } from "@/utils/date";
+import { formatDateHeader, startOfMonth, addMonths } from "@/utils/date";
 import { getConvexErrorMessage } from "@/lib/errors";
 
+const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
+  cash: "accountCash",
+  bank: "accountBank",
+  ewallet: "accountEwallet",
+  credit_card: "accountCreditCard",
+};
+
+function BudgetPill({
+  pill,
+  onPress,
+}: {
+  pill: { id: string; name: string; budgeted: number; spent?: number; progress?: number };
+  onPress: () => void;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const C = useThemeColors();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={`${pill.name}: ${pill.spent !== undefined ? `${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}` : "details unavailable"}`}
+      style={[
+        Shadow.card,
+        {
+          backgroundColor: pressed ? C.surface : C.background,
+          borderRadius: Radius.md,
+        },
+      ]}
+      className="flex-row items-center gap-3 px-4 py-3"
+    >
+      <View className="flex-1">
+        <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+          {pill.name}
+        </Text>
+        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+          {pill.spent !== undefined
+            ? `${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}`
+            : "Details unavailable"}
+        </Text>
+      </View>
+      {pill.progress !== undefined && (
+        <View className="h-2 w-16 overflow-hidden rounded-full bg-border dark:bg-border-dark">
+          <View
+            style={{
+              width: `${Math.min(pill.progress * 100, 100)}%`,
+              backgroundColor:
+                pill.progress > 1 ? C.error : pill.progress > 0.8 ? "#D97706" : C.success,
+            }}
+            className="h-full rounded-full"
+          />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 export default function Home() {
-  const { signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const store = useMutation(api.users.store);
@@ -99,9 +156,62 @@ export default function Home() {
     }));
   }, [recentTransactions]);
 
+  const now = new Date();
+  const monthStart = startOfMonth(now).getTime();
+  const monthEnd = addMonths(startOfMonth(now), 1).getTime();
+
+  const utcMonthStart = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    1,
+    0, 0, 0, 0,
+  );
+  const utcMonthEnd = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    1,
+    0, 0, 0, 0,
+  );
+
+  const monthTransactions = useQuery(api.transactions.list, {
+    startDate: monthStart,
+    endDate: monthEnd,
+  });
+
+  const monthBudgets = useQuery(api.budgets.list, {
+    periodStart: utcMonthStart,
+    periodEnd: utcMonthEnd,
+  });
+
+  const monthlySummary = useMemo(() => {
+    const txs = monthTransactions?.transactions;
+    if (!txs) return null;
+    let income = 0;
+    let expense = 0;
+    for (const tx of txs) {
+      if (tx.type === "income") {
+        income += tx.amount;
+      } else if (tx.type === "expense") {
+        expense += Math.abs(tx.amount);
+      }
+    }
+    return { income, expense, net: income - expense };
+  }, [monthTransactions]);
+
+  const budgetPills = useMemo(() => {
+    const budgets = monthBudgets?.budgets;
+    if (!budgets || budgets.length === 0) return [];
+    return budgets.slice(0, 3).map((b) => ({
+      id: b._id,
+      name: b.category?.name ?? "Budget",
+      budgeted: b.amount,
+      spent: b.spent,
+      progress: b.progress,
+    }));
+  }, [monthBudgets]);
+
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [signOutPressed, setSignOutPressed] = useState(false);
   const C = useThemeColors();
 
   const sync = useCallback(async () => {
@@ -150,6 +260,8 @@ export default function Home() {
   }
 
   const email = me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "there";
+  const firstName =
+    user?.firstName ?? me?.name?.split(" ")[0] ?? email.split("@")[0].replace(/\./g, " ");
   const memberCount = members?.members.length ?? 1;
   const memberLabel =
     memberCount === 1 ? "1 member" : `${memberCount} members`;
@@ -158,35 +270,13 @@ export default function Home() {
     accountData?.accounts?.reduce((sum, account) => sum + account.balance, 0) ??
     undefined;
 
-  const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", style: "destructive", onPress: () => void signOut() },
-      ],
-    );
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <ScrollView contentContainerClassName="px-5 pb-10 pt-4">
         <View className="mb-5 flex-row items-center justify-between">
           <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            Hello, {email.split("@")[0]}!
+            Hello, {firstName}!
           </Text>
-          <Pressable
-            onPress={handleSignOut}
-            onPressIn={() => setSignOutPressed(true)}
-            onPressOut={() => setSignOutPressed(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            className="h-12 w-12 items-center justify-center rounded-xl"
-            style={signOutPressed ? { backgroundColor: C.surface } : undefined}
-          >
-            <Feather name="log-out" size={20} color={C.textSecondary} />
-          </Pressable>
         </View>
 
         <View className="mb-4 items-center gap-1.5">
@@ -194,12 +284,10 @@ export default function Home() {
             {household.name}
           </Text>
           <View
-            style={[
-              {
-                borderRadius: 999,
-                backgroundColor: C.primaryLight,
-              },
-            ]}
+            style={{
+              borderRadius: 999,
+              backgroundColor: C.surface,
+            }}
             className="flex-row items-center gap-1.5 px-3 py-1"
           >
             <Feather name="users" size={14} color={C.primary} />
@@ -223,8 +311,43 @@ export default function Home() {
                 {formatNumber(totalBalance)}
               </Text>
             )}
+            {monthlySummary ? (
+              <Text
+                className="text-center text-sm font-medium"
+                style={{
+                  color: monthlySummary.net >= 0 ? C.success : C.error,
+                }}
+              >
+                {monthlySummary.net >= 0 ? "+" : ""}
+                {formatNumber(monthlySummary.net)} this month
+              </Text>
+            ) : (
+              <Skeleton style={{ width: 120, height: 14 }} />
+            )}
           </View>
         </GradientCard>
+
+        {budgetPills.length > 0 && (
+          <View className="mt-6">
+            <View className="flex-row items-center justify-between">
+              <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                Budgets
+              </Text>
+              <Pressable
+                onPress={() => router.push("/budgets")}
+                accessibilityRole="button"
+                className="min-h-12 items-center justify-center"
+              >
+                <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
+              </Pressable>
+            </View>
+            <View className="mt-2 gap-3">
+              {budgetPills.map((pill) => (
+                <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
+              ))}
+            </View>
+          </View>
+        )}
 
         <View className="mt-8">
           <View className="flex-row items-center justify-between">
@@ -282,6 +405,8 @@ export default function Home() {
                 const meta =
                   ACCOUNT_TYPES.find((t) => t.id === item.type) ??
                   ACCOUNT_TYPES[0];
+                const tintKey = ACCOUNT_TYPE_THEME_KEY[item.type] ?? "primary";
+                const tint = C[tintKey] ?? C.primary;
                 return (
                   <Pressable
                     onPress={() =>
@@ -311,11 +436,11 @@ export default function Home() {
                         width: 40,
                         height: 40,
                         borderRadius: Radius.sm,
-                        backgroundColor: C.surface,
+                        backgroundColor: `${tint}15`,
                       }}
                       className="items-center justify-center"
                     >
-                      <Feather name={meta.icon} size={18} color={C.primary} />
+                      <Feather name={meta.icon} size={18} color={tint} />
                     </View>
                     <Text
                       numberOfLines={1}
@@ -400,6 +525,8 @@ export default function Home() {
                   icon="book-open"
                   title="No transactions yet"
                   description="Start by recording your first transaction"
+                  actionLabel="Add Transaction"
+                  onAction={() => router.push("/transaction-form")}
                 />
               )
             ) : (
