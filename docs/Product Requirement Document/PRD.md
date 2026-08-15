@@ -326,9 +326,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   and shows a snackbar when category is cleared.
 - Amount input uses `formatAmountInput` for automatic thousand-separator
   display. Contextual hint below explains sign convention per type.
-- "Repeat last" chip appears when a transaction was created in the same
-  session — pre-fills type, amount, account, category (does not survive
-  unmount).
+- "Repeat last" standalone row (below type chips, above amount) appears when
+  a transaction was created in the same session — pre-fills type, amount,
+  account, category (does not survive unmount). Includes icon, label, and
+  description for self-explanatory power-user shortcut.
 - Date field shows "Today's date is pre-filled — you can backdate
   transactions".
 - Note field has a character counter (`0/200`) with amber/red color feedback
@@ -337,6 +338,14 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - Discard guard: header back button and Android hardware back button both
   show an Alert when the form has unsaved changes (type change from default
   or date change from today counts as interaction for new transactions).
+- **Inline validation:** field-specific error states (`amountError`,
+  `accountError`, `categoryError`, `dateError`) display directly beneath
+  each field on blur or submit attempt. Type change clears all error states.
+- **Three-section layout:** Type + Amount (bordered container),
+  Account + Category or From/To Account (bordered container with
+  `bg-surface`), Date + Note (bordered container). Consistent bordered
+  treatment without gradient card — clean visual rhythm with background
+  color differentiation for account/category emphasis.
 
 ### 4.5 Owner Invites Member
 
@@ -670,6 +679,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-15 | UX | Transaction form design critique cycle (v1–v5, score 29→31/40): inline field-specific validation (amount, account, category, date errors show beneath each field); three-section layout with differentiated backgrounds (Account/Category `bg-surface`, Date/Note `bg-background`); removed GradientCard for consistent bordered treatment; "Repeat last" moved from type chip row to standalone icon+label+description row; date errors now inline under DateField instead of generic banner |
 | 2026-08-15 | Hardening | Shared validation module (constants/validation.ts) used by client + server, fixing isInteger/isSafeInteger drift; transactions.list hydration cache + 1 000-row cap; discard guard fixed for edit mode (all fields tracked); invitations.listActive owner-gated; budgets.list redacts spent/progress for Members on hidden-category budgets; onboarding redirect moved out of render (members/settings); new convex-test specs for list cap, budget redaction, and invite owner-gate |
 | 2026-08-15 | Polish | Transaction form UX: contextual subtitle/type icon, discard guard (header back + Android hardware back via `beforeRemove`), type-change snackbar on category clear, "Repeat last" chip (same-session `useRef`), amount thousand-separator formatting preserved, contextual sign-convention hint, date backdate hint, note character counter with amber/red feedback, rewritten error messages, `hasInteracted` triggers on type/date change for new transactions; SelectField: search (>8 options), NativeWind styling, `Shadow.card` token, `keyboardShouldPersistTaps="handled"`, `min-h-12` options, accessibility labels |
 | 2026-08-14 | Polish | UX polish pass: Home My Accounts renders horizontal account cards (per §3.8) with owner "Add Account" card; Skeleton pulse loading on dashboard + list screens; Snackbar supports action buttons (undo delete transaction); sign-out confirmation; decimal input blocked at the keyboard + `formatAmountInput` strips decimals; operational errors unified to Snackbar across accounts/categories/budgets/members |

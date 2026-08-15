@@ -61,6 +61,9 @@ export default function TransactionForm() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const lastTransaction = useRef<{
@@ -143,6 +146,9 @@ export default function TransactionForm() {
       setType(t);
       setError(null);
       setAmountError(null);
+      setAccountError(null);
+      setCategoryError(null);
+      setDateError(null);
       if (t === "transfer") {
         if (categoryId !== null) {
           show("Category cleared — does not match transfer type");
@@ -157,7 +163,9 @@ export default function TransactionForm() {
 
   const handleAmountChange = useCallback((text: string) => {
     setAmountText(text);
-  }, []);
+    if (amountError) setAmountError(null);
+    if (error) setError(null);
+  }, [amountError, error]);
 
   const parsedAmount = amountText.replace(/,/g, "");
   const amountValue =
@@ -166,6 +174,35 @@ export default function TransactionForm() {
       : Number(parsedAmount);
   const signedAmount =
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
+
+  const handleAmountBlur = useCallback(() => {
+    if (amountValue !== null && amountValue <= 0) {
+      setAmountError("Enter an amount greater than zero.");
+      return;
+    }
+    const err = validateTransactionAmount(signedAmount, type);
+    if (err) {
+      setAmountError(err);
+    }
+  }, [amountValue, signedAmount, type]);
+
+  const handleAccountSelect = useCallback((id: string) => {
+    setAccountId(id);
+    setAccountError(null);
+    if (error) setError(null);
+  }, [error]);
+
+  const handleToAccountSelect = useCallback((id: string) => {
+    setToAccountId(id);
+    setAccountError(null);
+    if (error) setError(null);
+  }, [error]);
+
+  const handleCategorySelect = useCallback((id: string) => {
+    setCategoryId(id);
+    setCategoryError(null);
+    if (error) setError(null);
+  }, [error]);
 
   const canSubmit =
     validateTransactionAmount(signedAmount, type) === null &&
@@ -262,6 +299,9 @@ export default function TransactionForm() {
   const handleSubmit = async () => {
     setError(null);
     setAmountError(null);
+    setAccountError(null);
+    setCategoryError(null);
+    setDateError(null);
     if (
       amountValue === null ||
       amountValue <= 0 ||
@@ -277,22 +317,26 @@ export default function TransactionForm() {
     }
     if (type === "transfer") {
       if (accountId === null || toAccountId === null) {
-        setError("Select both accounts.");
+        setAccountError("Select both accounts.");
         return;
       }
       if (accountId === toAccountId) {
-        setError("From and To accounts must be different.");
+        setAccountError("From and To accounts must be different.");
         return;
       }
     } else {
-      if (accountId === null || categoryId === null) {
-        setError("Select an account and category.");
+      if (accountId === null) {
+        setAccountError("Select an account.");
+        return;
+      }
+      if (categoryId === null) {
+        setCategoryError("Select a category.");
         return;
       }
     }
     const dateErr = validateTransactionDate(date.getTime());
     if (dateErr) {
-      setError(dateErr);
+      setDateError(dateErr);
       return;
     }
     const noteErr = validateNote(note.trim());
@@ -472,140 +516,163 @@ export default function TransactionForm() {
             </View>
           ) : null}
 
-          <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-              Type
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {TRANSACTION_TYPES.map((t) => (
-                <Chip
-                  key={t.id}
-                  label={t.label}
-                  active={type === t.id}
-                  onPress={() => handleTypeChange(t.id)}
-                />
-              ))}
+          <View className="rounded-2xl border border-border bg-background px-4 py-4 dark:border-border-dark dark:bg-background-dark">
+            <View className="gap-4">
+              <View className="gap-1.5">
+                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                  Type
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {TRANSACTION_TYPES.map((t) => (
+                    <Chip
+                      key={t.id}
+                      label={t.label}
+                      active={type === t.id}
+                      onPress={() => handleTypeChange(t.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+
               {!isEdit && lastTransaction.current ? (
-                <View className="items-start gap-1">
-                  <Chip
-                    label="Repeat last"
-                    active={false}
-                    onPress={handleRepeatLast}
-                  />
-                  <Text className="pl-1 text-xs text-text-secondary dark:text-text-secondary-dark">
-                    Copies type, amount, and account from your previous transaction
-                  </Text>
-                </View>
+                <Pressable
+                  onPress={handleRepeatLast}
+                  accessibilityRole="button"
+                  accessibilityLabel="Repeat last transaction"
+                  className="min-h-12 flex-row items-center gap-2 rounded-xl border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark"
+                >
+                  <Feather name="repeat" size={16} color={C.primary} />
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                      Repeat last
+                    </Text>
+                    <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                      Copies type, amount, and account from your previous transaction
+                    </Text>
+                  </View>
+                </Pressable>
               ) : null}
+
+              <View className="gap-1.5">
+                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                  Amount
+                </Text>
+                <Input
+                  placeholder="0"
+                  value={amountText}
+                  onChangeText={handleAmountChange}
+                  onBlur={handleAmountBlur}
+                  keyboardType="number-pad"
+                  amount
+                  error={amountError}
+                />
+                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                  Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
+                </Text>
+              </View>
             </View>
           </View>
 
-          <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-              Amount
-            </Text>
-            <Input
-              placeholder="0"
-              value={amountText}
-              onChangeText={handleAmountChange}
-              keyboardType="number-pad"
-              amount
-              error={amountError}
-            />
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-              Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
-            </Text>
-          </View>
-
-          {type === "transfer" ? (
-            <>
-              <SelectField
-                label="From account"
-                placeholder="Select account"
-                value={accountId}
-                options={accountOptions}
-                onSelect={setAccountId}
-              />
-              <SelectField
-                label="To account"
-                placeholder="Select account"
-                value={toAccountId}
-                options={accountOptions.filter((o) => o.id !== accountId)}
-                onSelect={setToAccountId}
-              />
-            </>
-          ) : (
-            <>
-              <SelectField
-                label="Account"
-                placeholder="Select account"
-                value={accountId}
-                options={accountOptions}
-                onSelect={setAccountId}
-              />
-              <SelectField
-                label="Category"
-                placeholder="Select category"
-                value={categoryId}
-                options={categoryOptions}
-                onSelect={setCategoryId}
-              />
-              {categoryResult !== undefined && categoryOptions.length === 0 ? (
-                <View className="gap-1.5">
-                  <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                    {categoryResult?.isOwner === true
-                      ? `No ${type === "income" ? "income" : "expense"} categories yet. Create one to continue.`
-                      : `No ${type === "income" ? "income" : "expense"} categories available yet.`}
-                  </Text>
-                  {categoryResult?.isOwner === true ? (
-                    <View className="gap-1">
-                      <Pressable
-                        onPress={() => router.push("/category-form")}
-                        accessibilityRole="button"
-                        accessibilityLabel="Create a category"
-                        className="min-h-12 items-center justify-center"
-                      >
-                        <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                          Create a category
+          <View className="rounded-2xl border border-border bg-surface px-4 py-4 dark:border-border-dark dark:bg-surface-dark">
+            {type === "transfer" ? (
+              <View className="gap-4">
+                <SelectField
+                  label="From account"
+                  placeholder="Select account"
+                  value={accountId}
+                  options={accountOptions}
+                  onSelect={handleAccountSelect}
+                  error={accountError}
+                />
+                <SelectField
+                  label="To account"
+                  placeholder="Select account"
+                  value={toAccountId}
+                  options={accountOptions.filter((o) => o.id !== accountId)}
+                  onSelect={handleToAccountSelect}
+                  error={accountError}
+                />
+              </View>
+            ) : (
+              <View className="gap-4">
+                <SelectField
+                  label="Account"
+                  placeholder="Select account"
+                  value={accountId}
+                  options={accountOptions}
+                  onSelect={handleAccountSelect}
+                  error={accountError}
+                />
+                <SelectField
+                  label="Category"
+                  placeholder="Select category"
+                  value={categoryId}
+                  options={categoryOptions}
+                  onSelect={handleCategorySelect}
+                  error={categoryError}
+                />
+                {categoryResult !== undefined && categoryOptions.length === 0 ? (
+                  <View className="gap-1.5">
+                    <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                      {categoryResult?.isOwner === true
+                        ? `No ${type === "income" ? "income" : "expense"} categories yet. Create one to continue.`
+                        : `No ${type === "income" ? "income" : "expense"} categories available yet.`}
+                    </Text>
+                    {categoryResult?.isOwner === true ? (
+                      <View className="gap-1">
+                        <Pressable
+                          onPress={() => router.push("/category-form")}
+                          accessibilityRole="button"
+                          accessibilityLabel="Create a category"
+                          className="min-h-12 items-center justify-center"
+                        >
+                          <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                            Create a category
+                          </Text>
+                        </Pressable>
+                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                          After creating a category, come back here to continue
                         </Text>
-                      </Pressable>
-                      <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                        After creating a category, come back here to continue
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-            </>
-          )}
-
-          <View className="gap-1.5">
-            <DateField
-              label="Date"
-              value={date}
-              maximumDate={new Date()}
-              onChange={setDate}
-            />
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-              Today&apos;s date is pre-filled — you can backdate transactions
-            </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            )}
           </View>
 
-          <View className="gap-1.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-                Note (optional)
-              </Text>
-              <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
-                {note.length}/{NOTE_MAX_LENGTH}
-              </Text>
+          <View className="rounded-2xl border border-border bg-background px-4 py-4 dark:border-border-dark dark:bg-background-dark">
+            <View className="gap-4">
+              <View className="gap-1.5">
+                <DateField
+                  label="Date"
+                  value={date}
+                  maximumDate={new Date()}
+                  onChange={setDate}
+                  error={dateError}
+                />
+                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                  Today&apos;s date is pre-filled — you can backdate transactions
+                </Text>
+              </View>
+
+              <View className="gap-1.5">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                    Note (optional)
+                  </Text>
+                  <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
+                    {note.length}/{NOTE_MAX_LENGTH}
+                  </Text>
+                </View>
+                <Input
+                  placeholder="e.g. Lunch with colleagues"
+                  value={note}
+                  onChangeText={setNote}
+                  maxLength={NOTE_MAX_LENGTH}
+                />
+              </View>
             </View>
-            <Input
-              placeholder="e.g. Lunch with colleagues"
-              value={note}
-              onChangeText={setNote}
-              maxLength={NOTE_MAX_LENGTH}
-            />
           </View>
 
           <Button
