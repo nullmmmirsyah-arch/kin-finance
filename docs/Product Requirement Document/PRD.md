@@ -91,7 +91,7 @@ visible) without exposing transaction detail.
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
-| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. |
+| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per call (server cap, optional `limit`). |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
 | Home | Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All"). |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -147,7 +147,8 @@ visible) without exposing transaction detail.
   untouchable by Members (no view/create/edit/delete). Transfers have no
   category and are unaffected.
 - **Hidden Category Budgets (exception):** budget category name and amount are
-  visible to Members; spending breakdown is not shown.
+  visible to Members; spending breakdown is not shown (server-side:
+  `spent`/`progress` are redacted for Members).
 
 ---
 
@@ -234,6 +235,8 @@ Core records of financial activity: income, expense, or transfer.
   thousand-separator formatting, contextual sign-convention hint, "Repeat last"
   shortcut, date hint, note character counter, discard guard on both header
   back button and Android hardware back button. See §4.4 for details.
+- The `list` query hydrates entities with a per-query cache and caps results at
+  1 000 rows.
 
 ### 3.7 Budgets
 
@@ -243,7 +246,8 @@ Monthly spending limits per expense category. Identified by
 numbers. Spending = sum of expense
 transactions in that category during the month; progress = spent / amount.
 Both Owner and Member can manage budgets. Budgets for hidden categories remain
-visible (name + amount, no breakdown).
+visible (name + amount, no breakdown). For Members, the spending breakdown
+(spent/progress) of budgets on hidden categories is not shown.
 
 ### 3.8 Home Dashboard
 
@@ -440,6 +444,9 @@ All operations within one mutation — atomic.
   `Snackbar`; destructive actions (delete, remove member, revoke invite,
   sign out) require an `Alert.alert` confirmation first. Delete transaction
   shows a Snackbar with an **Undo** action that re-creates the transaction.
+- Client and server share one validation module, `constants/validation.ts`
+  (path alias `@/constants/validation`), eliminating drift (e.g. `isInteger`
+  vs `isSafeInteger`).
 
 ### 5.5 Invitation Security Model
 
@@ -599,7 +606,7 @@ updatedAt: number
 | `invitations` | `create` | mutation | Generate code (owner), auto-revokes previous |
 | `invitations` | `revoke` | mutation | Owner only |
 | `invitations` | `redeem` | mutation | Atomic join; rate limited |
-| `invitations` | `listActive` | query | Active invites for household |
+| `invitations` | `listActive` | query | Active invites; owner only |
 | `accounts` | `list` | query | Visibility-filtered accounts + `isOwner` |
 | `accounts` | `create` | mutation | Owner; optional opening balance |
 | `accounts` | `update` | mutation | Owner; name/type/hidden |
@@ -611,10 +618,10 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer |
 | `transactions` | `update` | mutation | Reverse old + apply new balances |
 | `transactions` | `remove` | mutation | Reverse balances |
-| `transactions` | `list` | query | Date-range filtered |
+| `transactions` | `list` | query | Date-range filtered; optional `limit` (default/max 1 000); cached hydration |
 | `transactions` | `recent` | query | Latest N with cursor pagination |
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
-| `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress |
+| `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted (undefined) for Members on hidden categories |
 | `budgets` | `get` | query | Single budget |
 | `budgets` | `categoryOptions` | query | Expense categories for budget form |
 | `budgets` | `create` | mutation | Member-ok; unique per category/month |
@@ -663,6 +670,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-15 | Hardening | Shared validation module (constants/validation.ts) used by client + server, fixing isInteger/isSafeInteger drift; transactions.list hydration cache + 1 000-row cap; discard guard fixed for edit mode (all fields tracked); invitations.listActive owner-gated; budgets.list redacts spent/progress for Members on hidden-category budgets; onboarding redirect moved out of render (members/settings); new convex-test specs for list cap, budget redaction, and invite owner-gate |
 | 2026-08-15 | Polish | Transaction form UX: contextual subtitle/type icon, discard guard (header back + Android hardware back via `beforeRemove`), type-change snackbar on category clear, "Repeat last" chip (same-session `useRef`), amount thousand-separator formatting preserved, contextual sign-convention hint, date backdate hint, note character counter with amber/red feedback, rewritten error messages, `hasInteracted` triggers on type/date change for new transactions; SelectField: search (>8 options), NativeWind styling, `Shadow.card` token, `keyboardShouldPersistTaps="handled"`, `min-h-12` options, accessibility labels |
 | 2026-08-14 | Polish | UX polish pass: Home My Accounts renders horizontal account cards (per §3.8) with owner "Add Account" card; Skeleton pulse loading on dashboard + list screens; Snackbar supports action buttons (undo delete transaction); sign-out confirmation; decimal input blocked at the keyboard + `formatAmountInput` strips decimals; operational errors unified to Snackbar across accounts/categories/budgets/members |
 | 2026-08-14 | Polish | Hardening pass: whole-number amount enforcement (client + server), unified error handling via `getConvexErrorMessage` across all screens, extracted shared `getUserAndMembership` helper, removed dead theme tokens, project README + `npm test` script, unused asset cleanup |
