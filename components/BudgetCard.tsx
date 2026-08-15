@@ -82,23 +82,25 @@ export function BudgetCard({
         ) : null}
       </View>
 
-      <View
-        style={{
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: C.border,
-          overflow: "hidden",
-        }}
-      >
+      {spent === undefined ? null : (
         <View
           style={{
-            height: "100%",
-            width: `${progress * 100}%`,
-            backgroundColor: overBudget ? C.error : C.primary,
+            height: 8,
             borderRadius: 4,
+            backgroundColor: C.border,
+            overflow: "hidden",
           }}
-        />
-      </View>
+        >
+          <View
+            style={{
+              height: "100%",
+              width: `${progress * 100}%`,
+              backgroundColor: overBudget ? C.error : C.primary,
+              borderRadius: 4,
+            }}
+          />
+        </View>
+      )}
     </View>
   );
 }
