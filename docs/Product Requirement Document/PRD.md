@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-14
+> Last updated: 2026-08-15
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -230,6 +230,10 @@ Core records of financial activity: income, expense, or transfer.
 - `createdBy` / `updatedBy` recorded on every transaction.
 - Members cannot create on hidden accounts/categories or reassign to them, but
   can edit existing transactions referencing hidden accounts.
+- **Form UX:** contextual subtitle/type icon, chip type selector, amount with
+  thousand-separator formatting, contextual sign-convention hint, "Repeat last"
+  shortcut, date hint, note character counter, discard guard on both header
+  back button and Android hardware back button. See §4.4 for details.
 
 ### 3.7 Budgets
 
@@ -303,11 +307,32 @@ not by a separate client call. A zero opening balance skips that step entirely.
 ### 4.4 Create Transaction
 
 ```text
-Transactions tab → "+" → type toggle (Income/Expense) or Transfer
-  → amount, account, category (income/expense), date, note
+Transactions tab → "+" → type toggle (Income/Expense/Transfer)
+  → amount input with thousand-separator formatting
+  → account, category (income/expense), date, note
   → or transfer: from/to account
   → Save → transactions.create → balances auto-updated → list
 ```
+
+**Form UX (as of 2026-08-15):**
+
+- Header shows contextual subtitle ("Track an expense" / "Record incoming
+  money" / "Move money between accounts") and a dynamic type icon.
+- Type selector is a chip group; switching type clears mismatched selections
+  and shows a snackbar when category is cleared.
+- Amount input uses `formatAmountInput` for automatic thousand-separator
+  display. Contextual hint below explains sign convention per type.
+- "Repeat last" chip appears when a transaction was created in the same
+  session — pre-fills type, amount, account, category (does not survive
+  unmount).
+- Date field shows "Today's date is pre-filled — you can backdate
+  transactions".
+- Note field has a character counter (`0/200`) with amber/red color feedback
+  at 150/180 chars.
+- Empty category state links to category creation with a return note.
+- Discard guard: header back button and Android hardware back button both
+  show an Alert when the form has unsaved changes (type change from default
+  or date change from today counts as interaction for new transactions).
 
 ### 4.5 Owner Invites Member
 
@@ -378,7 +403,7 @@ Settings → Appearance → System / Light / Dark
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
-| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard) |
+| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
@@ -623,6 +648,9 @@ updatedAt: number
 - Money inputs: shared `Input` component with `amount` prop (thousand-separator
   formatting); `number-pad` keyboard and `formatAmountInput` block decimal
   input, so whole-number-only is enforced at the keyboard, not as a submit error.
+- SelectField: modal dropdown with search (auto-shows when >8 options),
+  `keyboardShouldPersistTaps="handled"` on options list, `Shadow.card` token
+  for modal sheet, `min-h-12` option items for 48px touch targets.
 - **NativeWind v4 gotcha:** never use `style={({ pressed }) => [...]}` on
   `Pressable` — it breaks `className`. Use `useState` + static style.
 
@@ -635,6 +663,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-15 | Polish | Transaction form UX: contextual subtitle/type icon, discard guard (header back + Android hardware back via `beforeRemove`), type-change snackbar on category clear, "Repeat last" chip (same-session `useRef`), amount thousand-separator formatting preserved, contextual sign-convention hint, date backdate hint, note character counter with amber/red feedback, rewritten error messages, `hasInteracted` triggers on type/date change for new transactions; SelectField: search (>8 options), NativeWind styling, `Shadow.card` token, `keyboardShouldPersistTaps="handled"`, `min-h-12` options, accessibility labels |
 | 2026-08-14 | Polish | UX polish pass: Home My Accounts renders horizontal account cards (per §3.8) with owner "Add Account" card; Skeleton pulse loading on dashboard + list screens; Snackbar supports action buttons (undo delete transaction); sign-out confirmation; decimal input blocked at the keyboard + `formatAmountInput` strips decimals; operational errors unified to Snackbar across accounts/categories/budgets/members |
 | 2026-08-14 | Polish | Hardening pass: whole-number amount enforcement (client + server), unified error handling via `getConvexErrorMessage` across all screens, extracted shared `getUserAndMembership` helper, removed dead theme tokens, project README + `npm test` script, unused asset cleanup |
 | 2026-08-13 | Docs | Consolidate all fragmented docs into this single Product Specification |
