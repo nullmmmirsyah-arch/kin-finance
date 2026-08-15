@@ -1,6 +1,6 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -27,6 +27,7 @@ import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function TransactionForm() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string }>();
   const transactionId = params.id;
   const isEdit = transactionId !== undefined;
@@ -56,6 +57,14 @@ export default function TransactionForm() {
   const [amountError, setAmountError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const lastTransaction = useRef<{
+    type: TransactionType;
+    amount: number;
+    accountId: string;
+    toAccountId?: string;
+    categoryId?: string;
+  } | null>(null);
+
   const editingTx = useMemo(
     () => (isEdit ? getResult?.transaction : undefined),
     [isEdit, getResult],
@@ -74,6 +83,18 @@ export default function TransactionForm() {
       setNote(editingTx.note ?? "");
     }
   }, [editingTx]);
+
+  const handleRepeatLast = () => {
+    if (!lastTransaction.current) return;
+    const last = lastTransaction.current;
+    setType(last.type);
+    setAmountText(formatNumber(last.amount));
+    setAccountId(last.accountId);
+    setToAccountId(last.toAccountId ?? null);
+    setCategoryId(last.categoryId ?? null);
+    setDate(new Date());
+    setNote("");
+  };
 
   const accountOptions = useMemo(() => {
     const accounts = accountResult?.accounts ?? [];
@@ -111,14 +132,26 @@ export default function TransactionForm() {
     }
   }, [categoryResult, type, categoryId, categoryOptions]);
 
-  const handleTypeChange = (t: TransactionType) => {
-    setType(t);
-    if (t === "transfer") {
-      setCategoryId(null);
-    } else {
-      setToAccountId(null);
-    }
-  };
+  const handleTypeChange = useCallback(
+    (t: TransactionType) => {
+      setType(t);
+      setError(null);
+      setAmountError(null);
+      if (t === "transfer") {
+        if (categoryId !== null) {
+          show("Category cleared — does not match transfer type");
+        }
+        setCategoryId(null);
+      } else {
+        setToAccountId(null);
+      }
+    },
+    [categoryId, show],
+  );
+
+  const handleAmountChange = useCallback((text: string) => {
+    setAmountText(text.replace(/[^0-9]/g, ""));
+  }, []);
 
   const parsedAmount = amountText.replace(/,/g, "");
   const amountValue =
@@ -139,6 +172,54 @@ export default function TransactionForm() {
         accountId !== toAccountId
       : accountId !== null && categoryId !== null);
 
+  const hasInteracted = useMemo(() => {
+    return (
+      amountText !== "" ||
+      accountId !== null ||
+      toAccountId !== null ||
+      categoryId !== null ||
+      note !== "" ||
+      (editingTx !== undefined &&
+        (date.getTime() !== new Date(editingTx.date).getTime() ||
+          note !== (editingTx.note ?? "")))
+    );
+  }, [amountText, accountId, toAccountId, categoryId, note, date, editingTx]);
+
+  const handleBack = useCallback(() => {
+    if (!hasInteracted || isEdit) {
+      router.back();
+      return;
+    }
+    Alert.alert(
+      "Discard unsaved changes?",
+      "You have unsaved changes that will be lost.",
+      [
+        { text: "Keep editing", style: "cancel" },
+        { text: "Discard", style: "destructive", onPress: () => router.back() },
+      ],
+    );
+  }, [hasInteracted, isEdit, router]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (!hasInteracted || isEdit) return;
+      e.preventDefault();
+      Alert.alert(
+        "Discard unsaved changes?",
+        "You have unsaved changes that will be lost.",
+        [
+          { text: "Keep editing", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsubscribe;
+  }, [hasInteracted, isEdit, navigation]);
+
   const handleSubmit = async () => {
     setError(null);
     setAmountError(null);
@@ -147,7 +228,7 @@ export default function TransactionForm() {
       amountValue <= 0 ||
       !Number.isFinite(amountValue)
     ) {
-      setAmountError("Amount is required and must be greater than zero.");
+      setAmountError("Enter an amount greater than zero.");
       return;
     }
     if (!Number.isInteger(amountValue)) {
@@ -156,7 +237,7 @@ export default function TransactionForm() {
     }
     if (type === "transfer") {
       if (accountId === null || toAccountId === null) {
-        setError("From and To accounts are required.");
+        setError("Select both accounts.");
         return;
       }
       if (accountId === toAccountId) {
@@ -165,12 +246,12 @@ export default function TransactionForm() {
       }
     } else {
       if (accountId === null || categoryId === null) {
-        setError("Account and category are required.");
+        setError("Select an account and category.");
         return;
       }
     }
     if (date.getTime() > Date.now()) {
-      setError("Transaction date cannot be in the future.");
+      setError("Pick a date today or earlier.");
       return;
     }
 
@@ -196,6 +277,13 @@ export default function TransactionForm() {
         });
       } else {
         await createTransaction(base);
+        lastTransaction.current = {
+          type,
+          amount: Math.abs(amountValue),
+          accountId,
+          toAccountId: toAccountId ?? undefined,
+          categoryId: categoryId ?? undefined,
+        };
       }
       show(isEdit ? "Transaction updated" : "Transaction added");
       router.back();
@@ -300,25 +388,42 @@ export default function TransactionForm() {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View className="flex-row items-center gap-2 px-5 pt-4">
+        <View className="flex-row items-center gap-3 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            style={{ width: 48, height: 48 }}
-            className="items-center justify-center"
+            className="h-12 w-12 items-center justify-center"
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-            {isEdit ? "Edit Transaction" : "New Transaction"}
-          </Text>
+          <View className="flex-1">
+            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              {isEdit ? "Edit Transaction" : "New Transaction"}
+            </Text>
+            <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+              {type === "transfer" ? "Move money between accounts" : type === "income" ? "Record incoming money" : "Track an expense"}
+            </Text>
+          </View>
+          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary-dark/10">
+            <Feather
+              name={type === "transfer" ? "repeat" : type === "income" ? "arrow-down-left" : "arrow-up-right"}
+              size={22}
+              color={C.primary}
+            />
+          </View>
         </View>
 
         <ScrollView
           contentContainerClassName="gap-4 px-5 py-6"
           keyboardShouldPersistTaps="handled"
         >
+          {error ? (
+            <View className="rounded-2xl bg-error/10 px-4 py-3">
+              <Text className="text-sm font-medium text-error dark:text-error-dark">{error}</Text>
+            </View>
+          ) : null}
+
           <View className="gap-1.5">
             <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
               Type
@@ -332,18 +437,37 @@ export default function TransactionForm() {
                   onPress={() => handleTypeChange(t.id)}
                 />
               ))}
+              {!isEdit && lastTransaction.current ? (
+                <View className="items-start gap-1">
+                  <Chip
+                    label="Repeat last"
+                    active={false}
+                    onPress={handleRepeatLast}
+                  />
+                  <Text className="pl-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+                    Copies type, amount, and account from your previous transaction
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
-          <Input
-            label="Amount"
-            placeholder="0"
-            value={amountText}
-            onChangeText={setAmountText}
-            keyboardType="number-pad"
-            amount
-            error={amountError}
-          />
+          <View className="gap-1.5">
+            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+              Amount
+            </Text>
+            <Input
+              placeholder="0"
+              value={amountText}
+              onChangeText={handleAmountChange}
+              keyboardType="number-pad"
+              amount
+              error={amountError}
+            />
+            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+              Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
+            </Text>
+          </View>
 
           {type === "transfer" ? (
             <>
@@ -386,39 +510,55 @@ export default function TransactionForm() {
                       : `No ${type === "income" ? "income" : "expense"} categories available yet.`}
                   </Text>
                   {categoryResult?.isOwner === true ? (
-                    <Pressable
-                      onPress={() => router.push("/category-form")}
-                      accessibilityRole="button"
-                      className="min-h-12 items-center justify-center"
-                    >
-                      <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                        Create a category
+                    <View className="gap-1">
+                      <Pressable
+                        onPress={() => router.push("/category-form")}
+                        accessibilityRole="button"
+                        accessibilityLabel="Create a category"
+                        className="min-h-12 items-center justify-center"
+                      >
+                        <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                          Create a category
+                        </Text>
+                      </Pressable>
+                      <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                        After creating a category, come back here to continue
                       </Text>
-                    </Pressable>
+                    </View>
                   ) : null}
                 </View>
               ) : null}
             </>
           )}
 
-          <DateField
-            label="Date"
-            value={date}
-            maximumDate={new Date()}
-            onChange={setDate}
-          />
+          <View className="gap-1.5">
+            <DateField
+              label="Date"
+              value={date}
+              maximumDate={new Date()}
+              onChange={setDate}
+            />
+            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+              Today&apos;s date is pre-filled — you can backdate transactions
+            </Text>
+          </View>
 
-          <Input
-            label="Note (optional)"
-            placeholder="e.g. Lunch with colleagues"
-            value={note}
-            onChangeText={setNote}
-            maxLength={200}
-          />
-
-          {error ? (
-            <Text className="text-sm text-error dark:text-error-dark">{error}</Text>
-          ) : null}
+          <View className="gap-1.5">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                Note (optional)
+              </Text>
+              <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
+                {note.length}/200
+              </Text>
+            </View>
+            <Input
+              placeholder="e.g. Lunch with colleagues"
+              value={note}
+              onChangeText={setNote}
+              maxLength={200}
+            />
+          </View>
 
           <Button
             title={isEdit ? "Save Changes" : "Save Transaction"}

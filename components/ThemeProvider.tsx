@@ -28,7 +28,9 @@ export function useTheme() {
 }
 
 function applyColorScheme(preference: ThemePreference) {
-  Appearance.setColorScheme(preference === "system" ? null : preference);
+  if (typeof Appearance.setColorScheme === "function") {
+    Appearance.setColorScheme(preference === "system" ? null : preference);
+  }
 }
 
 function readStoredPreference(): ThemePreference {

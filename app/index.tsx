@@ -28,6 +28,7 @@ const CODE_REGEX = /^\d{6}$/;
 
 function useWarmUpBrowser() {
   useEffect(() => {
+    if (Platform.OS === "web") return;
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();

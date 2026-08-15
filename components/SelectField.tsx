@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { useThemeColors } from "@/constants/theme";
+import { useMemo, useState } from "react";
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 export type SelectOption = { id: string; label: string };
 
@@ -14,6 +14,8 @@ type Props = {
   error?: string | null;
 };
 
+const SEARCH_THRESHOLD = 8;
+
 export function SelectField({
   label,
   placeholder,
@@ -23,14 +25,21 @@ export function SelectField({
   error,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [pressed, setPressed] = useState(false);
+  const [search, setSearch] = useState("");
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const C = useThemeColors();
 
   const overflowing = contentHeight > viewportHeight;
+  const showSearch = options.length > SEARCH_THRESHOLD;
   const selectedLabel =
     options.find((o) => o.id === value)?.label ?? placeholder;
+
+  const filteredOptions = useMemo(() => {
+    if (!showSearch || search.trim() === "") return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, showSearch, search]);
 
   return (
     <View className="w-full gap-1.5">
@@ -40,22 +49,13 @@ export function SelectField({
         </Text>
       ) : null}
       <Pressable
-        onPress={() => setOpen(true)}
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
+        onPress={() => {
+          setSearch("");
+          setOpen(true);
+        }}
         accessibilityRole="button"
-        style={[
-          {
-            borderRadius: Radius.sm,
-            borderWidth: 1,
-            borderColor: error ? C.error : C.border,
-            backgroundColor: C.background,
-            height: 48,
-            paddingHorizontal: 16,
-          },
-          pressed ? { opacity: 0.9 } : undefined,
-        ]}
-        className="flex-row items-center justify-between"
+        accessibilityLabel={selectedLabel}
+        className={`h-12 flex-row items-center justify-between rounded-xl border bg-background px-4 dark:bg-background-dark ${error ? "border-error dark:border-error-dark" : "border-border dark:border-border-dark"}`}
       >
         <Text
           className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
@@ -73,46 +73,60 @@ export function SelectField({
         transparent
         animationType="fade"
         onRequestClose={() => setOpen(false)}
+        accessibilityLabel={`Select ${label ?? "option"}`}
       >
         <Pressable
-          className="flex-1 justify-end px-5 pb-8"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+          className="flex-1 justify-end bg-black/40 px-5 pb-8"
           onPress={() => setOpen(false)}
         >
           <Pressable
-            style={[
-              Shadow.card,
-              { borderRadius: Radius.md, backgroundColor: C.background },
-            ]}
-            className="max-h-[60%] overflow-hidden"
+            className="max-h-[60%] overflow-hidden rounded-2xl bg-background shadow-md dark:bg-background-dark"
             onPress={(e) => e.stopPropagation()}
           >
             <Text className="px-4 pb-2 pt-4 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
               Select {label ?? "option"}
             </Text>
+            {showSearch ? (
+              <View className="px-4 pb-2">
+                <TextInput
+                  placeholder="Search…"
+                  placeholderTextColor={C.textSecondary}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                  className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-text-primary dark:border-border-dark dark:bg-background-dark dark:text-text-primary-dark"
+                />
+              </View>
+            ) : null}
             <ScrollView
               onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
               onContentSizeChange={(_w, h) => setContentHeight(h)}
             >
-              {options.map((option) => (
-                <Pressable
-                  key={option.id}
-                  onPress={() => {
-                    onSelect(option.id);
-                    setOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: option.id === value }}
-                  className="flex-row items-center justify-between px-4 py-3"
-                >
-                  <Text className="text-base text-text-primary dark:text-text-primary-dark">
-                    {option.label}
-                  </Text>
-                  {option.id === value ? (
-                    <Feather name="check" size={18} color={C.primary} />
-                  ) : null}
-                </Pressable>
-              ))}
+              {filteredOptions.length === 0 ? (
+                <Text className="px-4 py-6 text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+                  No results found
+                </Text>
+              ) : (
+                filteredOptions.map((option) => (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => {
+                      onSelect(option.id);
+                      setOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: option.id === value }}
+                    className="min-h-12 flex-row items-center justify-between px-4 py-3"
+                  >
+                    <Text className="text-base text-text-primary dark:text-text-primary-dark">
+                      {option.label}
+                    </Text>
+                    {option.id === value ? (
+                      <Feather name="check" size={18} color={C.primary} />
+                    ) : null}
+                  </Pressable>
+                ))
+              )}
             </ScrollView>
             {overflowing ? (
               <View className="items-center border-t border-border py-2 dark:border-border-dark">
