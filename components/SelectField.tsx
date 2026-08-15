@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { useThemeColors } from "@/constants/theme";
+import { Shadow, useThemeColors } from "@/constants/theme";
 import { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
@@ -80,7 +80,8 @@ export function SelectField({
           onPress={() => setOpen(false)}
         >
           <Pressable
-            className="max-h-[60%] overflow-hidden rounded-2xl bg-background shadow-md dark:bg-background-dark"
+            className="max-h-[60%] overflow-hidden rounded-2xl bg-background dark:bg-background-dark"
+            style={Shadow.card}
             onPress={(e) => e.stopPropagation()}
           >
             <Text className="px-4 pb-2 pt-4 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
@@ -99,6 +100,7 @@ export function SelectField({
               </View>
             ) : null}
             <ScrollView
+              keyboardShouldPersistTaps="handled"
               onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
               onContentSizeChange={(_w, h) => setContentHeight(h)}
             >

@@ -150,7 +150,7 @@ export default function TransactionForm() {
   );
 
   const handleAmountChange = useCallback((text: string) => {
-    setAmountText(text.replace(/[^0-9]/g, ""));
+    setAmountText(text);
   }, []);
 
   const parsedAmount = amountText.replace(/,/g, "");
@@ -173,17 +173,18 @@ export default function TransactionForm() {
       : accountId !== null && categoryId !== null);
 
   const hasInteracted = useMemo(() => {
+    if (amountText !== "" || accountId !== null || toAccountId !== null || categoryId !== null || note !== "") {
+      return true;
+    }
+    if (!isEdit) {
+      return type !== "expense" || date.toDateString() !== new Date().toDateString();
+    }
     return (
-      amountText !== "" ||
-      accountId !== null ||
-      toAccountId !== null ||
-      categoryId !== null ||
-      note !== "" ||
-      (editingTx !== undefined &&
-        (date.getTime() !== new Date(editingTx.date).getTime() ||
-          note !== (editingTx.note ?? "")))
+      editingTx !== undefined &&
+      (date.getTime() !== new Date(editingTx.date).getTime() ||
+        note !== (editingTx.note ?? ""))
     );
-  }, [amountText, accountId, toAccountId, categoryId, note, date, editingTx]);
+  }, [amountText, accountId, toAccountId, categoryId, note, date, type, isEdit, editingTx]);
 
   const handleBack = useCallback(() => {
     if (!hasInteracted || isEdit) {
