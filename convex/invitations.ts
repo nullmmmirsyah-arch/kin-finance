@@ -1,15 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUserAndMembership } from "./helpers";
+import { INVITE_CHARSET, INVITE_CODE_LENGTH } from "../constants/validation";
 
-const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const CODE_LENGTH = 8;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function generateCode(): string {
-  const bytes = new Uint8Array(CODE_LENGTH);
+  const bytes = new Uint8Array(INVITE_CODE_LENGTH);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => CHARSET[b % CHARSET.length]).join("");
+  return Array.from(bytes, (b) => INVITE_CHARSET[b % INVITE_CHARSET.length]).join("");
 }
 
 async function hmacHash(data: string, secret: string): Promise<string> {
@@ -241,6 +240,10 @@ export const listActive = query({
       membership === null ||
       membership.householdId !== args.householdId
     ) {
+      return [];
+    }
+
+    if (membership.role !== "owner") {
       return [];
     }
 

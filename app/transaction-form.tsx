@@ -16,6 +16,12 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { TRANSACTION_TYPES, TransactionType } from "@/constants/transactions";
+import {
+  validateNote,
+  validateTransactionAmount,
+  validateTransactionDate,
+  NOTE_MAX_LENGTH,
+} from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -162,9 +168,7 @@ export default function TransactionForm() {
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
   const canSubmit =
-    amountValue !== null &&
-    amountValue > 0 &&
-    Number.isFinite(amountValue) &&
+    validateTransactionAmount(signedAmount, type) === null &&
     !isLoading &&
     (type === "transfer"
       ? accountId !== null &&
@@ -173,23 +177,44 @@ export default function TransactionForm() {
       : accountId !== null && categoryId !== null);
 
   const hasInteracted = useMemo(() => {
-    if (amountText !== "" || accountId !== null || toAccountId !== null || categoryId !== null || note !== "") {
-      return true;
-    }
     if (!isEdit) {
-      return type !== "expense" || date.toDateString() !== new Date().toDateString();
+      return (
+        amountText !== "" ||
+        accountId !== null ||
+        toAccountId !== null ||
+        categoryId !== null ||
+        note !== "" ||
+        type !== "expense" ||
+        date.toDateString() !== new Date().toDateString()
+      );
     }
+    if (!editingTx) return false;
     return (
-      editingTx !== undefined &&
-      (date.getTime() !== new Date(editingTx.date).getTime() ||
-        note !== (editingTx.note ?? ""))
+      type !== editingTx.type ||
+      amountValue !== Math.abs(editingTx.amount) ||
+      accountId !== editingTx.accountId ||
+      toAccountId !== (editingTx.toAccountId ?? null) ||
+      categoryId !== (editingTx.categoryId ?? null) ||
+      date.getTime() !== editingTx.date ||
+      note !== (editingTx.note ?? "")
     );
-  }, [amountText, accountId, toAccountId, categoryId, note, date, type, isEdit, editingTx]);
+  }, [
+    isEdit,
+    editingTx,
+    type,
+    amountValue,
+    amountText,
+    accountId,
+    toAccountId,
+    categoryId,
+    date,
+    note,
+  ]);
 
   const intentionalBack = useRef(false);
 
   const handleBack = useCallback(() => {
-    if (!hasInteracted || isEdit) {
+    if (!hasInteracted) {
       router.back();
       return;
     }
@@ -208,7 +233,7 @@ export default function TransactionForm() {
         },
       ],
     );
-  }, [hasInteracted, isEdit, router]);
+  }, [hasInteracted, router]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
@@ -216,7 +241,7 @@ export default function TransactionForm() {
         intentionalBack.current = false;
         return;
       }
-      if (!hasInteracted || isEdit) return;
+      if (!hasInteracted) return;
       e.preventDefault();
       Alert.alert(
         "Discard unsaved changes?",
@@ -232,7 +257,7 @@ export default function TransactionForm() {
       );
     });
     return unsubscribe;
-  }, [hasInteracted, isEdit, navigation]);
+  }, [hasInteracted, navigation]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -245,8 +270,9 @@ export default function TransactionForm() {
       setAmountError("Enter an amount greater than zero.");
       return;
     }
-    if (!Number.isInteger(amountValue)) {
-      setAmountError("Amount must be a whole number.");
+    const err = validateTransactionAmount(signedAmount, type);
+    if (err) {
+      setAmountError(err);
       return;
     }
     if (type === "transfer") {
@@ -264,8 +290,14 @@ export default function TransactionForm() {
         return;
       }
     }
-    if (date.getTime() > Date.now()) {
-      setError("Pick a date today or earlier.");
+    const dateErr = validateTransactionDate(date.getTime());
+    if (dateErr) {
+      setError(dateErr);
+      return;
+    }
+    const noteErr = validateNote(note.trim());
+    if (noteErr) {
+      setError(noteErr);
       return;
     }
 
@@ -565,14 +597,14 @@ export default function TransactionForm() {
                 Note (optional)
               </Text>
               <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
-                {note.length}/200
+                {note.length}/{NOTE_MAX_LENGTH}
               </Text>
             </View>
             <Input
               placeholder="e.g. Lunch with colleagues"
               value={note}
               onChangeText={setNote}
-              maxLength={200}
+              maxLength={NOTE_MAX_LENGTH}
             />
           </View>
 

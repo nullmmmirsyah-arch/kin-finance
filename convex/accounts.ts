@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 import { getUserAndMembership } from "./helpers";
+import { validateAccountName } from "../constants/validation";
 
 const accountType = v.union(
   v.literal("cash"),
@@ -65,16 +66,9 @@ export const create = mutation({
       throw new ConvexError("You are not the owner of this household.");
     }
 
+    const err = validateAccountName(args.name);
+    if (err) throw new ConvexError(err);
     const name = args.name.trim();
-    if (name.length === 0) {
-      throw new ConvexError("Account name is required.");
-    }
-    if (name.length < 2) {
-      throw new ConvexError("Account name must be at least 2 characters.");
-    }
-    if (name.length > 30) {
-      throw new ConvexError("Account name must be at most 30 characters.");
-    }
 
     const existing = await ctx.db
       .query("accounts")
@@ -178,16 +172,9 @@ export const update = mutation({
     } = { updatedAt: Date.now() };
 
     if (args.name !== undefined) {
+      const err = validateAccountName(args.name);
+      if (err) throw new ConvexError(err);
       const name = args.name.trim();
-      if (name.length === 0) {
-        throw new ConvexError("Account name is required.");
-      }
-      if (name.length < 2) {
-        throw new ConvexError("Account name must be at least 2 characters.");
-      }
-      if (name.length > 30) {
-        throw new ConvexError("Account name must be at most 30 characters.");
-      }
 
       const existing = await ctx.db
         .query("accounts")

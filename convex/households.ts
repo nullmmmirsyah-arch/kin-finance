@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { validateHouseholdName } from "../constants/validation";
 
 export const create = mutation({
   args: { name: v.string() },
@@ -9,17 +10,9 @@ export const create = mutation({
       throw new ConvexError("You are not signed in.");
     }
 
+    const err = validateHouseholdName(args.name);
+    if (err) throw new ConvexError(err);
     const trimmedName = args.name.trim();
-
-    if (trimmedName.length === 0) {
-      throw new ConvexError("Household name is required.");
-    }
-    if (trimmedName.length < 3) {
-      throw new ConvexError("Household name must be at least 3 characters.");
-    }
-    if (trimmedName.length > 50) {
-      throw new ConvexError("Household name must be at most 50 characters.");
-    }
 
     const user = await ctx.db
       .query("users")
@@ -143,17 +136,9 @@ export const update = mutation({
       throw new ConvexError("Household not found.");
     }
 
+    const err = validateHouseholdName(args.name);
+    if (err) throw new ConvexError(err);
     const trimmedName = args.name.trim();
-
-    if (trimmedName.length === 0) {
-      throw new ConvexError("Household name is required.");
-    }
-    if (trimmedName.length < 3) {
-      throw new ConvexError("Household name must be at least 3 characters.");
-    }
-    if (trimmedName.length > 50) {
-      throw new ConvexError("Household name must be at most 50 characters.");
-    }
 
     await ctx.db.patch(args.householdId, {
       name: trimmedName,

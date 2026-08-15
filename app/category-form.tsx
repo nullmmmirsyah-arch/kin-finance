@@ -16,6 +16,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
+import { validateCategoryName, CATEGORY_NAME_MAX } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -58,20 +59,16 @@ export default function CategoryForm() {
 
   const trimmedName = name.trim();
   const canSubmit =
-    trimmedName.length >= 2 &&
-    trimmedName.length <= 30 &&
+    validateCategoryName(trimmedName) === null &&
     !isLoading &&
     result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
 
   const handleSubmit = async () => {
     setError(null);
-    if (trimmedName.length < 2) {
-      setError("Category name must be at least 2 characters.");
-      return;
-    }
-    if (trimmedName.length > 30) {
-      setError("Category name must be at most 30 characters.");
+    const err = validateCategoryName(trimmedName);
+    if (err) {
+      setError(err);
       return;
     }
 
@@ -160,7 +157,7 @@ export default function CategoryForm() {
             placeholder="e.g. Food, Salary"
             value={name}
             onChangeText={setName}
-            maxLength={30}
+            maxLength={CATEGORY_NAME_MAX}
             error={error}
           />
 

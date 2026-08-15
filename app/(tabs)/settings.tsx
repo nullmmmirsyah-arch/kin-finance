@@ -1,6 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
@@ -30,16 +31,13 @@ export default function Settings() {
 
   const memberCount = members?.members.length ?? 1;
 
-  if (household === undefined) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
-      </SafeAreaView>
-    );
-  }
+  useEffect(() => {
+    if (household === null) {
+      router.replace("/onboarding");
+    }
+  }, [household, router]);
 
-  if (household === null) {
-    router.replace("/onboarding");
+  if (household === undefined || household === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
         <ActivityIndicator size="large" color={C.primary} />

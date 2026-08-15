@@ -14,6 +14,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
+import { validateBudgetAmount } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
@@ -73,7 +74,7 @@ export default function BudgetForm() {
 
   const rawAmount = amount.replace(/,/g, "");
   const parsedAmount = Number(rawAmount);
-  const amountValid = rawAmount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount >= 1;
+  const amountValid = validateBudgetAmount(parsedAmount) === null;
 
   const canSubmit =
     !isLoading &&
@@ -84,16 +85,9 @@ export default function BudgetForm() {
     setError(null);
     setCategoryError(null);
 
-    if (rawAmount.trim() === "" || !Number.isFinite(parsedAmount)) {
-      setError("Amount must be a valid number.");
-      return;
-    }
-    if (!Number.isInteger(parsedAmount)) {
-      setError("Amount must be a whole number.");
-      return;
-    }
-    if (parsedAmount < 1) {
-      setError("Amount must be at least 1.");
+    const err = validateBudgetAmount(parsedAmount);
+    if (err) {
+      setError(err);
       return;
     }
     if (!isEdit && selectedCategoryId === null) {
