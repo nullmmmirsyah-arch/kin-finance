@@ -21,7 +21,6 @@ import {
   validateTransactionAmount,
   validateTransactionDate,
   NOTE_MAX_LENGTH,
-  AMOUNT_MIN_ABS,
 } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -169,9 +168,7 @@ export default function TransactionForm() {
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
   const canSubmit =
-    amountValue !== null &&
-    amountValue >= AMOUNT_MIN_ABS &&
-    Number.isFinite(amountValue) &&
+    validateTransactionAmount(signedAmount, type) === null &&
     !isLoading &&
     (type === "transfer"
       ? accountId !== null &&

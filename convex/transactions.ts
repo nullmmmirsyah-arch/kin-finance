@@ -228,31 +228,93 @@ export const list = query({
       Math.max(Math.floor(args.limit ?? MAX_LIST_ROWS), 1),
       MAX_LIST_ROWS,
     );
-    const rows = await ctx.db
-      .query("transactions")
-      .withIndex("by_household_date", (q) =>
-        q
-          .eq("householdId", membership.householdId)
-          .gte("date", args.startDate)
-          .lt("date", args.endDate),
-      )
-      .collect();
-
     const entityCache = new Map<
       string,
       Doc<"accounts"> | Doc<"categories"> | undefined
     >();
-    const transactions = [];
-    for (const row of rows) {
-      const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
-      if (!isOwner && category !== undefined && category.hidden) {
-        continue;
+
+    if (isOwner) {
+      const rows = await ctx.db
+        .query("transactions")
+        .withIndex("by_household_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        )
+        .order("desc")
+        .take(limit);
+
+      const transactions = [];
+      for (const row of rows) {
+        const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
+        transactions.push({ ...row, category, account, toAccount });
       }
-      transactions.push({ ...row, category, account, toAccount });
+
+      return { transactions, isOwner };
     }
 
-    transactions.sort((a, b) => b.date - a.date);
-    return { transactions: transactions.slice(0, limit), isOwner };
+    const SCAN_BUDGET = limit * 10;
+    let scanned = 0;
+    let cursorDate: number | undefined;
+    let cursorId: Id<"transactions"> | undefined;
+    let atBoundary = false;
+    const collected = [];
+
+    while (collected.length < limit && scanned < SCAN_BUDGET) {
+      const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
+      const rows = await ctx.db
+        .query("transactions")
+        .withIndex("by_household_date", (q) => {
+          const base = q
+            .eq("householdId", membership.householdId)
+            .gte("date", args.startDate);
+          if (cursorDate === undefined) {
+            return base.lt("date", args.endDate);
+          }
+          return atBoundary
+            ? base.lt("date", cursorDate)
+            : base.lte("date", cursorDate);
+        })
+        .order("desc")
+        .take(batchSize);
+
+      scanned += rows.length;
+      let pastCursor = cursorDate === undefined || atBoundary;
+      let cursorFound = pastCursor;
+
+      for (const row of rows) {
+        if (!pastCursor) {
+          if (row.date === cursorDate && row._id === cursorId) {
+            pastCursor = true;
+            cursorFound = true;
+          }
+          continue;
+        }
+
+        const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
+        if (category !== undefined && category.hidden) {
+          continue;
+        }
+        collected.push({ ...row, category, account, toAccount });
+
+        if (collected.length >= limit) break;
+      }
+
+      if (collected.length >= limit) break;
+      if (rows.length < batchSize) break;
+      if (!cursorFound) {
+        atBoundary = true;
+        continue;
+      }
+
+      const lastRow = rows[rows.length - 1];
+      atBoundary = lastRow.date === cursorDate;
+      cursorDate = lastRow.date;
+      cursorId = lastRow._id;
+    }
+
+    return { transactions: collected, isOwner };
   },
 });
 

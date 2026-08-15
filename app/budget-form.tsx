@@ -14,7 +14,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
-import { validateBudgetAmount, BUDGET_AMOUNT_MIN } from "@/constants/validation";
+import { validateBudgetAmount } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
@@ -74,8 +74,7 @@ export default function BudgetForm() {
 
   const rawAmount = amount.replace(/,/g, "");
   const parsedAmount = Number(rawAmount);
-  const amountValid =
-    Number.isFinite(parsedAmount) && parsedAmount >= BUDGET_AMOUNT_MIN;
+  const amountValid = validateBudgetAmount(parsedAmount) === null;
 
   const canSubmit =
     !isLoading &&
