@@ -5,7 +5,10 @@ import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { findUserAndMembership } from "./helpers";
 
 export const create = mutation({
-  args: { name: v.string() },
+  args: {
+    name: v.string(),
+    timezone: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
@@ -39,6 +42,7 @@ export const create = mutation({
     const now = Date.now();
     const householdId = await ctx.db.insert("households", {
       name: trimmedName,
+      timezone: args.timezone ?? "UTC",
       createdAt: now,
       updatedAt: now,
     });

@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@clerk/expo";
+import { getCalendars } from "expo-localization";
 
 type Mode = "create" | "join";
 
@@ -52,7 +53,10 @@ export default function Onboarding() {
     setError(null);
     setIsLoading(true);
     try {
-      await createHousehold({ name: trimmedName });
+      await createHousehold({
+        name: trimmedName,
+        timezone: getCalendars()[0]?.timeZone ?? "UTC",
+      });
       router.replace("/home");
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to create household. Please try again."));

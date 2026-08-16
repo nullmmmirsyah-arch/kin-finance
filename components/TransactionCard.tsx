@@ -3,7 +3,7 @@ import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
-import { formatTime } from "@/utils/date";
+import { formatTimeTz } from "@/utils/date";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "shopping-cart",
@@ -41,6 +41,7 @@ type Props = {
   amount: number;
   type: "income" | "expense" | "transfer";
   date: number;
+  timezone?: string;
   onPress: () => void;
 };
 
@@ -52,6 +53,7 @@ export function TransactionCard({
   amount,
   type,
   date,
+  timezone = "UTC",
   onPress,
 }: Props) {
   const [pressed, setPressed] = useState(false);
@@ -109,7 +111,7 @@ export function TransactionCard({
           {displayNote}
         </Text>
         <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-          {formatTime(date)}
+          {formatTimeTz(date, timezone)}
         </Text>
       </View>
       <Text

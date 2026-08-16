@@ -186,6 +186,14 @@ profile on first load.
 Root entity for all financial data. Created once during onboarding; the
 creating user becomes Owner. Owner can rename; both roles see the member list.
 
+**Timezone:** each household stores an IANA timezone name (captured from the
+creating device via `expo-localization`, default `UTC`). All calendar-month
+boundaries — budgets' `periodStart`/`periodEnd`, transactions "This Month" /
+"Last Month" filters, and date-group headers on Home/Transactions — are
+computed in the household timezone so every member classifies data into the
+same calendar month regardless of device timezone. The Convex server remains
+timezone-agnostic (compares raw epoch-ms).
+
 ### 3.3 Multi-Member & Invites
 
 - Owner generates an invite code from the Members screen. Codes are
@@ -242,8 +250,9 @@ Core records of financial activity: income, expense, or transfer.
 
 Monthly spending limits per expense category. Identified by
 `(householdId, categoryId, periodStart)` — one budget per category per month.
-`periodStart` is the first day of the UTC month. Budget amounts are whole
-numbers. Spending = sum of expense
+`periodStart` is the first day of the calendar month in the **household
+timezone** (IANA name stored on `households`, e.g. `Asia/Jakarta`; defaults to
+`UTC`). Budget amounts are whole numbers. Spending = sum of expense
 transactions in that category during the month; progress = spent / amount.
 Both Owner and Member can manage budgets. Budgets for hidden categories remain
 visible (name + amount, no breakdown). For Members, the spending breakdown
@@ -265,7 +274,7 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   card); "Add Account" card for Owner; "Manage" link to the Accounts tab. For
   Members, tapping a card goes to the Accounts tab (owner-only edit/delete stays
   in the Accounts tab).
-- **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
+- **Recent Transactions**: latest 2 (paginated via cursor), grouped by day with
   day net total, "See All" link to the Transactions tab. Transaction icons map
   category names to relevant Feather icons (shopping-cart, coffee, car, home,
   briefcase, etc.) with semantic colors (green for income, red for expense).
@@ -519,6 +528,7 @@ imageUrl: string | undefined
 
 ```text
 name: string            // 3-50 chars, trimmed
+timezone: string | undefined  // IANA name, e.g. "Asia/Jakarta"; defaults to "UTC"
 createdAt: number
 updatedAt: number
 ```
@@ -610,7 +620,7 @@ type; transfers have no category and `toAccountId !== accountId`.
 ```text
 householdId: id<households>
 categoryId: id<categories>    // must be expense type
-periodStart: number           // first day of UTC month (epoch ms)
+periodStart: number           // first day of calendar month in household timezone (epoch ms)
 amount: number
 createdBy: id<users>
 updatedBy: id<users>
@@ -628,7 +638,7 @@ updatedAt: number
 |--------|----------|------|-------|
 | `users` | `store` | mutation | Upsert current user profile |
 | `users` | `getMe` | query | Current user profile |
-| `households` | `create` | mutation | Create + owner membership + reserved categories |
+| `households` | `create` | mutation | Create + owner membership + reserved categories; records device IANA timezone (default `UTC`) |
 | `households` | `getActive` | query | Current user's household |
 | `households` | `update` | mutation | Rename (owner only) |
 | `households` | `listMembers` | query | Member list (owner + members) |
@@ -673,6 +683,7 @@ updatedAt: number
 | Language | TypeScript 5.9 |
 | Persistence (device) | `expo-secure-store` (theme preference) |
 | Date picker | `@react-native-community/datetimepicker` |
+| Device locale / timezone | `expo-localization` (`getCalendars()[0].timeZone`) |
 | Clipboard / Share / Haptics | `expo-clipboard`, native share sheet, `expo-haptics` |
 | Icons | `@expo/vector-icons` Feather |
 
@@ -700,6 +711,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-16 | Feature | Household timezone: `households.timezone` (IANA string, optional, default `UTC`) captured on create via `expo-localization` (`getCalendars()[0].timeZone`); new timezone-aware helpers in `utils/date.ts` (`getMonthBounds`, `formatMonthLabel`, `formatDateHeaderTz`, `formatTimeTz`, `formatDateShortTz`) computing calendar-month boundaries and date labels in the household timezone; all period-boundary call sites migrated (Home dashboard + date-group headers, Budgets month selector, budget form `periodStart`/month label, Transactions "This Month"/"Last Month" filters + headers, `TransactionCard` time via `timezone` prop) so members in different timezones classify transactions into the same calendar month; server stays timezone-agnostic (raw epoch-ms comparison); fixes the budget exact-match mismatch where `periodStart` was written in device-local time but queried as UTC month start |
 | 2026-08-16 | Refactor | Permission/scope consolidation + shared reserved-category constant: `requireOwner` and `getScopedDoc` in `convex/helpers.ts` replace ~9 inline owner-gate checks and ~16 duplicated get+household-scope checks across `accounts.*`, `categories.*`, `budgets.*`, `transactions.*`, `invitations.*` mutations (single `"You are not the owner..."` / `"<Entity> not found."` messages); `accounts.create` opening-balance path now relies on the reserved category guaranteed by `households.create` — removed the lookup-or-create fallback that could silently create duplicate "Initial Balance" categories; `RESERVED_CATEGORY_NAME` added to `constants/categories.ts` and shared by `households`, `accounts`, `categories`, `budgets` (was 4 hardcoded copies); removed dead null-check in `accounts.remove`; new `tests/accounts.create.test.ts` specs (5 cases) pinning opening-balance posting + owner-only permission |
 | 2026-08-15 | Refactor | Backend auth/balance deduplication (analysis-driven): new query-safe helper `findUserAndMembership` (returns `null`) and user-only `findUser` in `convex/helpers.ts`, replacing ~14 copy-pasted identity→user→membership blocks across query handlers (`accounts.list`, `categories.list`, `budgets.list/get/categoryOptions`, `transactions.list/recent/get`, `households.getActive`, `invitations.listActive`, `users.getMe`); extracted shared `applyBalanceDelta` + `reverseBalances` in `convex/transactions.ts` so create/update/delete balances can't diverge (was 3 hand-rolled implementations of §5.3); `transactions.get` now reuses `hydrate`; inline account/category type literals replaced with `Doc<>` in `transactions.ts`; new `tests/transactions.balance.test.ts` characterization specs (6 cases) pinning balance auto-update behavior |
 | 2026-08-15 | UX | Home dashboard redesign (critique score 21→target): balance card now shows monthly net income/expense with semantic color; budget pills row with progress bars; type-specific tinted account icons; category-mapped transaction icons with semantic colors; greeting uses first name; sign-out moved to Settings; empty states include action CTAs; FAB uses reanimated spring animation; dark mode badge contrast fixed |

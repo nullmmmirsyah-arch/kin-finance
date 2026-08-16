@@ -19,10 +19,9 @@ import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
 import {
   addDays,
-  addMonths,
-  formatDateHeader,
+  formatDateHeaderTz,
+  getMonthBounds,
   startOfDay,
-  startOfMonth,
 } from "@/utils/date";
 
 type DateFilter = "thisMonth" | "lastMonth" | "custom";
@@ -39,24 +38,24 @@ export default function Transactions() {
   const [filter, setFilter] = useState<DateFilter>("thisMonth");
   const [customFrom, setCustomFrom] = useState(() => startOfDay(new Date()));
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
+  const household = useQuery(api.households.getActive);
+
+  const timezone = household?.timezone ?? "UTC";
 
   const invalidCustomRange =
     filter === "custom" &&
     startOfDay(customFrom).getTime() > startOfDay(customTo).getTime();
 
   const range = useMemo(() => {
-    const now = new Date();
+    const now = Date.now();
     if (filter === "thisMonth") {
-      return {
-        startDate: startOfMonth(now).getTime(),
-        endDate: addMonths(now, 1).getTime(),
-      };
+      const bounds = getMonthBounds(now, timezone);
+      return { startDate: bounds.start, endDate: bounds.end };
     }
     if (filter === "lastMonth") {
-      return {
-        startDate: addMonths(now, -1).getTime(),
-        endDate: startOfMonth(now).getTime(),
-      };
+      const current = getMonthBounds(now, timezone);
+      const previous = getMonthBounds(current.start - 1, timezone);
+      return { startDate: previous.start, endDate: current.start };
     }
     if (invalidCustomRange) {
       return { startDate: 0, endDate: 0 };
@@ -65,7 +64,7 @@ export default function Transactions() {
       startDate: startOfDay(customFrom).getTime(),
       endDate: addDays(startOfDay(customTo), 1).getTime(),
     };
-  }, [filter, customFrom, customTo, invalidCustomRange]);
+  }, [filter, customFrom, customTo, invalidCustomRange, timezone]);
 
   const result = useQuery(api.transactions.list, range);
 
@@ -74,7 +73,7 @@ export default function Transactions() {
     if (transactions === null) return null;
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
-      const key = formatDateHeader(tx.date);
+      const key = formatDateHeaderTz(tx.date, timezone);
       const list = groups.get(key);
       if (list) {
         list.push(tx);
@@ -86,7 +85,7 @@ export default function Transactions() {
       title,
       data,
     }));
-  }, [result]);
+  }, [result, timezone]);
 
   const summary = useMemo(() => {
     const transactions = result?.transactions ?? [];
@@ -243,6 +242,7 @@ export default function Transactions() {
                 amount={item.amount}
                 type={item.type}
                 date={item.date}
+                timezone={timezone}
                 onPress={() =>
                   router.push({
                     pathname: "/transaction-form",

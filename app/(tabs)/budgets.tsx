@@ -19,23 +19,26 @@ import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber } from "@/utils/format";
-import { addMonths, startOfMonth } from "@/utils/date";
+import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { getConvexErrorMessage } from "@/lib/errors";
 
-const monthFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  year: "numeric",
-});
+const MONTH_MS = 32 * 86_400_000;
 
 export default function Budgets() {
   const router = useRouter();
   const C = useThemeColors();
-  const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
   const { show } = useSnackbar();
   const removeBudget = useMutation(api.budgets.remove);
+  const household = useQuery(api.households.getActive);
 
-  const periodStart = selectedMonth.getTime();
-  const periodEnd = addMonths(selectedMonth, 1).getTime();
+  const timezone = household?.timezone ?? "UTC";
+
+  const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
+
+  const monthStart =
+    selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
+  const periodStart = monthStart;
+  const periodEnd = getMonthBounds(monthStart, timezone).end;
 
   const result = useQuery(api.budgets.list, { periodStart, periodEnd });
 
@@ -63,12 +66,18 @@ export default function Budgets() {
     summary.hasRedacted ? 0 : summary.budgeted > 0 ? summary.spent / summary.budgeted : 0;
 
   const handlePrevMonth = useCallback(() => {
-    setSelectedMonth((prev) => addMonths(prev, -1));
-  }, []);
+    setSelectedMonthStart((prev) => {
+      const current = prev ?? getMonthBounds(Date.now(), timezone).start;
+      return getMonthBounds(current - MONTH_MS, timezone).start;
+    });
+  }, [timezone]);
 
   const handleNextMonth = useCallback(() => {
-    setSelectedMonth((prev) => addMonths(prev, 1));
-  }, []);
+    setSelectedMonthStart((prev) => {
+      const current = prev ?? getMonthBounds(Date.now(), timezone).start;
+      return getMonthBounds(current + MONTH_MS, timezone).start;
+    });
+  }, [timezone]);
 
   const handleDelete = useCallback(
     (budget: { _id: Id<"budgets">; category: { name: string } | undefined }) => {
@@ -146,7 +155,7 @@ export default function Budgets() {
           <Text className="text-lg text-primary dark:text-primary-dark">{"<"}</Text>
         </Pressable>
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-          {monthFormatter.format(selectedMonth)}
+          {formatMonthLabel(periodStart, timezone)}
         </Text>
         <Pressable
           onPress={handleNextMonth}
