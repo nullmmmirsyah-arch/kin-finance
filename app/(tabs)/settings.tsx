@@ -1,12 +1,14 @@
 import Feather from "@expo/vector-icons/Feather";
+import { useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
-import { useEffect } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
+import { Button } from "@/components/Button";
 
 const THEME_OPTIONS: {
   id: ThemePreference;
@@ -30,6 +32,27 @@ export default function Settings() {
   );
 
   const memberCount = members?.members.length ?? 1;
+
+  const { signOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out?",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: () => {
+            setIsSigningOut(true);
+            void signOut();
+          },
+        },
+      ],
+    );
+  };
 
   useEffect(() => {
     if (household === null) {
@@ -175,6 +198,20 @@ export default function Settings() {
           </View>
           <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Account
+        </Text>
+
+        <Button
+          title="Sign Out"
+          variant="danger"
+          onPress={handleSignOut}
+          loading={isSigningOut}
+          disabled={isSigningOut}
+        />
       </View>
     </SafeAreaView>
   );
