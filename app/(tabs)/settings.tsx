@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/Button";
+import { useSnackbar } from "@/components/Snackbar";
 
 const THEME_OPTIONS: {
   id: ThemePreference;
@@ -34,6 +35,7 @@ export default function Settings() {
   const memberCount = members?.members.length ?? 1;
 
   const { signOut } = useAuth();
+  const { show } = useSnackbar();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = () => {
@@ -47,7 +49,10 @@ export default function Settings() {
           style: "destructive",
           onPress: () => {
             setIsSigningOut(true);
-            signOut().catch(() => setIsSigningOut(false));
+            signOut().catch(() => {
+              setIsSigningOut(false);
+              show("Unable to sign out. Please try again.");
+            });
           },
         },
       ],
