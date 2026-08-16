@@ -1,8 +1,38 @@
 import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 type AnyCtx = QueryCtx | MutationCtx;
+
+export function requireOwner(membership: Doc<"householdMemberships">): void {
+  if (membership.role !== "owner") {
+    throw new ConvexError("You are not the owner of this household.");
+  }
+}
+
+type HouseholdScopedTable =
+  | "accounts"
+  | "categories"
+  | "transactions"
+  | "budgets"
+  | "invitations";
+
+export async function getScopedDoc<T extends HouseholdScopedTable>(
+  ctx: MutationCtx,
+  id: Id<T>,
+  householdId: Id<"households">,
+  errorLabel: string,
+): Promise<Doc<T>> {
+  const doc = await ctx.db.get(id);
+  if (
+    doc === null ||
+    (doc as unknown as { householdId: Id<"households"> }).householdId !==
+      householdId
+  ) {
+    throw new ConvexError(`${errorLabel} not found.`);
+  }
+  return doc as Doc<T>;
+}
 
 export async function findUser(ctx: AnyCtx): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();

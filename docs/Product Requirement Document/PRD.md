@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-15
+> Last updated: 2026-08-16
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -434,7 +434,7 @@ Settings → Appearance → System / Light / Dark
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
-| `convex/helpers.ts` | Shared auth helpers: `getUserAndMembership` (mutations, throws `ConvexError`), `findUserAndMembership` (queries, returns `{user, membership}` or `null`), `findUser` (user only, returns `null` when signed out) |
+| `convex/helpers.ts` | Shared auth/scope helpers: `getUserAndMembership` (mutations, throws `ConvexError`), `findUserAndMembership` (queries, returns `{user, membership}` or `null`), `findUser` (user only, returns `null` when signed out), `requireOwner` (owner-gate check), `getScopedDoc` (fetch + household-scope guard that throws `"<Entity> not found."`) |
 | `convex/*.ts` | Query/mutation functions |
 
 ### 5.3 Account Balance Auto-Update
@@ -484,8 +484,12 @@ effects) — so create/update/delete balance math cannot drift apart.
 ### 5.6 Initial Balance Category Contract
 
 Each household gets two reserved "Initial Balance" categories (income and
-expense) at creation. `accounts.create` with a non-zero opening balance posts a
-transaction against the matching one. These categories are protected:
+expense) at creation. The category name is the single shared constant
+`RESERVED_CATEGORY_NAME` in `constants/categories.ts` — never a bare literal.
+`accounts.create` with a non-zero opening balance posts a
+transaction against the matching one; it assumes the category exists (created
+with the household) and errors if it does not, rather than creating it on the
+fly. These categories are protected:
 `categories.create` cannot duplicate them; update/delete reject rename/hide/
 retype/delete; they never appear in user-facing category selection.
 
@@ -696,6 +700,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-16 | Refactor | Permission/scope consolidation + shared reserved-category constant: `requireOwner` and `getScopedDoc` in `convex/helpers.ts` replace ~9 inline owner-gate checks and ~16 duplicated get+household-scope checks across `accounts.*`, `categories.*`, `budgets.*`, `transactions.*`, `invitations.*` mutations (single `"You are not the owner..."` / `"<Entity> not found."` messages); `accounts.create` opening-balance path now relies on the reserved category guaranteed by `households.create` — removed the lookup-or-create fallback that could silently create duplicate "Initial Balance" categories; `RESERVED_CATEGORY_NAME` added to `constants/categories.ts` and shared by `households`, `accounts`, `categories`, `budgets` (was 4 hardcoded copies); removed dead null-check in `accounts.remove`; new `tests/accounts.create.test.ts` specs (5 cases) pinning opening-balance posting + owner-only permission |
 | 2026-08-15 | Refactor | Backend auth/balance deduplication (analysis-driven): new query-safe helper `findUserAndMembership` (returns `null`) and user-only `findUser` in `convex/helpers.ts`, replacing ~14 copy-pasted identity→user→membership blocks across query handlers (`accounts.list`, `categories.list`, `budgets.list/get/categoryOptions`, `transactions.list/recent/get`, `households.getActive`, `invitations.listActive`, `users.getMe`); extracted shared `applyBalanceDelta` + `reverseBalances` in `convex/transactions.ts` so create/update/delete balances can't diverge (was 3 hand-rolled implementations of §5.3); `transactions.get` now reuses `hydrate`; inline account/category type literals replaced with `Doc<>` in `transactions.ts`; new `tests/transactions.balance.test.ts` characterization specs (6 cases) pinning balance auto-update behavior |
 | 2026-08-15 | UX | Home dashboard redesign (critique score 21→target): balance card now shows monthly net income/expense with semantic color; budget pills row with progress bars; type-specific tinted account icons; category-mapped transaction icons with semantic colors; greeting uses first name; sign-out moved to Settings; empty states include action CTAs; FAB uses reanimated spring animation; dark mode badge contrast fixed |
 | 2026-08-15 | UX | Transaction form design critique cycle (v1–v5, score 29→31/40): inline field-specific validation (amount, account, category, date errors show beneath each field); three-section layout with differentiated backgrounds (Account/Category `bg-surface`, Date/Note `bg-background`); removed GradientCard for consistent bordered treatment; "Repeat last" moved from type chip row to standalone icon+label+description row; date errors now inline under DateField instead of generic banner |

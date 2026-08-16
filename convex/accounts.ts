@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
-import { getUserAndMembership, findUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateAccountName } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 
 const accountType = v.union(
   v.literal("cash"),
@@ -41,10 +42,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
-
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
+    requireOwner(membership);
 
     const err = validateAccountName(args.name);
     if (err) throw new ConvexError(err);
@@ -82,30 +80,18 @@ export const create = mutation({
 
     if (openingBalance !== 0) {
       const txType = openingBalance > 0 ? "income" : "expense";
-      let category = await ctx.db
+      const category = await ctx.db
         .query("categories")
         .withIndex("by_householdId", (q) =>
           q.eq("householdId", membership.householdId),
         )
         .filter((q) =>
           q.and(
-            q.eq(q.field("name"), "Initial Balance"),
+            q.eq(q.field("name"), RESERVED_CATEGORY_NAME),
             q.eq(q.field("type"), txType),
           ),
         )
         .first();
-
-      if (category === null) {
-        const categoryId = await ctx.db.insert("categories", {
-          householdId: membership.householdId,
-          name: "Initial Balance",
-          type: txType,
-          hidden: false,
-          createdAt: now,
-          updatedAt: now,
-        });
-        category = await ctx.db.get(categoryId);
-      }
 
       if (category === null) {
         throw new ConvexError("Initial Balance category not found.");
@@ -134,15 +120,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
     const patch: {
       name?: string;
@@ -191,15 +171,9 @@ export const remove = mutation({
   args: { accountId: v.id("accounts") },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
     const referencingTx = await ctx.db
       .query("transactions")

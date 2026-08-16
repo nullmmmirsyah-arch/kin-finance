@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { getUserAndMembership, findUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
 import {
   validateNote,
   validateTransactionAmount,
@@ -98,10 +98,7 @@ export const create = mutation({
     const dateErr = validateTransactionDate(args.date);
     if (dateErr) throw new ConvexError(dateErr);
 
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
     let category: Doc<"categories"> | undefined;
     let toAccount: Doc<"accounts"> | undefined;
@@ -116,10 +113,7 @@ export const create = mutation({
       if (args.toAccountId === args.accountId) {
         throw new ConvexError("From and To accounts must be different.");
       }
-      const to = await ctx.db.get(args.toAccountId);
-      if (to === null || to.householdId !== membership.householdId) {
-        throw new ConvexError("To account not found.");
-      }
+      const to = await getScopedDoc(ctx, args.toAccountId, membership.householdId, "To account");
       toAccount = to;
     } else {
       if (args.toAccountId !== undefined) {
@@ -132,10 +126,7 @@ export const create = mutation({
           "Category is required for income and expense transactions.",
         );
       }
-      const cat = await ctx.db.get(args.categoryId);
-      if (cat === null || cat.householdId !== membership.householdId) {
-        throw new ConvexError("Category not found.");
-      }
+      const cat = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
       if (cat.type !== args.type) {
         throw new ConvexError("Category type must match transaction type.");
       }
@@ -444,10 +435,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    const tx = await ctx.db.get(args.transactionId);
-    if (tx === null || tx.householdId !== membership.householdId) {
-      throw new ConvexError("Transaction not found.");
-    }
+    const tx = await getScopedDoc(ctx, args.transactionId, membership.householdId, "Transaction");
 
     const type = args.type ?? tx.type;
     const amount = args.amount ?? tx.amount;
@@ -489,17 +477,11 @@ export const update = mutation({
       if (dateErr) throw new ConvexError(dateErr);
     }
 
-    const account = await ctx.db.get(accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, accountId, membership.householdId, "Account");
 
     let category: Doc<"categories"> | undefined;
     if (categoryId !== undefined) {
-      const cat = await ctx.db.get(categoryId);
-      if (cat === null || cat.householdId !== membership.householdId) {
-        throw new ConvexError("Category not found.");
-      }
+      const cat = await getScopedDoc(ctx, categoryId, membership.householdId, "Category");
       if (cat.type !== type) {
         throw new ConvexError("Category type must match transaction type.");
       }
@@ -508,10 +490,7 @@ export const update = mutation({
 
     let toAccount: Doc<"accounts"> | undefined;
     if (toAccountId !== undefined) {
-      const to = await ctx.db.get(toAccountId);
-      if (to === null || to.householdId !== membership.householdId) {
-        throw new ConvexError("To account not found.");
-      }
+      const to = await getScopedDoc(ctx, toAccountId, membership.householdId, "To account");
       toAccount = to;
     }
 
@@ -590,10 +569,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
 
-    const tx = await ctx.db.get(args.transactionId);
-    if (tx === null || tx.householdId !== membership.householdId) {
-      throw new ConvexError("Transaction not found.");
-    }
+    const tx = await getScopedDoc(ctx, args.transactionId, membership.householdId, "Transaction");
 
     if (membership.role !== "owner" && tx.categoryId !== undefined) {
       const category = await ctx.db.get(tx.categoryId);

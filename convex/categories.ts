@@ -1,11 +1,10 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getUserAndMembership, findUserAndMembership } from "./helpers";
+import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateCategoryName } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 
 const categoryType = v.union(v.literal("income"), v.literal("expense"));
-
-const RESERVED_CATEGORY_NAME = "Initial Balance";
 
 export const list = query({
   args: {},
@@ -41,10 +40,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
-
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
+    requireOwner(membership);
 
     const err = validateCategoryName(args.name);
     if (err) throw new ConvexError(err);
@@ -90,15 +86,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const category = await ctx.db.get(args.categoryId);
-    if (category === null || category.householdId !== membership.householdId) {
-      throw new ConvexError("Category not found.");
-    }
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
 
     if (category.name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category cannot be modified.");
@@ -181,15 +171,9 @@ export const remove = mutation({
   args: { categoryId: v.id("categories") },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const category = await ctx.db.get(args.categoryId);
-    if (category === null || category.householdId !== membership.householdId) {
-      throw new ConvexError("Category not found.");
-    }
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
 
     if (category.name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category cannot be deleted.");
