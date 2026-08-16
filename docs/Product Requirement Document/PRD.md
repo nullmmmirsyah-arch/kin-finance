@@ -648,7 +648,7 @@ updatedAt: number
 |--------|----------|------|-------|
 | `users` | `store` | mutation | Upsert current user profile |
 | `users` | `getMe` | query | Current user profile |
-| `households` | `create` | mutation | Create + owner membership + reserved categories; records device IANA timezone (default `UTC`) |
+| `households` | `create` | mutation | Create + owner membership + reserved categories; records device IANA timezone |
 | `households` | `getActive` | query | Current user's household |
 | `households` | `update` | mutation | Rename (owner only) |
 | `households` | `updateTimezone` | mutation | Set timezone (owner only); re-anchors budget periods when prior timezone recorded |

@@ -39,10 +39,11 @@ timezone-agnostic (compares raw epoch-ms numbers).
 `convex/schema.ts` — add to `households`:
 
 ```ts
-timezone: v.string()   // IANA name, e.g. "Asia/Jakarta"; default "UTC"
+timezone: v.optional(v.string())   // IANA name, e.g. "Asia/Jakarta"; undefined = match device
 ```
 
-Fallback for existing households without the field: `"UTC"`.
+Fallback for households without the field: the device IANA timezone (via
+`expo-localization`), not `"UTC"`.
 
 ### 2. Date utilities (`utils/date.ts`)
 
@@ -78,8 +79,11 @@ Implementation notes:
 ### 3. Convex — `convex/households.ts`
 
 `households.create` gains an optional `timezone: v.optional(v.string())`
-argument; default `"UTC"`. The value is stored on the household. No other
-backend change: `getActive` returns the full doc including `timezone`.
+argument; the creating device's IANA zone is captured and stored on the
+household. No other backend change: `getActive` returns the full doc
+including `timezone`. A new owner-gated `households.updateTimezone` mutation
+sets the timezone and re-anchors budget periods when a prior timezone was
+recorded.
 
 ### 4. Client — period boundaries and display
 
@@ -102,10 +106,12 @@ IANA timezone from `expo-localization` (fallback `"UTC"`).
 
 ### 6. Existing data
 
-Existing households without `timezone` default to `"UTC"` (server-side
-read handles the missing field). No migration needed for correctness, but
-households created before this change will use UTC boundaries until the
-owner re-creates or a future settings UI sets the timezone.
+Households without `timezone` resolve to the device IANA timezone at runtime
+(`resolveTimezone` in `constants/timezones.ts`). No migration needed for
+correctness. When the owner later sets a concrete timezone via the Household
+screen, `households.updateTimezone` re-anchors existing budget `periodStart`
+values only if a prior timezone was recorded — legacy households keep stored
+boundaries, which match the newly selected device locale.
 
 ## Non-goals
 
@@ -113,7 +119,6 @@ owner re-creates or a future settings UI sets the timezone.
   divergence for shared budgets).
 - Transaction date normalization to midnight-in-household-tz (stored epoch
   instants are fine; classification happens via consistent boundary queries).
-- Household settings UI to change timezone (future work).
 
 ## Risks
 
@@ -129,3 +134,24 @@ owner re-creates or a future settings UI sets the timezone.
 - `npm run lint`
 - Manual: create household (records device timezone), set a budget, confirm
   it appears on Home; switch device timezone and confirm boundaries hold.
+
+## Implementation notes (post-approval)
+
+Implemented in commits `640cbe8` → `5cb1ab5`. Two decisions supersede the
+original design:
+
+- **"Match device" is the default, not `UTC`.** `households.timezone` is
+  `v.optional(v.string())`. At runtime, screens resolve the effective zone via
+  `resolveTimezone(stored)` in `constants/timezones.ts`, which falls back to
+  the device IANA timezone (`getCalendars()[0].timeZone`) when nothing is
+  recorded. This fixes legacy households whose budgets were written in
+  device-local time yet were being queried against a UTC month start.
+- **Settings UI shipped** (the original non-goal): the Owner changes the
+  timezone from the Household screen (Members → Household → Timezone) via the
+  new owner-gated `households.updateTimezone` mutation, choosing either "Match
+  device" (resolves to the device zone) or a manual IANA zone from the curated
+  list in `constants/timezones.ts`. Non-owner Members see a read-only card.
+- `households.updateTimezone` re-anchors existing budget `periodStart` values
+  to the same calendar months in the new timezone, but only when a prior
+  timezone was recorded. Legacy households without a recorded timezone keep
+  their stored boundaries (they match the newly selected device locale).
