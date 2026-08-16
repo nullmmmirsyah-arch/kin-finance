@@ -47,7 +47,7 @@ export default function Settings() {
           style: "destructive",
           onPress: () => {
             setIsSigningOut(true);
-            void signOut();
+            signOut().catch(() => setIsSigningOut(false));
           },
         },
       ],
