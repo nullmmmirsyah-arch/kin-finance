@@ -23,7 +23,8 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
-import { formatDateHeader, startOfMonth, addMonths } from "@/utils/date";
+import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
@@ -100,7 +101,7 @@ export default function Home() {
     { date: number; id: Id<"transactions"> } | undefined
   >(undefined);
   const recent = useQuery(api.transactions.recent, {
-    limit: 5,
+    limit: 2,
     cursor: recentCursor,
   });
   type RecentTransaction = NonNullable<
@@ -128,7 +129,7 @@ export default function Home() {
       ? recent.transactions
       : [...(recentTransactionsRef.current ?? []), ...recent.transactions];
     setRecentTransactions(next);
-    if (recent.cursor && next.length < 5) {
+    if (recent.cursor && next.length < 2) {
       setRecentCursor(recent.cursor);
       setFollowingRecent(true);
     } else {
@@ -139,9 +140,10 @@ export default function Home() {
   const recentGroups = useMemo(() => {
     const transactions = recentTransactions;
     if (transactions === null) return null;
+    const timezone = resolveTimezone(household?.timezone);
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
-      const key = formatDateHeader(tx.date);
+      const key = formatDateHeaderTz(tx.date, timezone);
       const list = groups.get(key);
       if (list) {
         list.push(tx);
@@ -154,23 +156,11 @@ export default function Home() {
       data,
       total: data.reduce((sum, tx) => sum + tx.amount, 0),
     }));
-  }, [recentTransactions]);
+  }, [recentTransactions, household]);
 
-  const now = new Date();
-  const monthStart = startOfMonth(now).getTime();
-  const monthEnd = addMonths(startOfMonth(now), 1).getTime();
-
-  const utcMonthStart = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    1,
-    0, 0, 0, 0,
-  );
-  const utcMonthEnd = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth() + 1,
-    1,
-    0, 0, 0, 0,
+  const { start: monthStart, end: monthEnd } = getMonthBounds(
+    Date.now(),
+    resolveTimezone(household?.timezone),
   );
 
   const monthTransactions = useQuery(api.transactions.list, {
@@ -179,8 +169,8 @@ export default function Home() {
   });
 
   const monthBudgets = useQuery(api.budgets.list, {
-    periodStart: utcMonthStart,
-    periodEnd: utcMonthEnd,
+    periodStart: monthStart,
+    periodEnd: monthEnd,
   });
 
   const monthlySummary = useMemo(() => {
@@ -327,25 +317,41 @@ export default function Home() {
           </View>
         </GradientCard>
 
-        {budgetPills.length > 0 && (
+        {monthBudgets !== undefined && (
           <View className="mt-6">
             <View className="flex-row items-center justify-between">
               <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
                 Budgets
               </Text>
-              <Pressable
-                onPress={() => router.push("/budgets")}
-                accessibilityRole="button"
-                className="min-h-12 items-center justify-center"
-              >
-                <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
-              </Pressable>
+              {budgetPills.length > 0 && (
+                <Pressable
+                  onPress={() => router.push("/budgets")}
+                  accessibilityRole="button"
+                  className="min-h-12 items-center justify-center"
+                >
+                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
+                </Pressable>
+              )}
             </View>
-            <View className="mt-2 gap-3">
-              {budgetPills.map((pill) => (
-                <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
-              ))}
-            </View>
+            {budgetPills.length > 0 ? (
+              <View className="mt-2 gap-3">
+                {budgetPills.map((pill) => (
+                  <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                icon="pie-chart"
+                title="No budgets yet"
+                description="Set a budget for each category to track your spending"
+                actionLabel={monthBudgets.isOwner ? "Create Budget" : undefined}
+                onAction={
+                  monthBudgets.isOwner
+                    ? () => router.push("/budget-form")
+                    : undefined
+                }
+              />
+            )}
           </View>
         )}
 
@@ -504,7 +510,7 @@ export default function Home() {
           >
             {recent === undefined && recentTransactions === null ? (
               <View className="gap-3 px-4 py-4">
-                {[0, 1, 2].map((i) => (
+                {[0, 1].map((i) => (
                   <View key={i} className="flex-row items-center gap-3">
                     <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
                     <View className="flex-1 gap-2">
@@ -562,6 +568,7 @@ export default function Home() {
                         amount={tx.amount}
                         type={tx.type}
                         date={tx.date}
+                        timezone={resolveTimezone(household?.timezone)}
                         onPress={() =>
                           router.push({
                             pathname: "/transaction-form",

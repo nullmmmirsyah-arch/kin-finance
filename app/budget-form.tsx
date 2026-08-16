@@ -20,7 +20,8 @@ import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatAmountInput } from "@/utils/format";
-import { startOfMonth } from "@/utils/date";
+import { formatMonthLabel, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function BudgetForm() {
@@ -34,10 +35,13 @@ export default function BudgetForm() {
     budgetId ? { budgetId: budgetId as Id<"budgets"> } : "skip",
   );
   const categoryOptions = useQuery(api.budgets.categoryOptions);
+  const household = useQuery(api.households.getActive);
   const createBudget = useMutation(api.budgets.create);
   const updateBudget = useMutation(api.budgets.update);
   const { show } = useSnackbar();
   const C = useThemeColors();
+
+  const timezone = resolveTimezone(household?.timezone);
 
   const [amount, setAmount] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -58,14 +62,11 @@ export default function BudgetForm() {
 
   const rawPeriodStart = params.periodStart ? Number(params.periodStart) : NaN;
   const periodStart = Number.isFinite(rawPeriodStart)
-    ? startOfMonth(new Date(rawPeriodStart)).getTime()
-    : Date.now();
+    ? getMonthBounds(rawPeriodStart, timezone).start
+    : getMonthBounds(Date.now(), timezone).start;
 
   const monthTs = existingBudget?.periodStart ?? periodStart;
-  const monthLabel = new Date(monthTs).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = formatMonthLabel(monthTs, timezone);
 
   const options = useMemo(
     () => (categoryOptions ?? []).map((c) => ({ id: c._id, label: c.name })),
@@ -78,6 +79,8 @@ export default function BudgetForm() {
 
   const canSubmit =
     !isLoading &&
+    household !== undefined &&
+    household !== null &&
     (!isEdit || existingBudget !== undefined) &&
     (isEdit || (amountValid && selectedCategoryId !== null));
 

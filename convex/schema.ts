@@ -12,6 +12,7 @@ export default defineSchema({
 
   households: defineTable({
     name: v.string(),
+    timezone: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),

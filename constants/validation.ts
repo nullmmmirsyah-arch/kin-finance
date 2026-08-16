@@ -90,3 +90,18 @@ export function validateInviteCode(code: string): string | null {
   }
   return null;
 }
+
+// Validates an IANA timezone identifier. `undefined` is allowed (an absent
+// timezone means "match device", resolved at runtime); a provided value must
+// be a real IANA identifier, otherwise it would crash `Intl.DateTimeFormat`
+// calls on every screen. Rejects empty strings and non-zone strings alike.
+export function validateTimezone(timezone: string | undefined): string | null {
+  if (timezone === undefined) return null;
+  try {
+    // Throws RangeError for unknown identifiers on Node and Hermes.
+    Intl.DateTimeFormat("en-US", { timeZone: timezone });
+  } catch {
+    return "Timezone must be a valid IANA timezone identifier.";
+  }
+  return null;
+}

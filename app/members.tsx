@@ -15,9 +15,11 @@ import { getConvexErrorMessage } from "@/lib/errors";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { validateHouseholdName, HOUSEHOLD_NAME_MAX } from "@/constants/validation";
+import { DEVICE_TIMEZONE_ID, timezonePickerOptions, timezonePickerValue, resolveTimezone, formatTimezoneLabel } from "@/constants/timezones";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Input } from "@/components/Input";
+import { SelectField } from "@/components/SelectField";
 import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
@@ -47,6 +49,25 @@ export default function Members() {
     household?._id ? { householdId: household._id } : "skip",
   );
   const updateHousehold = useMutation(api.households.update);
+  const updateTimezone = useMutation(api.households.updateTimezone);
+
+  const handleTimezoneSelect = useCallback(
+    async (id: string) => {
+      if (!household?._id) return;
+      try {
+        const timezone = id === DEVICE_TIMEZONE_ID ? undefined : id;
+        await updateTimezone({ householdId: household._id, timezone });
+        show(
+          id === DEVICE_TIMEZONE_ID
+            ? "Timezone set to match device"
+            : `Timezone set to ${formatTimezoneLabel(timezone)}`,
+        );
+      } catch (e: any) {
+        show(getConvexErrorMessage(e, "Failed to update timezone."));
+      }
+    },
+    [household, updateTimezone, show],
+  );
 
   useEffect(() => {
     if (household === null) {
@@ -341,6 +362,45 @@ export default function Members() {
               ) : null}
             </View>
           )}
+        </View>
+
+        <View className="mt-3">
+          {isOwner ? (
+            <SelectField
+              label="Timezone"
+              placeholder="Select a timezone"
+              value={timezonePickerValue(household?.timezone)}
+              options={timezonePickerOptions()}
+              onSelect={handleTimezoneSelect}
+            />
+          ) : (
+            <View
+              style={[
+                Shadow.card,
+                {
+                  borderRadius: Radius.md,
+                  backgroundColor: C.background,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                },
+              ]}
+              className="px-4 py-4"
+            >
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                Timezone
+              </Text>
+              <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                {formatTimezoneLabel(resolveTimezone(household?.timezone))}
+              </Text>
+              <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+                Only the household owner can change the timezone.
+              </Text>
+            </View>
+          )}
+          <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
+            Calendar months and budget periods use the household timezone so every
+            member sees the same dates. Match device follows the device timezone.
+          </Text>
         </View>
       </View>
 
