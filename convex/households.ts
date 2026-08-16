@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { validateHouseholdName } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { findUserAndMembership } from "./helpers";
+import { getYearMonth, zonedMonthStart } from "../utils/date";
 
 export const create = mutation({
   args: {
@@ -126,6 +127,82 @@ export const update = mutation({
 
     await ctx.db.patch(args.householdId, {
       name: trimmedName,
+      updatedAt: Date.now(),
+    });
+
+    return await ctx.db.get(args.householdId);
+  },
+});
+
+export const updateTimezone = mutation({
+  args: { householdId: v.id("households"), timezone: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new ConvexError("You are not signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+
+    if (user === null) {
+      throw new ConvexError("User not found.");
+    }
+
+    const memberships = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const membership = memberships.find(
+      (m) => m.householdId === args.householdId,
+    );
+
+    if (membership === undefined || membership.role !== "owner") {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+
+    const household = await ctx.db.get(args.householdId);
+    if (!household) {
+      throw new ConvexError("Household not found.");
+    }
+
+    if (args.timezone === household.timezone) {
+      return household;
+    }
+
+    // Only migrate budgets when we actually know the timezone they were
+    // created in. Legacy households have no recorded timezone (their budgets
+    // were created in device-local time); setting the timezone now assumes it
+    // matches that device locale, so we leave the stored boundaries untouched.
+    if (household.timezone !== undefined) {
+      const oldTimezone = household.timezone;
+
+      const budgets = await ctx.db
+        .query("budgets")
+        .withIndex("by_householdId", (q) =>
+          q.eq("householdId", args.householdId),
+        )
+        .collect();
+
+      for (const budget of budgets) {
+        const { year, month } = getYearMonth(budget.periodStart, oldTimezone);
+        const newPeriodStart = zonedMonthStart(year, month, args.timezone);
+        if (newPeriodStart !== budget.periodStart) {
+          await ctx.db.patch(budget._id, {
+            periodStart: newPeriodStart,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    await ctx.db.patch(args.householdId, {
+      timezone: args.timezone,
       updatedAt: Date.now(),
     });
 

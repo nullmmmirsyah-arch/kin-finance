@@ -111,18 +111,34 @@ function zonedWallToUtc(
   return ts;
 }
 
+// Calendar (year, month) of `ts` in `timeZone`.
+export function getYearMonth(
+  ts: number,
+  timeZone: string,
+): { year: number; month: number } {
+  const p = zonedParts(ts, timeZone);
+  return { year: p.year, month: p.month };
+}
+
+// First millisecond of (year, month) in `timeZone` as an epoch-ms instant.
+export function zonedMonthStart(
+  year: number,
+  month: number,
+  timeZone: string,
+): number {
+  return zonedWallToUtc(year, month, 1, 0, 0, 0, timeZone);
+}
+
 // Half-open calendar-month range [start, end) for `ts` in `timeZone`.
 export function getMonthBounds(
   ts: number,
   timeZone: string,
 ): { start: number; end: number } {
-  const p = zonedParts(ts, timeZone);
-  const year = p.year;
-  const month = p.month;
-  const start = zonedWallToUtc(year, month, 1, 0, 0, 0, timeZone);
+  const { year, month } = getYearMonth(ts, timeZone);
+  const start = zonedMonthStart(year, month, timeZone);
   const endYear = month === 12 ? year + 1 : year;
   const endMonth = month === 12 ? 1 : month + 1;
-  const end = zonedWallToUtc(endYear, endMonth, 1, 0, 0, 0, timeZone);
+  const end = zonedMonthStart(endYear, endMonth, timeZone);
   return { start, end };
 }
 
