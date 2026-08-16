@@ -18,8 +18,8 @@ import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
 import {
-  addDays,
   formatDateHeaderTz,
+  getDayBounds,
   getMonthBounds,
   startOfDay,
 } from "@/utils/date";
@@ -62,8 +62,8 @@ export default function Transactions() {
       return { startDate: 0, endDate: 0 };
     }
     return {
-      startDate: startOfDay(customFrom).getTime(),
-      endDate: addDays(startOfDay(customTo), 1).getTime(),
+      startDate: getDayBounds(customFrom, timezone).start,
+      endDate: getDayBounds(customTo, timezone).end,
     };
   }, [filter, customFrom, customTo, invalidCustomRange, timezone]);
 

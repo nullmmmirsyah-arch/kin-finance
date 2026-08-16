@@ -79,6 +79,8 @@ export default function BudgetForm() {
 
   const canSubmit =
     !isLoading &&
+    household !== undefined &&
+    household !== null &&
     (!isEdit || existingBudget !== undefined) &&
     (isEdit || (amountValid && selectedCategoryId !== null));
 

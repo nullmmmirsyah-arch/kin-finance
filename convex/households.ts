@@ -43,7 +43,7 @@ export const create = mutation({
     const now = Date.now();
     const householdId = await ctx.db.insert("households", {
       name: trimmedName,
-      timezone: args.timezone ?? "UTC",
+      timezone: args.timezone,
       createdAt: now,
       updatedAt: now,
     });
@@ -135,7 +135,7 @@ export const update = mutation({
 });
 
 export const updateTimezone = mutation({
-  args: { householdId: v.id("households"), timezone: v.string() },
+  args: { householdId: v.id("households"), timezone: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
@@ -175,11 +175,12 @@ export const updateTimezone = mutation({
       return household;
     }
 
-    // Only migrate budgets when we actually know the timezone they were
-    // created in. Legacy households have no recorded timezone (their budgets
-    // were created in device-local time); setting the timezone now assumes it
-    // matches that device locale, so we leave the stored boundaries untouched.
-    if (household.timezone !== undefined) {
+    // Only re-anchor budgets when we actually know the timezone they were
+    // created in AND the new target is a concrete zone. A missing value means
+    // "match device": budgets were created in device-local time (legacy) or
+    // should keep their stored boundaries (the device locale matches), so we
+    // leave them untouched.
+    if (household.timezone !== undefined && args.timezone !== undefined) {
       const oldTimezone = household.timezone;
 
       const budgets = await ctx.db

@@ -141,7 +141,8 @@ Implemented in commits `640cbe8` → `5cb1ab5`. Two decisions supersede the
 original design:
 
 - **"Match device" is the default, not `UTC`.** `households.timezone` is
-  `v.optional(v.string())`. At runtime, screens resolve the effective zone via
+  `v.optional(v.string())`; an **absent value is the sentinel for "match
+  device"**. At runtime, screens resolve the effective zone via
   `resolveTimezone(stored)` in `constants/timezones.ts`, which falls back to
   the device IANA timezone (`getCalendars()[0].timeZone`) when nothing is
   recorded. This fixes legacy households whose budgets were written in
@@ -149,9 +150,12 @@ original design:
 - **Settings UI shipped** (the original non-goal): the Owner changes the
   timezone from the Household screen (Members → Household → Timezone) via the
   new owner-gated `households.updateTimezone` mutation, choosing either "Match
-  device" (resolves to the device zone) or a manual IANA zone from the curated
-  list in `constants/timezones.ts`. Non-owner Members see a read-only card.
+  device" (clears the stored timezone so it keeps following the device
+  dynamically) or a manual IANA zone from the curated list in
+  `constants/timezones.ts`. Non-owner Members see a read-only card.
 - `households.updateTimezone` re-anchors existing budget `periodStart` values
   to the same calendar months in the new timezone, but only when a prior
-  timezone was recorded. Legacy households without a recorded timezone keep
-  their stored boundaries (they match the newly selected device locale).
+  timezone was recorded **and** the new value is a concrete zone. Legacy
+  households without a recorded timezone keep their stored boundaries (they
+  match the newly selected device locale); clearing to "match device" also
+  keeps stored boundaries.

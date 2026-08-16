@@ -23,8 +23,6 @@ import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
-const MONTH_MS = 32 * 86_400_000;
-
 export default function Budgets() {
   const router = useRouter();
   const C = useThemeColors();
@@ -69,14 +67,14 @@ export default function Budgets() {
   const handlePrevMonth = useCallback(() => {
     setSelectedMonthStart((prev) => {
       const current = prev ?? getMonthBounds(Date.now(), timezone).start;
-      return getMonthBounds(current - MONTH_MS, timezone).start;
+      return getMonthBounds(current - 1, timezone).start;
     });
   }, [timezone]);
 
   const handleNextMonth = useCallback(() => {
     setSelectedMonthStart((prev) => {
       const current = prev ?? getMonthBounds(Date.now(), timezone).start;
-      return getMonthBounds(current + MONTH_MS, timezone).start;
+      return getMonthBounds(current, timezone).end;
     });
   }, [timezone]);
 

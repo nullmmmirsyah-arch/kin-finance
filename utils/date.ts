@@ -142,6 +142,23 @@ export function getMonthBounds(
   return { start, end };
 }
 
+// Half-open calendar-day range [start, end) in `timeZone` for a device-local
+// Date. The calendar date is taken from the Date's device-local components
+// (the date the user picked) and interpreted as midnight-to-midnight in the
+// household timezone, so the range respects the household day boundary even
+// when the device timezone differs.
+export function getDayBounds(
+  date: Date,
+  timeZone: string,
+): { start: number; end: number } {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const start = zonedWallToUtc(year, month, day, 0, 0, 0, timeZone);
+  const end = zonedWallToUtc(year, month, day + 1, 0, 0, 0, timeZone);
+  return { start, end };
+}
+
 export function formatDateHeaderTz(timestamp: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone,

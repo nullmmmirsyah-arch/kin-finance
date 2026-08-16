@@ -55,10 +55,13 @@ export default function Members() {
     async (id: string) => {
       if (!household?._id) return;
       try {
-        const timezone =
-          id === DEVICE_TIMEZONE_ID ? resolveTimezone(undefined) : id;
+        const timezone = id === DEVICE_TIMEZONE_ID ? undefined : id;
         await updateTimezone({ householdId: household._id, timezone });
-        show(`Timezone set to ${formatTimezoneLabel(timezone)}`);
+        show(
+          id === DEVICE_TIMEZONE_ID
+            ? "Timezone set to match device"
+            : `Timezone set to ${formatTimezoneLabel(timezone)}`,
+        );
       } catch (e: any) {
         show(getConvexErrorMessage(e, "Failed to update timezone."));
       }
@@ -387,7 +390,7 @@ export default function Members() {
                 Timezone
               </Text>
               <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                {formatTimezoneLabel(household?.timezone)}
+                {formatTimezoneLabel(resolveTimezone(household?.timezone))}
               </Text>
               <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
                 Only the household owner can change the timezone.
