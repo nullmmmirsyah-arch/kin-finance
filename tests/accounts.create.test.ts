@@ -4,6 +4,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../convex/schema";
 import { api } from "../convex/_generated/api";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 
 const OWNER_TOKEN = "owner|acct-create-test";
 const MEMBER_TOKEN = "member|acct-create-test";
@@ -15,7 +16,13 @@ describe("accounts.create", () => {
     t = convexTest(schema, import.meta.glob("../convex/**/*.*s"));
   });
 
-  async function seed(ctx: any) {
+  async function seed(
+    ctx: any,
+    reserved: { income?: boolean; expense?: boolean } = {
+      income: true,
+      expense: true,
+    },
+  ) {
     const householdId = await ctx.db.insert("households", {
       name: "Acct HH",
       createdAt: 1,
@@ -39,22 +46,26 @@ describe("accounts.create", () => {
       userId: memberId,
       role: "member",
     });
-    await ctx.db.insert("categories", {
-      householdId,
-      name: "Initial Balance",
-      type: "income",
-      hidden: false,
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    await ctx.db.insert("categories", {
-      householdId,
-      name: "Initial Balance",
-      type: "expense",
-      hidden: false,
-      createdAt: 1,
-      updatedAt: 1,
-    });
+    if (reserved.income !== false) {
+      await ctx.db.insert("categories", {
+        householdId,
+        name: RESERVED_CATEGORY_NAME,
+        type: "income",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    }
+    if (reserved.expense !== false) {
+      await ctx.db.insert("categories", {
+        householdId,
+        name: RESERVED_CATEGORY_NAME,
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    }
     return { householdId, ownerId };
   }
 
@@ -122,6 +133,29 @@ describe("accounts.create", () => {
     expect(txns.length).toBe(1);
     expect(txns[0].type).toBe("expense");
     expect(txns[0].amount).toBe(-200);
+  });
+
+  it("rejects nonzero opening balance when the matching reserved category is missing", async () => {
+    const owner = t.withIdentity({
+      tokenIdentifier: OWNER_TOKEN,
+      subject: "owner",
+    });
+    await t.run(async (ctx) => seed(ctx, { expense: false }));
+
+    await expect(
+      owner.mutation(api.accounts.create, {
+        name: "Credit Card",
+        type: "credit_card",
+        openingBalance: -200,
+      }),
+    ).rejects.toThrow();
+
+    const accounts = await t.run(async (ctx) => {
+      const all: any[] = [];
+      for await (const account of ctx.db.query("accounts")) all.push(account);
+      return all;
+    });
+    expect(accounts.length).toBe(0);
   });
 
   it("member cannot create account", async () => {

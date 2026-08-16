@@ -116,6 +116,56 @@ describe("transaction balance auto-update", () => {
     expect(to!.balance).toBe(540);
   });
 
+  it("update transfer amount adjusts both balances", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => seed(ctx));
+
+    const txId = await owner.mutation(api.transactions.create, {
+      accountId: ids.cashId,
+      toAccountId: ids.bankId,
+      amount: 40,
+      type: "transfer",
+      date: 100,
+    });
+    // cash: 100 - 40 = 60, bank: 500 + 40 = 540
+
+    await owner.mutation(api.transactions.update, {
+      transactionId: txId,
+      amount: 25,
+    });
+    // reverse old (cash +40, bank -40), apply new (cash -25, bank +25)
+    // cash: 60 + 15 = 75, bank: 540 - 15 = 525
+
+    const from = await t.run((ctx) => ctx.db.get(ids.cashId));
+    const to = await t.run((ctx) => ctx.db.get(ids.bankId));
+    expect(from!.balance).toBe(75);
+    expect(to!.balance).toBe(525);
+  });
+
+  it("delete transfer reverses both balances", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => seed(ctx));
+
+    const txId = await owner.mutation(api.transactions.create, {
+      accountId: ids.cashId,
+      toAccountId: ids.bankId,
+      amount: 40,
+      type: "transfer",
+      date: 100,
+    });
+    // cash: 60, bank: 540
+
+    await owner.mutation(api.transactions.remove, {
+      transactionId: txId,
+    });
+    // reverse: cash +40, bank -40 → cash: 100, bank: 500
+
+    const from = await t.run((ctx) => ctx.db.get(ids.cashId));
+    const to = await t.run((ctx) => ctx.db.get(ids.bankId));
+    expect(from!.balance).toBe(100);
+    expect(to!.balance).toBe(500);
+  });
+
   it("update reverses old balance then applies new (amount change)", async () => {
     const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
     const ids = await t.run(async (ctx) => seed(ctx));
