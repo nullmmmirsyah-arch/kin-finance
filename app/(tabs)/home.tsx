@@ -100,7 +100,7 @@ export default function Home() {
     { date: number; id: Id<"transactions"> } | undefined
   >(undefined);
   const recent = useQuery(api.transactions.recent, {
-    limit: 5,
+    limit: 2,
     cursor: recentCursor,
   });
   type RecentTransaction = NonNullable<
@@ -128,7 +128,7 @@ export default function Home() {
       ? recent.transactions
       : [...(recentTransactionsRef.current ?? []), ...recent.transactions];
     setRecentTransactions(next);
-    if (recent.cursor && next.length < 5) {
+    if (recent.cursor && next.length < 2) {
       setRecentCursor(recent.cursor);
       setFollowingRecent(true);
     } else {
@@ -160,27 +160,14 @@ export default function Home() {
   const monthStart = startOfMonth(now).getTime();
   const monthEnd = addMonths(startOfMonth(now), 1).getTime();
 
-  const utcMonthStart = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    1,
-    0, 0, 0, 0,
-  );
-  const utcMonthEnd = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth() + 1,
-    1,
-    0, 0, 0, 0,
-  );
-
   const monthTransactions = useQuery(api.transactions.list, {
     startDate: monthStart,
     endDate: monthEnd,
   });
 
   const monthBudgets = useQuery(api.budgets.list, {
-    periodStart: utcMonthStart,
-    periodEnd: utcMonthEnd,
+    periodStart: monthStart,
+    periodEnd: monthEnd,
   });
 
   const monthlySummary = useMemo(() => {
@@ -327,25 +314,41 @@ export default function Home() {
           </View>
         </GradientCard>
 
-        {budgetPills.length > 0 && (
+        {monthBudgets !== undefined && (
           <View className="mt-6">
             <View className="flex-row items-center justify-between">
               <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
                 Budgets
               </Text>
-              <Pressable
-                onPress={() => router.push("/budgets")}
-                accessibilityRole="button"
-                className="min-h-12 items-center justify-center"
-              >
-                <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
-              </Pressable>
+              {budgetPills.length > 0 && (
+                <Pressable
+                  onPress={() => router.push("/budgets")}
+                  accessibilityRole="button"
+                  className="min-h-12 items-center justify-center"
+                >
+                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
+                </Pressable>
+              )}
             </View>
-            <View className="mt-2 gap-3">
-              {budgetPills.map((pill) => (
-                <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
-              ))}
-            </View>
+            {budgetPills.length > 0 ? (
+              <View className="mt-2 gap-3">
+                {budgetPills.map((pill) => (
+                  <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                icon="pie-chart"
+                title="No budgets yet"
+                description="Set a budget for each category to track your spending"
+                actionLabel={monthBudgets.isOwner ? "Create Budget" : undefined}
+                onAction={
+                  monthBudgets.isOwner
+                    ? () => router.push("/budget-form")
+                    : undefined
+                }
+              />
+            )}
           </View>
         )}
 
@@ -504,7 +507,7 @@ export default function Home() {
           >
             {recent === undefined && recentTransactions === null ? (
               <View className="gap-3 px-4 py-4">
-                {[0, 1, 2].map((i) => (
+                {[0, 1].map((i) => (
                   <View key={i} className="flex-row items-center gap-3">
                     <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
                     <View className="flex-1 gap-2">

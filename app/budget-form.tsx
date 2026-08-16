@@ -59,7 +59,7 @@ export default function BudgetForm() {
   const rawPeriodStart = params.periodStart ? Number(params.periodStart) : NaN;
   const periodStart = Number.isFinite(rawPeriodStart)
     ? startOfMonth(new Date(rawPeriodStart)).getTime()
-    : Date.now();
+    : startOfMonth(new Date()).getTime();
 
   const monthTs = existingBudget?.periodStart ?? periodStart;
   const monthLabel = new Date(monthTs).toLocaleDateString("en-US", {
