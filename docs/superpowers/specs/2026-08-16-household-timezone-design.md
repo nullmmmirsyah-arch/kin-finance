@@ -159,3 +159,8 @@ original design:
   households without a recorded timezone keep their stored boundaries (they
   match the newly selected device locale); clearing to "match device" also
   keeps stored boundaries.
+- **Server-side IANA validation**: `households.create` and
+  `households.updateTimezone` reject non-IANA timezone strings via
+  `validateTimezone` in `constants/validation.ts` (uses `Intl.DateTimeFormat`
+  to throw on unknown identifiers). `undefined` stays valid (match device);
+  invalid identifiers never persist.

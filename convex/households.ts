@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { validateHouseholdName } from "../constants/validation";
+import { validateHouseholdName, validateTimezone } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { findUserAndMembership } from "./helpers";
 import { getYearMonth, zonedMonthStart } from "../utils/date";
@@ -19,6 +19,9 @@ export const create = mutation({
     const err = validateHouseholdName(args.name);
     if (err) throw new ConvexError(err);
     const trimmedName = args.name.trim();
+
+    const timezoneErr = validateTimezone(args.timezone);
+    if (timezoneErr) throw new ConvexError(timezoneErr);
 
     const user = await ctx.db
       .query("users")
@@ -170,6 +173,9 @@ export const updateTimezone = mutation({
     if (!household) {
       throw new ConvexError("Household not found.");
     }
+
+    const timezoneErr = validateTimezone(args.timezone);
+    if (timezoneErr) throw new ConvexError(timezoneErr);
 
     if (args.timezone === household.timezone) {
       return household;
