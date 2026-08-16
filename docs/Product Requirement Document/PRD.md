@@ -187,21 +187,22 @@ Root entity for all financial data. Created once during onboarding; the
 creating user becomes Owner. Owner can rename; both roles see the member list.
 
 **Timezone:** each household stores an IANA timezone name. The default is
-"match device": when no timezone is recorded (legacy households) the device's
-IANA timezone (via `expo-localization`) is used at runtime; a concrete value is
-captured from the creating device on household creation. The Owner can change
-it from the Household screen (Members → Household → Timezone,
-`households.updateTimezone`) choosing either "Match device" (re-anchors to the
-device IANA timezone) or a manual IANA zone. All calendar-month boundaries —
+"match device": when no timezone is recorded the device's IANA timezone (via
+`expo-localization`) is used at runtime; a concrete value is captured from the
+creating device on household creation. The Owner can change it from the
+Household screen (Members → Household → Timezone, `households.updateTimezone`)
+choosing either "Match device" (clears the stored value so it keeps following
+the device dynamically) or a manual IANA zone. All calendar-month boundaries —
 budgets' `periodStart`/`periodEnd`, transactions "This Month" / "Last Month"
 filters, and date-group headers on Home/Transactions — are computed in the
 household timezone so every member classifies data into the same calendar month
 regardless of device timezone. The Convex server remains timezone-agnostic
 (compares raw epoch-ms). When the timezone changes, existing budget
 `periodStart` values are re-anchored to the same calendar months in the new
-timezone (migration runs only when the prior timezone was recorded; legacy
-households without a recorded timezone keep their stored boundaries, assuming
-they match the newly selected device locale).
+timezone — migration runs only when the prior timezone was recorded **and** the
+new value is a concrete zone (clearing to "match device" keeps stored
+boundaries, since the device locale is assumed to match; legacy households
+without a recorded timezone also keep their stored boundaries).
 
 ### 3.3 Multi-Member & Invites
 
@@ -651,7 +652,7 @@ updatedAt: number
 | `households` | `create` | mutation | Create + owner membership + reserved categories; records device IANA timezone |
 | `households` | `getActive` | query | Current user's household |
 | `households` | `update` | mutation | Rename (owner only) |
-| `households` | `updateTimezone` | mutation | Set timezone (owner only); re-anchors budget periods when prior timezone recorded |
+| `households` | `updateTimezone` | mutation | Set timezone (owner only); accepts `timezone: string \| undefined` (undefined = match device, clears stored value); re-anchors budget periods only when prior timezone recorded and new value is concrete |
 | `households` | `listMembers` | query | Member list (owner + members) |
 | `households` | `removeMember` | mutation | Owner only; cannot remove owner |
 | `invitations` | `create` | mutation | Generate code (owner), auto-revokes previous |
@@ -722,7 +723,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
-| 2026-08-16 | Feature | Timezone settings moved to Household screen (Members → Household → Timezone): Owner picks "Match device" (resolves to the device IANA timezone) or a manual zone via `households.updateTimezone` (owner-gated, `constants/timezones.ts` curated IANA list with offset hints); "match device" is the default — `resolveTimezone(stored)` in `constants/timezones.ts` falls back to `getCalendars()[0].timeZone` (via `expo-localization`) when no timezone is recorded, so legacy households with unset `timezone` now resolve to the device zone instead of `UTC` (fixes budgets whose `periodStart` was written in device-local time yet queried as UTC month start); when a recorded timezone changes, existing budget `periodStart` values are re-anchored to the same calendar months in the new timezone (migration only when a prior timezone was recorded); non-owner Members see a read-only timezone card; all screens use `resolveTimezone` |
+| 2026-08-16 | Feature | Timezone settings moved to Household screen (Members → Household → Timezone): Owner picks "Match device" (clears the stored timezone so it keeps following the device dynamically) or a manual zone via `households.updateTimezone` (owner-gated, `timezone: string \| undefined`, curated IANA list with offset hints in `constants/timezones.ts`); "match device" is the default — `resolveTimezone(stored)` in `constants/timezones.ts` falls back to `getCalendars()[0].timeZone` (via `expo-localization`) when no timezone is recorded, so legacy households with unset `timezone` now resolve to the device zone instead of `UTC` (fixes budgets whose `periodStart` was written in device-local time yet queried as UTC month start); when a recorded timezone changes, existing budget `periodStart` values are re-anchored to the same calendar months in the new timezone (migration only when a prior timezone was recorded and the new value is concrete; clearing to "match device" keeps stored boundaries); non-owner Members see a read-only timezone card; all screens use `resolveTimezone` |
 | 2026-08-16 | Feature | Household timezone: `households.timezone` (IANA string, optional; absent = follow device timezone) captured on create via `expo-localization` (`getCalendars()[0].timeZone`); new timezone-aware helpers in `utils/date.ts` (`getMonthBounds`, `formatMonthLabel`, `formatDateHeaderTz`, `formatTimeTz`, `formatDateShortTz`) computing calendar-month boundaries and date labels in the household timezone; all period-boundary call sites migrated (Home dashboard + date-group headers, Budgets month selector, budget form `periodStart`/month label, Transactions "This Month"/"Last Month" filters + headers, `TransactionCard` time via `timezone` prop) so members in different timezones classify transactions into the same calendar month; server stays timezone-agnostic (raw epoch-ms comparison); fixes the budget exact-match mismatch where `periodStart` was written in device-local time but queried as UTC month start |
 | 2026-08-16 | Refactor | Permission/scope consolidation + shared reserved-category constant: `requireOwner` and `getScopedDoc` in `convex/helpers.ts` replace ~9 inline owner-gate checks and ~16 duplicated get+household-scope checks across `accounts.*`, `categories.*`, `budgets.*`, `transactions.*`, `invitations.*` mutations (single `"You are not the owner..."` / `"<Entity> not found."` messages); `accounts.create` opening-balance path now relies on the reserved category guaranteed by `households.create` — removed the lookup-or-create fallback that could silently create duplicate "Initial Balance" categories; `RESERVED_CATEGORY_NAME` added to `constants/categories.ts` and shared by `households`, `accounts`, `categories`, `budgets` (was 4 hardcoded copies); removed dead null-check in `accounts.remove`; new `tests/accounts.create.test.ts` specs (5 cases) pinning opening-balance posting + owner-only permission |
 | 2026-08-15 | Refactor | Backend auth/balance deduplication (analysis-driven): new query-safe helper `findUserAndMembership` (returns `null`) and user-only `findUser` in `convex/helpers.ts`, replacing ~14 copy-pasted identity→user→membership blocks across query handlers (`accounts.list`, `categories.list`, `budgets.list/get/categoryOptions`, `transactions.list/recent/get`, `households.getActive`, `invitations.listActive`, `users.getMe`); extracted shared `applyBalanceDelta` + `reverseBalances` in `convex/transactions.ts` so create/update/delete balances can't diverge (was 3 hand-rolled implementations of §5.3); `transactions.get` now reuses `hydrate`; inline account/category type literals replaced with `Doc<>` in `transactions.ts`; new `tests/transactions.balance.test.ts` characterization specs (6 cases) pinning balance auto-update behavior |
