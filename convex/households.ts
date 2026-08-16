@@ -1,6 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { validateHouseholdName } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
+import { findUserAndMembership } from "./helpers";
 
 export const create = mutation({
   args: { name: v.string() },
@@ -48,8 +50,8 @@ export const create = mutation({
     });
 
     const reservedCategories = [
-      { name: "Initial Balance", type: "income" as const },
-      { name: "Initial Balance", type: "expense" as const },
+      { name: RESERVED_CATEGORY_NAME, type: "income" as const },
+      { name: RESERVED_CATEGORY_NAME, type: "expense" as const },
     ];
     for (const category of reservedCategories) {
       await ctx.db.insert("categories", {
@@ -69,33 +71,11 @@ export const create = mutation({
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return null;
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return null;
-    }
-
-    const household = await ctx.db.get(membership.householdId);
-    return household;
+    return await ctx.db.get(result.membership.householdId);
   },
 });
 
