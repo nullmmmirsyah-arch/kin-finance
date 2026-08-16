@@ -63,7 +63,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={title}
       style={[
-        Shadow.card,
+        variant !== "danger" && Shadow.card,
         { borderRadius: Radius.md },
         isDisabled ? { opacity: 0.5 } : pressed ? { opacity: 0.92 } : undefined,
       ]}
