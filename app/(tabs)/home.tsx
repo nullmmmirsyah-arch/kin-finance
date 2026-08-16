@@ -24,6 +24,7 @@ import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { formatNumber } from "@/utils/format";
 import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
@@ -139,7 +140,7 @@ export default function Home() {
   const recentGroups = useMemo(() => {
     const transactions = recentTransactions;
     if (transactions === null) return null;
-    const timezone = household?.timezone ?? "UTC";
+    const timezone = resolveTimezone(household?.timezone);
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
       const key = formatDateHeaderTz(tx.date, timezone);
@@ -159,7 +160,7 @@ export default function Home() {
 
   const { start: monthStart, end: monthEnd } = getMonthBounds(
     Date.now(),
-    household?.timezone ?? "UTC",
+    resolveTimezone(household?.timezone),
   );
 
   const monthTransactions = useQuery(api.transactions.list, {
@@ -567,7 +568,7 @@ export default function Home() {
                         amount={tx.amount}
                         type={tx.type}
                         date={tx.date}
-                        timezone={household?.timezone ?? "UTC"}
+                        timezone={resolveTimezone(household?.timezone)}
                         onPress={() =>
                           router.push({
                             pathname: "/transaction-form",

@@ -1,16 +1,12 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useRouter } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
-import { SelectField } from "@/components/SelectField";
-import { TIMEZONE_OPTIONS, formatTimezoneLabel } from "@/constants/timezones";
-import { useSnackbar } from "@/components/Snackbar";
-import { getConvexErrorMessage } from "@/lib/errors";
 
 const THEME_OPTIONS: {
   id: ThemePreference;
@@ -26,31 +22,14 @@ export default function Settings() {
   const { preference, setPreference } = useTheme();
   const router = useRouter();
   const C = useThemeColors();
-  const { show } = useSnackbar();
 
   const household = useQuery(api.households.getActive);
-  const me = useQuery(api.users.getMe);
   const members = useQuery(
     api.households.listMembers,
     household?._id ? { householdId: household._id } : "skip",
   );
-  const updateTimezone = useMutation(api.households.updateTimezone);
 
   const memberCount = members?.members.length ?? 1;
-  const isOwner =
-    members?.members.some(
-      (m) => m.userId === me?._id && m.role === "owner",
-    ) ?? false;
-
-  const handleTimezoneChange = async (timezone: string) => {
-    if (!household?._id) return;
-    try {
-      await updateTimezone({ householdId: household._id, timezone });
-      show(`Timezone set to ${formatTimezoneLabel(timezone)}`);
-    } catch (e: any) {
-      show(getConvexErrorMessage(e, "Failed to update timezone."));
-    }
-  };
 
   useEffect(() => {
     if (household === null) {
@@ -118,45 +97,6 @@ export default function Settings() {
           </View>
           <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
-
-        <View className="mt-3">
-          {isOwner ? (
-            <SelectField
-              label="Timezone"
-              placeholder="Select a timezone"
-              value={household?.timezone ?? "UTC"}
-              options={TIMEZONE_OPTIONS.map((o) => ({ id: o.id, label: o.label }))}
-              onSelect={handleTimezoneChange}
-            />
-          ) : (
-            <View
-              style={[
-                Shadow.card,
-                {
-                  borderRadius: Radius.md,
-                  backgroundColor: C.background,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                },
-              ]}
-              className="px-4 py-4"
-            >
-              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                Timezone
-              </Text>
-              <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                {formatTimezoneLabel(household?.timezone ?? "UTC")}
-              </Text>
-              <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
-                Only the household owner can change the timezone.
-              </Text>
-            </View>
-          )}
-          <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
-            Calendar months and budget periods use the household timezone so every
-            member sees the same dates.
-          </Text>
-        </View>
       </View>
 
       <View className="mt-6 px-5">

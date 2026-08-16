@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 const MONTH_MS = 32 * 86_400_000;
@@ -31,7 +32,7 @@ export default function Budgets() {
   const removeBudget = useMutation(api.budgets.remove);
   const household = useQuery(api.households.getActive);
 
-  const timezone = household?.timezone ?? "UTC";
+  const timezone = resolveTimezone(household?.timezone);
 
   const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
 

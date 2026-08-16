@@ -23,6 +23,7 @@ import {
   getMonthBounds,
   startOfDay,
 } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 
 type DateFilter = "thisMonth" | "lastMonth" | "custom";
 
@@ -40,7 +41,7 @@ export default function Transactions() {
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
   const household = useQuery(api.households.getActive);
 
-  const timezone = household?.timezone ?? "UTC";
+  const timezone = resolveTimezone(household?.timezone);
 
   const invalidCustomRange =
     filter === "custom" &&

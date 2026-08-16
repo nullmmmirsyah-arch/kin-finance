@@ -21,6 +21,7 @@ import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatAmountInput } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function BudgetForm() {
@@ -40,7 +41,7 @@ export default function BudgetForm() {
   const { show } = useSnackbar();
   const C = useThemeColors();
 
-  const timezone = household?.timezone ?? "UTC";
+  const timezone = resolveTimezone(household?.timezone);
 
   const [amount, setAmount] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);

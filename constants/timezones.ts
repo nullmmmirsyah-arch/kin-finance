@@ -4,6 +4,8 @@ export type TimezoneOption = {
   offset: string;
 };
 
+import { getCalendars } from "expo-localization";
+
 // Curated list of common IANA timezone identifiers. The offset label is
 // static/approximate (DST zones show their standard offset) and is only a
 // hint for the settings picker; actual boundary math uses the IANA id.
@@ -57,11 +59,35 @@ function labelFor(id: string): string {
   return id.replace(/_/g, " ");
 }
 
+// Sentinal option id representing "follow the device timezone".
+export const DEVICE_TIMEZONE_ID = "__device__";
+
 export const TIMEZONE_OPTIONS: TimezoneOption[] = ZONES.map(([id, offset]) => ({
   id,
   label: `${labelFor(id)} (UTC${offset})`,
   offset,
 }));
+
+// Options list for the settings picker: "match device" first, then manual zones.
+export function timezonePickerOptions(): { id: string; label: string }[] {
+  const device = getCalendars()[0]?.timeZone;
+  return [
+    {
+      id: DEVICE_TIMEZONE_ID,
+      label: device
+        ? `Match device (${device.replace(/_/g, " ")})`
+        : "Match device (UTC)",
+    },
+    ...TIMEZONE_OPTIONS.map((o) => ({ id: o.id, label: o.label })),
+  ];
+}
+
+// The effective stored value to show as selected in the picker.
+export function timezonePickerValue(stored: string | undefined): string {
+  const device = getCalendars()[0]?.timeZone ?? "UTC";
+  if (!stored || stored === device) return DEVICE_TIMEZONE_ID;
+  return stored;
+}
 
 export function formatTimezoneLabel(id: string | undefined): string {
   const match = TIMEZONE_OPTIONS.find((o) => o.id === id);
@@ -72,4 +98,12 @@ export function formatTimezoneLabel(id: string | undefined): string {
 
 export function isKnownTimezone(id: string): boolean {
   return TIMEZONE_OPTIONS.some((o) => o.id === id);
+}
+
+// Resolves the effective household timezone. A stored value wins; when the
+// household has none (legacy households, or "match device" default), it falls
+// back to the device's IANA timezone.
+export function resolveTimezone(stored: string | undefined): string {
+  if (stored) return stored;
+  return getCalendars()[0]?.timeZone ?? "UTC";
 }
