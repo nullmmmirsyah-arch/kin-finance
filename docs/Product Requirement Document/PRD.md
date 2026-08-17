@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-16
+> Last updated: 2026-08-17
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -253,6 +253,9 @@ Core records of financial activity: income, expense, or transfer.
   thousand-separator formatting, contextual sign-convention hint, "Repeat last"
   shortcut, date hint, note character counter, discard guard on both header
   back button and Android hardware back button. See §4.4 for details.
+- **Day-grouped net totals:** the Transactions list shows a net total per day
+  header (income − expense; transfers excluded because they move money between
+  owned accounts and do not change household net worth), colored by sign.
 - The `list` query hydrates entities with a per-query cache and caps results at
   1 000 rows.
 
@@ -286,9 +289,10 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   Members, tapping a card goes to the Accounts tab (owner-only edit/delete stays
   in the Accounts tab).
 - **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
-  day net total, "See All" link to the Transactions tab. Transaction icons map
-  category names to relevant Feather icons (shopping-cart, coffee, car, home,
-  briefcase, etc.) with semantic colors (green for income, red for expense).
+  day net total (income − expense; transfers excluded), "See All" link to the
+  Transactions tab. Transaction icons map category names to relevant Feather
+  icons (shopping-cart, coffee, car, home, briefcase, etc.) with semantic colors
+  (green for income, red for expense).
 - Empty states include action CTAs (e.g., "Add Transaction" on empty transaction
   list, "Add Account" for Owners on empty accounts).
 - FAB uses reanimated spring animation (scale on press) for tactile feedback.
@@ -448,7 +452,7 @@ Settings → Appearance → System / Light / Dark
 | `app/index.tsx` | Signed-out entry |
 | `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
-| `app/(tabs)/transactions.tsx` | Transactions list (date filters, summary, grouped) |
+| `app/(tabs)/transactions.tsx` | Transactions list (date filters, summary, day-grouped with net totals) |
 | `app/(tabs)/budgets.tsx` | Budgets list (month selector, progress) |
 | `app/(tabs)/settings.tsx` | Settings (Household, Appearance, Categories, Sign Out) |
 | `app/onboarding.tsx` | Create/Join household |
@@ -727,6 +731,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-17 | UX | Day net totals on the Transactions page: each day-group section header now shows the day's net (income − expense) in sign color (+ green / − red / 0 neutral), mirroring the Home dashboard pattern; the shared helper `sumNetExcludingTransfers` (`utils/format.ts`) computes it with transfers excluded, and Home's Recent Transactions day total was switched to the same helper so transfers no longer inflate the day's net. Updates §3.6, §3.8, §5.2 |
 | 2026-08-17 | UX | Home Recent Transactions now shows the latest 5 transactions (was 2): `limit` raised 2 → 5 in `app/(tabs)/home.tsx` (single `RECENT_TRANSACTIONS_LIMIT` constant), the auto-fetch cursor heuristic updated so the section keeps fetching while under 5 items and the accumulated list is capped at 5 (`.slice(0, 5)`) — preventing overshoot past 5 when a continuation page returns a full page on top of a partial one (hidden-category Members) — and the loading skeleton renders 5 placeholder rows to match. Rationale (design reference — Copilot Money, Nubank, and finance dashboard kits surface 5–10 recent items; the old 2-item preview was below standard and forced an extra "See All" tap for a frequent task). Updates §3.8 |
 | 2026-08-17 | UX | Keyboard auto-dismiss on field tap: `SelectField` and `DateField` triggers call `Keyboard.dismiss()` before opening their picker/modal, and the transaction form dismisses on type-chip and "Repeat last" taps — so tapping any non-text-input field closes the keyboard while the field action proceeds (blank-area taps already dismiss via `keyboardShouldPersistTaps="handled"`); tapping a text input (Amount, Note) keeps the keyboard open for focus transfer; applies to every form reusing `SelectField`/`DateField` (transaction, budget, account, category, members) |
 | 2026-08-16 | Feature | Settings Sign Out button: full-width `Button variant="danger"` in a new "Account" section at the bottom of the Settings tab; tap opens an `Alert.alert` confirmation ("Sign Out?" / Cancel / Sign Out, per §5.4 destructive-action convention); on confirm, `signOut()` from Clerk clears the session and the `Stack.Protected` auth guard in `app/_layout.tsx` routes to the sign-in screen — no manual navigation; button shows a loading spinner and is disabled while signing out. Implements the existing §3.8 requirement that sign-out is accessible via the Settings tab |
