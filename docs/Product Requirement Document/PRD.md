@@ -285,7 +285,7 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   card); "Add Account" card for Owner; "Manage" link to the Accounts tab. For
   Members, tapping a card goes to the Accounts tab (owner-only edit/delete stays
   in the Accounts tab).
-- **Recent Transactions**: latest 2 (paginated via cursor), grouped by day with
+- **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
   day net total, "See All" link to the Transactions tab. Transaction icons map
   category names to relevant Feather icons (shopping-cart, coffee, car, home,
   briefcase, etc.) with semantic colors (green for income, red for expense).
@@ -727,6 +727,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-17 | UX | Home Recent Transactions now shows the latest 5 transactions (was 2): `limit` raised 2 → 5 in `app/(tabs)/home.tsx`, the auto-fetch cursor heuristic updated to `next.length < 5` so the section still fills up to 5 items when hidden categories filter out rows for Members, and the loading skeleton renders 5 placeholder rows to match. Rationale (design reference — Copilot Money, Nubank, and finance dashboard kits surface 5–10 recent items; the old 2-item preview was below standard and forced an extra "See All" tap for a frequent task). Updates §3.8 |
 | 2026-08-17 | UX | Keyboard auto-dismiss on field tap: `SelectField` and `DateField` triggers call `Keyboard.dismiss()` before opening their picker/modal, and the transaction form dismisses on type-chip and "Repeat last" taps — so tapping any non-text-input field closes the keyboard while the field action proceeds (blank-area taps already dismiss via `keyboardShouldPersistTaps="handled"`); tapping a text input (Amount, Note) keeps the keyboard open for focus transfer; applies to every form reusing `SelectField`/`DateField` (transaction, budget, account, category, members) |
 | 2026-08-16 | Feature | Settings Sign Out button: full-width `Button variant="danger"` in a new "Account" section at the bottom of the Settings tab; tap opens an `Alert.alert` confirmation ("Sign Out?" / Cancel / Sign Out, per §5.4 destructive-action convention); on confirm, `signOut()` from Clerk clears the session and the `Stack.Protected` auth guard in `app/_layout.tsx` routes to the sign-in screen — no manual navigation; button shows a loading spinner and is disabled while signing out. Implements the existing §3.8 requirement that sign-out is accessible via the Settings tab |
 | 2026-08-16 | Fix | Server-side IANA validation: `households.create` and `households.updateTimezone` now reject non-IANA timezone identifiers via `validateTimezone` (`Intl.DateTimeFormat` throws on unknown zones); `undefined` (match device) remains valid |

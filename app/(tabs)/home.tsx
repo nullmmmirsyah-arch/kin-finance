@@ -101,7 +101,7 @@ export default function Home() {
     { date: number; id: Id<"transactions"> } | undefined
   >(undefined);
   const recent = useQuery(api.transactions.recent, {
-    limit: 2,
+    limit: 5,
     cursor: recentCursor,
   });
   type RecentTransaction = NonNullable<
@@ -129,7 +129,7 @@ export default function Home() {
       ? recent.transactions
       : [...(recentTransactionsRef.current ?? []), ...recent.transactions];
     setRecentTransactions(next);
-    if (recent.cursor && next.length < 2) {
+    if (recent.cursor && next.length < 5) {
       setRecentCursor(recent.cursor);
       setFollowingRecent(true);
     } else {
@@ -510,7 +510,7 @@ export default function Home() {
           >
             {recent === undefined && recentTransactions === null ? (
               <View className="gap-3 px-4 py-4">
-                {[0, 1].map((i) => (
+                {[0, 1, 2, 3, 4].map((i) => (
                   <View key={i} className="flex-row items-center gap-3">
                     <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
                     <View className="flex-1 gap-2">
