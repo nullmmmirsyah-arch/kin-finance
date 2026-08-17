@@ -16,3 +16,15 @@ export function formatAmountInput(value: string): string {
   if (formatted === "" || formatted === ".") return isNegative ? "-" : "";
   return isNegative ? `-${formatted}` : formatted;
 }
+
+export function sumNetExcludingTransfers(
+  txs: { type: string; amount: number }[],
+): number {
+  let income = 0;
+  let expense = 0;
+  for (const tx of txs) {
+    if (tx.type === "income") income += tx.amount;
+    else if (tx.type === "expense") expense += Math.abs(tx.amount);
+  }
+  return income - expense;
+}
