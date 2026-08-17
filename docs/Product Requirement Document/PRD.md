@@ -380,6 +380,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   `bg-surface`), Date + Note (bordered container). Consistent bordered
   treatment without gradient card — clean visual rhythm with background
   color differentiation for account/category emphasis.
+- **Keyboard behavior:** tapping any non-text-input field (Account/Category/
+  From-To selector, Date, type chip, "Repeat last") dismisses the keyboard
+  before the field action runs; tapping a text input (Amount, Note) keeps the
+  keyboard open so focus transfers.
 
 ### 4.5 Owner Invites Member
 
@@ -723,6 +727,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-17 | UX | Keyboard auto-dismiss on field tap: `SelectField` and `DateField` triggers call `Keyboard.dismiss()` before opening their picker/modal, and the transaction form dismisses on type-chip and "Repeat last" taps — so tapping any non-text-input field closes the keyboard while the field action proceeds (blank-area taps already dismiss via `keyboardShouldPersistTaps="handled"`); tapping a text input (Amount, Note) keeps the keyboard open for focus transfer; applies to every form reusing `SelectField`/`DateField` (transaction, budget, account, category, members) |
 | 2026-08-16 | Feature | Settings Sign Out button: full-width `Button variant="danger"` in a new "Account" section at the bottom of the Settings tab; tap opens an `Alert.alert` confirmation ("Sign Out?" / Cancel / Sign Out, per §5.4 destructive-action convention); on confirm, `signOut()` from Clerk clears the session and the `Stack.Protected` auth guard in `app/_layout.tsx` routes to the sign-in screen — no manual navigation; button shows a loading spinner and is disabled while signing out. Implements the existing §3.8 requirement that sign-out is accessible via the Settings tab |
 | 2026-08-16 | Fix | Server-side IANA validation: `households.create` and `households.updateTimezone` now reject non-IANA timezone identifiers via `validateTimezone` (`Intl.DateTimeFormat` throws on unknown zones); `undefined` (match device) remains valid |
 | 2026-08-16 | Feature | Timezone settings moved to Household screen (Members → Household → Timezone): Owner picks "Match device" (clears the stored timezone so it keeps following the device dynamically) or a manual zone via `households.updateTimezone` (owner-gated, `timezone: string \| undefined`, curated IANA list with offset hints in `constants/timezones.ts`); "match device" is the default — `resolveTimezone(stored)` in `constants/timezones.ts` falls back to `getCalendars()[0].timeZone` (via `expo-localization`) when no timezone is recorded, so legacy households with unset `timezone` now resolve to the device zone instead of `UTC` (fixes budgets whose `periodStart` was written in device-local time yet queried as UTC month start); when a recorded timezone changes, existing budget `periodStart` values are re-anchored to the same calendar months in the new timezone (migration only when a prior timezone was recorded and the new value is concrete; clearing to "match device" keeps stored boundaries); non-owner Members see a read-only timezone card; all screens use `resolveTimezone` |
