@@ -4,7 +4,7 @@ import DateTimePicker, {
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
-import { Modal, Platform, Pressable, Text, View } from "react-native";
+import { Keyboard, Modal, Platform, Pressable, Text, View } from "react-native";
 import { formatDateShort } from "@/utils/date";
 import { Button } from "./Button";
 
@@ -37,6 +37,7 @@ export function DateField({
       ) : null}
       <Pressable
         onPress={() => {
+          Keyboard.dismiss();
           setDraft(value);
           setShow(true);
         }}
