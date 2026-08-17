@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -94,6 +95,7 @@ export default function TransactionForm() {
   }, [editingTx]);
 
   const handleRepeatLast = () => {
+    Keyboard.dismiss();
     if (!lastTransaction.current) return;
     const last = lastTransaction.current;
     setType(last.type);
@@ -143,6 +145,7 @@ export default function TransactionForm() {
 
   const handleTypeChange = useCallback(
     (t: TransactionType) => {
+      Keyboard.dismiss();
       setType(t);
       setError(null);
       setAmountError(null);
