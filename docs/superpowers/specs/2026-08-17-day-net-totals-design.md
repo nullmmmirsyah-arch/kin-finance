@@ -74,5 +74,6 @@ structural type `{ type: string; amount: number }`.
 
 ## Verification
 
-- `npx tsc --noEmit` (no test framework).
+- `npx tsc --noEmit`.
 - `npm run lint`.
+- `npm test` (Vitest).

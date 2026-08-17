@@ -6,11 +6,11 @@
 
 **Architecture:** A single shared pure helper `sumNetExcludingTransfers` in `utils/format.ts` computes income − expense (transfers excluded). Both the Transactions page section header and the Home dashboard day-group header render the result with sign-colored styling (green +, red −, neutral 0).
 
-**Tech Stack:** TypeScript 5.9, React Native / Expo (NativeWind 4), no test framework.
+**Tech Stack:** TypeScript 5.9, React Native / Expo (NativeWind 4), Vitest (unit tests in `tests/`).
 
 ## Global Constraints
 
-- **Verification:** run `npx tsc --noEmit` and `npm run lint` (there is NO test framework in this repo).
+- **Verification:** run `npx tsc --noEmit`, `npm run lint`, and `npm test` (Vitest — run when a change touches pure utils or Convex functions).
 - Path alias `@/*` → repo root. Use it for imports.
 - Styling: NativeWind `className`, not `StyleSheet.create`; theme via `useThemeColors()` hook, never hardcoded colors.
 - NativeWind v4 gotcha: never use `style={({ pressed }) => [...]}` on `Pressable`.
@@ -126,7 +126,7 @@ Expected: no errors.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/(tabs)/transactions.tsx
+git add "app/(tabs)/transactions.tsx"
 git commit -m "feat: show net total per day on Transactions page"
 ```
 
@@ -172,7 +172,7 @@ Expected: no errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add app/(tabs)/home.tsx
+git add "app/(tabs)/home.tsx"
 git commit -m "fix: exclude transfers from Home day net totals"
 ```
 
