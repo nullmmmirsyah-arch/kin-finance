@@ -352,7 +352,7 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   → Save → transactions.create → balances auto-updated → list
 ```
 
-**Form UX (as of 2026-08-15):**
+**Form UX (as of 2026-08-17):**
 
 - Header shows contextual subtitle ("Track an expense" / "Record incoming
   money" / "Move money between accounts") and a dynamic type icon.
