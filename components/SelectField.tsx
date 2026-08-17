@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { Shadow, useThemeColors } from "@/constants/theme";
 import { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 export type SelectOption = { id: string; label: string };
 
@@ -50,6 +50,7 @@ export function SelectField({
       ) : null}
       <Pressable
         onPress={() => {
+          Keyboard.dismiss();
           setSearch("");
           setOpen(true);
         }}
