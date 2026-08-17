@@ -34,6 +34,8 @@ const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThe
   credit_card: "accountCreditCard",
 };
 
+const RECENT_TRANSACTIONS_LIMIT = 5;
+
 function BudgetPill({
   pill,
   onPress,
@@ -101,7 +103,7 @@ export default function Home() {
     { date: number; id: Id<"transactions"> } | undefined
   >(undefined);
   const recent = useQuery(api.transactions.recent, {
-    limit: 5,
+    limit: RECENT_TRANSACTIONS_LIMIT,
     cursor: recentCursor,
   });
   type RecentTransaction = NonNullable<
@@ -128,8 +130,9 @@ export default function Home() {
     const next = firstPage
       ? recent.transactions
       : [...(recentTransactionsRef.current ?? []), ...recent.transactions];
-    setRecentTransactions(next);
-    if (recent.cursor && next.length < 5) {
+    const capped = next.slice(0, RECENT_TRANSACTIONS_LIMIT);
+    setRecentTransactions(capped);
+    if (recent.cursor && capped.length < RECENT_TRANSACTIONS_LIMIT) {
       setRecentCursor(recent.cursor);
       setFollowingRecent(true);
     } else {
@@ -510,7 +513,7 @@ export default function Home() {
           >
             {recent === undefined && recentTransactions === null ? (
               <View className="gap-3 px-4 py-4">
-                {[0, 1, 2, 3, 4].map((i) => (
+                {Array.from({ length: RECENT_TRANSACTIONS_LIMIT }).map((_, i) => (
                   <View key={i} className="flex-row items-center gap-3">
                     <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
                     <View className="flex-1 gap-2">
