@@ -4,7 +4,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 
 # Commands & Verification
 
-- There is NO test framework. Verify with `npx tsc --noEmit` (typecheck) and `npm run lint` (expo lint).
+- Verify with `npx tsc --noEmit` (typecheck), `npm run lint` (expo lint), and `npm test` (vitest — run when a change touches pure utils or Convex functions).
 - After any change to `convex/*.ts`, run `npx convex codegen` first to regenerate `convex/_generated/` (gitignored), then typecheck.
 - Run `npx convex dev` in a separate terminal — it pushes `convex/` schema, functions, and `auth.config.ts` to the dev deployment and regenerates `_generated/` on save.
 - Install dependencies with `npx expo install <pkg>` so versions match SDK 54 — never bare `npm install`.

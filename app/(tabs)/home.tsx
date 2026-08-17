@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -157,7 +157,7 @@ export default function Home() {
     return Array.from(groups.entries()).map(([title, data]) => ({
       title,
       data,
-      total: data.reduce((sum, tx) => sum + tx.amount, 0),
+      total: sumNetExcludingTransfers(data),
     }));
   }, [recentTransactions, household]);
 

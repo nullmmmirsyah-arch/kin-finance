@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { DateField } from "@/components/DateField";
 import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import {
   formatDateHeaderTz,
   getDayBounds,
@@ -85,6 +85,7 @@ export default function Transactions() {
     return Array.from(groups.entries()).map(([title, data]) => ({
       title,
       data,
+      total: sumNetExcludingTransfers(data),
     }));
   }, [result, timezone]);
 
@@ -227,9 +228,23 @@ export default function Transactions() {
           keyExtractor={(item) => item._id}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <View className="bg-background px-5 pb-1 pt-4 dark:bg-background-dark">
+            <View className="flex-row items-center justify-between bg-background px-5 pb-1 pt-4 dark:bg-background-dark">
               <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
                 {section.title}
+              </Text>
+              <Text
+                className="text-sm font-semibold"
+                style={{
+                  color:
+                    section.total > 0
+                      ? C.success
+                      : section.total < 0
+                        ? C.error
+                        : C.textSecondary,
+                }}
+              >
+                {section.total > 0 ? "+" : ""}
+                {formatNumber(section.total)}
               </Text>
             </View>
           )}
