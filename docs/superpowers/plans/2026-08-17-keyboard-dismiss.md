@@ -15,7 +15,7 @@
 - Tapping a `TextInput` (Amount, Note, search) must keep the keyboard open for focus transfer — do NOT add `Keyboard.dismiss()` to `components/Input.tsx`.
 - `Keyboard.dismiss()` is a no-op when no keyboard is shown — safe on screens without input fields.
 - Code style: no code comments. Follow existing file conventions (imports from `react-native`, `useCallback`, NativeWind `className`).
-- Verify after each code task: `npx tsc --noEmit` and `npm run lint`. There is no test framework.
+- Verify after each code task: `npx tsc --noEmit` and `npm run lint`. The repo's test suite (`npm test` — vitest + convex-test, `tests/*.test.ts`) covers Convex backend functions only, not React Native UI; this UI-only change is therefore verified via tsc + lint plus the manual device smoke test in Task 5.
 
 ---
 
