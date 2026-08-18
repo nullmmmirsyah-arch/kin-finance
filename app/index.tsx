@@ -1,9 +1,15 @@
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import { useThemeColors } from "@/constants/theme";
+import { getLastAuthMethod, setLastAuthMethod } from "@/lib/auth-preference";
 import { useAuth, useSignIn, useSignUp, useSSO } from "@clerk/expo";
-import { useRouter } from "expo-router";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef, useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,13 +19,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
-import { LinearGradient } from "expo-linear-gradient";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { getLastAuthMethod, setLastAuthMethod } from "@/lib/auth-preference";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -55,7 +54,6 @@ function Divider({ text }: { text: string }) {
 export default function Index() {
   useWarmUpBrowser();
   const C = useThemeColors();
-  const gradients = useThemeGradients();
 
   const { isSignedIn } = useAuth();
   const router = useRouter();
@@ -76,12 +74,12 @@ export default function Index() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [ssoSignIn, setSsoSignIn] = useState<
-    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["signIn"]> | null
-  >(null);
-  const [ssoSetActive, setSsoSetActive] = useState<
-    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["setActive"]> | null
-  >(null);
+  const [ssoSignIn, setSsoSignIn] = useState<NonNullable<
+    Awaited<ReturnType<typeof startSSOFlow>>["signIn"]
+  > | null>(null);
+  const [ssoSetActive, setSsoSetActive] = useState<NonNullable<
+    Awaited<ReturnType<typeof startSSOFlow>>["setActive"]
+  > | null>(null);
   const [resetStep, setResetStep] = useState<ResetStep | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [successScreen, setSuccessScreen] = useState<SuccessScreen>(null);
@@ -127,7 +125,10 @@ export default function Index() {
     }
     setIsLoading(true);
     try {
-      const { error } = await signIn.password({ emailAddress: trimmedEmail, password });
+      const { error } = await signIn.password({
+        emailAddress: trimmedEmail,
+        password,
+      });
       if (error) {
         setError(error.message);
         return;
@@ -192,7 +193,10 @@ export default function Index() {
     }
     setIsLoading(true);
     try {
-      const { error } = await signUp.password({ emailAddress: trimmedEmail, password });
+      const { error } = await signUp.password({
+        emailAddress: trimmedEmail,
+        password,
+      });
       if (error) {
         setError(error.message);
         return;
@@ -295,16 +299,18 @@ export default function Index() {
     setError(null);
     setIsGoogleLoading(true);
     try {
-      const { createdSessionId, setActive, signIn: ssoSignIn, signUp: ssoSignUp } =
-        await startSSOFlow({
-          strategy: "oauth_google",
-          redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
-        });
+      const {
+        createdSessionId,
+        setActive,
+        signIn: ssoSignIn,
+        signUp: ssoSignUp,
+      } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
+      });
       if (createdSessionId) {
         if (!setActive) {
-          setError(
-            "Google sign in could not be completed. Please try again.",
-          );
+          setError("Google sign in could not be completed. Please try again.");
           return;
         }
         await setActive({ session: createdSessionId });
@@ -384,7 +390,8 @@ export default function Index() {
         setError(error.message);
         return;
       }
-      const { error: sendError } = await signIn.resetPasswordEmailCode.sendCode();
+      const { error: sendError } =
+        await signIn.resetPasswordEmailCode.sendCode();
       if (sendError) {
         setError(sendError.message);
         return;
@@ -523,21 +530,22 @@ export default function Index() {
     void signIn.reset();
   };
 
-  const resetHeadings: Record<ResetStep, { title: string; subtitle: string }> = {
-    email: {
-      title: "Reset your password",
-      subtitle: "Enter your email and we'll send a code to get you back in.",
-    },
-    code: {
-      title: "Check your email",
-      subtitle: "Enter the 6-digit code we sent to your email.",
-    },
-    password: {
-      title: "Choose a new password",
-      subtitle:
-        "Pick something you'll remember — your family's money stays safe.",
-    },
-  };
+  const resetHeadings: Record<ResetStep, { title: string; subtitle: string }> =
+    {
+      email: {
+        title: "Reset your password",
+        subtitle: "Enter your email and we'll send a code to get you back in.",
+      },
+      code: {
+        title: "Check your email",
+        subtitle: "Enter the 6-digit code we sent to your email.",
+      },
+      password: {
+        title: "Choose a new password",
+        subtitle:
+          "Pick something you'll remember — your family's money stays safe.",
+      },
+    };
 
   const googlePrimary = preferred === "google";
 
@@ -555,43 +563,37 @@ export default function Index() {
 
   const emailInputs = (
     <>
-    <Input
-      label="Email"
-      labelBadge={preferred === "email" ? "Last used" : undefined}
-      accessibilityLabel="Email"
-      value={emailAddress}
-      placeholder="you@example.com"
-      onChangeText={setEmailAddress}
-      keyboardType="email-address"
-      autoCapitalize="none"
-      autoCorrect={false}
-      autoComplete="email"
-      textContentType="emailAddress"
-      returnKeyType="next"
-      onSubmitEditing={() => passwordRef.current?.focus()}
-      error={emailError}
-    />
+      <Input
+        label="Email"
+        labelBadge={preferred === "email" ? "Last used" : undefined}
+        accessibilityLabel="Email"
+        value={emailAddress}
+        placeholder="you@example.com"
+        onChangeText={setEmailAddress}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        error={emailError}
+      />
       <Input
         ref={passwordRef}
         label="Password"
         accessibilityLabel="Password"
         value={password}
-        placeholder={
-          mode === "sign-in" ? "Your password" : "Create a password"
-        }
+        placeholder={mode === "sign-in" ? "Your password" : "Create a password"}
         secureTextEntry
         onChangeText={setPassword}
         autoCapitalize="none"
         autoCorrect={false}
-        autoComplete={
-          mode === "sign-in" ? "current-password" : "new-password"
-        }
+        autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
         textContentType={mode === "sign-in" ? "password" : "newPassword"}
         returnKeyType={mode === "sign-in" ? "go" : "next"}
         onSubmitEditing={
-          mode === "sign-in"
-            ? handleSignIn
-            : () => confirmRef.current?.focus()
+          mode === "sign-in" ? handleSignIn : () => confirmRef.current?.focus()
         }
         error={passwordError}
       />
@@ -625,7 +627,10 @@ export default function Index() {
         </Pressable>
       ) : null}
       {error ? (
-        <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-center text-sm text-error dark:text-error-dark"
+        >
           {error}
         </Text>
       ) : null}
@@ -643,22 +648,11 @@ export default function Index() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="items-center gap-6">
-            <LinearGradient
-              colors={gradients.card}
-              style={[
-                Shadow.card,
-                {
-                  width: 96,
-                  height: 96,
-                  borderRadius: Radius.lg,
-                  borderWidth: 1,
-                  borderColor: C.primaryLight,
-                },
-              ]}
-              className="items-center justify-center"
-            >
-              <Feather name="home" size={40} color={C.primary} />
-            </LinearGradient>
+            <Image
+              source={require("../assets/images/splash-icon.png")}
+              style={{ width: 270, height: 270 }}
+              resizeMode="contain"
+            />
 
             {successScreen ? (
               <View className="w-full gap-4">
@@ -697,7 +691,9 @@ export default function Index() {
                   maxLength={6}
                   returnKeyType="done"
                   onSubmitEditing={() =>
-                    isMfaVerifying ? void handleMfaVerify() : void handleVerify()
+                    isMfaVerifying
+                      ? void handleMfaVerify()
+                      : void handleVerify()
                   }
                   error={error}
                 />
@@ -744,7 +740,10 @@ export default function Index() {
                       error={emailError}
                     />
                     {error ? (
-                      <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        className="text-center text-sm text-error dark:text-error-dark"
+                      >
                         {error}
                       </Text>
                     ) : null}
@@ -803,7 +802,10 @@ export default function Index() {
                       error={passwordError}
                     />
                     {error ? (
-                      <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        className="text-center text-sm text-error dark:text-error-dark"
+                      >
                         {error}
                       </Text>
                     ) : null}
@@ -815,7 +817,9 @@ export default function Index() {
                   </>
                 )}
                 <Pressable
-                  onPress={resetStep === "code" ? backToResetEmail : cancelReset}
+                  onPress={
+                    resetStep === "code" ? backToResetEmail : cancelReset
+                  }
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center py-2"
                 >
@@ -827,9 +831,6 @@ export default function Index() {
             ) : (
               <View className="w-full gap-4">
                 <View className="items-center gap-2">
-                  <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
-                    Kin Finance
-                  </Text>
                   <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
                     {subtitle}
                   </Text>
@@ -848,7 +849,13 @@ export default function Index() {
                     <Divider text="or continue with Google" />
                     <Button
                       title="Continue with Google"
-                      icon={<FontAwesome name="google" size={18} color={C.background} />}
+                      icon={
+                        <FontAwesome
+                          name="google"
+                          size={18}
+                          color={C.background}
+                        />
+                      }
                       badge="Last used"
                       onPress={handleGoogle}
                       loading={isGoogleLoading}
@@ -860,21 +867,27 @@ export default function Index() {
                     <Button
                       title="Continue with Google"
                       variant="secondary"
-                      icon={<FontAwesome name="google" size={18} color={C.textPrimary} />}
+                      icon={
+                        <FontAwesome
+                          name="google"
+                          size={18}
+                          color={C.textPrimary}
+                        />
+                      }
                       onPress={handleGoogle}
                       loading={isGoogleLoading}
                       disabled={isLoading}
                     />
                     <Divider text={dividerEmail} />
-      {emailInputs}
-      <Button
-        title={mode === "sign-in" ? "Sign In" : "Sign Up"}
-        onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-        loading={isLoading}
-        disabled={isGoogleLoading}
-      />
-    </>
-  )}
+                    {emailInputs}
+                    <Button
+                      title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                      onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+                      loading={isLoading}
+                      disabled={isGoogleLoading}
+                    />
+                  </>
+                )}
 
                 <Pressable
                   onPress={() => {
