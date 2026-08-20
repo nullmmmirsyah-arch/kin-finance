@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { ComponentProps, useMemo, useState } from "react";
 import {
+  Modal,
+  Pressable,
   SectionList,
   Text,
   View,
@@ -7,53 +9,104 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
+import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
-import { Radius, useThemeColors } from "@/constants/theme";
-import { Chip } from "@/components/Chip";
+import { Id } from "@/convex/_generated/dataModel";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Fab } from "@/components/Fab";
 import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
 import { DateField } from "@/components/DateField";
 import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
+import { Button } from "@/components/Button";
+import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import {
   formatDateHeaderTz,
+  formatDateShortTz,
   getDayBounds,
   getMonthBounds,
   startOfDay,
 } from "@/utils/date";
+import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
 import { resolveTimezone } from "@/constants/timezones";
 
 type DateFilter = "thisMonth" | "lastMonth" | "custom";
 
-const FILTERS: { id: DateFilter; label: string }[] = [
+const DATE_OPTIONS: { id: DateFilter; label: string }[] = [
   { id: "thisMonth", label: "This Month" },
   { id: "lastMonth", label: "Last Month" },
   { id: "custom", label: "Custom Range" },
 ];
 
+function HeaderPill({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: ComponentProps<typeof Feather>["name"];
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const C = useThemeColors();
+  const [pressed, setPressed] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      className={`min-h-12 flex-row items-center gap-2 rounded-full border px-4 ${
+        active
+          ? "border-primary dark:border-primary-dark"
+          : "border-border bg-background dark:border-border-dark dark:bg-background-dark"
+      }`}
+      style={pressed ? { opacity: 0.85 } : undefined}
+    >
+      <Feather name={icon} size={16} color={active ? C.primary : C.textSecondary} />
+      <Text
+        className={`text-sm font-medium ${
+          active
+            ? "text-primary dark:text-primary-dark"
+            : "text-text-primary dark:text-text-primary-dark"
+        }`}
+      >
+        {label}
+      </Text>
+      <Feather name="chevron-down" size={16} color={active ? C.primary : C.textSecondary} />
+    </Pressable>
+  );
+}
+
 export default function Transactions() {
   const router = useRouter();
   const C = useThemeColors();
-  const [filter, setFilter] = useState<DateFilter>("thisMonth");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("thisMonth");
   const [customFrom, setCustomFrom] = useState(() => startOfDay(new Date()));
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [accountIds, setAccountIds] = useState<Id<"accounts">[]>([]);
+  const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
 
   const invalidCustomRange =
-    filter === "custom" &&
+    dateFilter === "custom" &&
     startOfDay(customFrom).getTime() > startOfDay(customTo).getTime();
 
   const range = useMemo(() => {
     const now = Date.now();
-    if (filter === "thisMonth") {
+    if (dateFilter === "thisMonth") {
       const bounds = getMonthBounds(now, timezone);
       return { startDate: bounds.start, endDate: bounds.end };
     }
-    if (filter === "lastMonth") {
+    if (dateFilter === "lastMonth") {
       const current = getMonthBounds(now, timezone);
       const previous = getMonthBounds(current.start - 1, timezone);
       return { startDate: previous.start, endDate: current.start };
@@ -65,9 +118,44 @@ export default function Transactions() {
       startDate: getDayBounds(customFrom, timezone).start,
       endDate: getDayBounds(customTo, timezone).end,
     };
-  }, [filter, customFrom, customTo, invalidCustomRange, timezone]);
+  }, [dateFilter, customFrom, customTo, invalidCustomRange, timezone]);
 
-  const result = useQuery(api.transactions.list, range);
+  const accountsResult = useQuery(api.accounts.list);
+  const categoriesResult = useQuery(api.categories.list);
+
+  const accountOptions = useMemo(() => accountsResult?.accounts ?? [], [accountsResult]);
+  const categoryOptions = useMemo(
+    () => categoriesResult?.categories ?? [],
+    [categoriesResult],
+  );
+  const contextualCategoryOptions = useMemo(() => {
+    if (typeFilter === "transfer") return [];
+    if (typeFilter === "all") return categoryOptions;
+    return categoryOptions.filter((c) => c.type === typeFilter);
+  }, [typeFilter, categoryOptions]);
+  const accountSelected = accountOptions.filter((a) => accountIds.includes(a._id)).length;
+  const categorySelected = contextualCategoryOptions.filter((c) => categoryIds.includes(c._id)).length;
+  const accountState = getSelectionState(accountOptions.length, accountSelected);
+  const categoryState = getSelectionState(contextualCategoryOptions.length, categorySelected);
+
+  const queryArgs = useMemo(() => {
+    const normalizedAccounts = normalizeSelection(
+      accountIds,
+      accountOptions.map((a) => a._id),
+    );
+    const normalizedCategories = normalizeSelection(
+      categoryIds,
+      contextualCategoryOptions.map((c) => c._id),
+    );
+    return {
+      ...range,
+      ...(typeFilter !== "all" ? { type: typeFilter } : {}),
+      ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts } : {}),
+      ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories } : {}),
+    };
+  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions]);
+
+  const result = useQuery(api.transactions.list, queryArgs);
 
   const sections = useMemo(() => {
     const transactions = result?.transactions ?? null;
@@ -100,6 +188,27 @@ export default function Transactions() {
     return { income, expense, net: income - expense };
   }, [result]);
 
+  const activeFilterCount = filterBadgeCount(
+    typeFilter !== "all",
+    accountState,
+    accountSelected,
+    categoryState,
+    categorySelected,
+  );
+  const filtersActive = activeFilterCount > 0;
+
+  const dateLabel = useMemo(() => {
+    if (dateFilter === "thisMonth") return "This Month";
+    if (dateFilter === "lastMonth") return "Last Month";
+    return `${formatDateShortTz(startOfDay(customFrom).getTime(), timezone)} – ${formatDateShortTz(startOfDay(customTo).getTime(), timezone)}`;
+  }, [dateFilter, customFrom, customTo, timezone]);
+
+  const clearFilters = () => {
+    setTypeFilter("all");
+    setAccountIds([]);
+    setCategoryIds([]);
+  };
+
   if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
@@ -108,9 +217,9 @@ export default function Transactions() {
             Transactions
           </Text>
         </View>
-        <View className="mt-4 flex-row flex-wrap gap-2 px-5">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} style={{ width: 96, height: 40, borderRadius: 999 }} />
+        <View className="mt-4 flex-row gap-2 px-5">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} style={{ width: 120, height: 40, borderRadius: 999 }} />
           ))}
         </View>
         <View className="mt-4 px-5">
@@ -143,42 +252,20 @@ export default function Transactions() {
         </Text>
       </View>
 
-      <View className="mt-4 flex-row flex-wrap gap-2 px-5">
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.label}
-            active={filter === f.id}
-            onPress={() => setFilter(f.id)}
-          />
-        ))}
+      <View className="mt-4 flex-row gap-2 px-5">
+        <HeaderPill
+          icon="calendar"
+          label={dateLabel}
+          active={false}
+          onPress={() => setDateSheetOpen(true)}
+        />
+        <HeaderPill
+          icon="filter"
+          label={activeFilterCount > 0 ? `Filter · ${activeFilterCount}` : "Filter"}
+          active={activeFilterCount > 0}
+          onPress={() => setFilterSheetOpen(true)}
+        />
       </View>
-
-      {filter === "custom" ? (
-        <View className="mt-4 flex-row gap-3 px-5">
-          <View className="flex-1">
-            <DateField
-              label="From"
-              value={customFrom}
-              maximumDate={new Date()}
-              onChange={setCustomFrom}
-            />
-          </View>
-          <View className="flex-1">
-            <DateField
-              label="To"
-              value={customTo}
-              maximumDate={new Date()}
-              onChange={setCustomTo}
-              error={
-                invalidCustomRange
-                  ? "To date must be on or after the From date."
-                  : null
-              }
-            />
-          </View>
-        </View>
-      ) : null}
 
       <View className="mt-4 px-5">
         <GradientCard>
@@ -211,13 +298,23 @@ export default function Transactions() {
             style={{ backgroundColor: C.background }}
             className="rounded-[16px]"
           >
-            <EmptyState
-              icon="book-open"
-              title="No transactions yet"
-              description="Start by recording your first transaction."
-              actionLabel="Add Transaction"
-              onAction={() => router.push("/transaction-form")}
-            />
+            {filtersActive ? (
+              <EmptyState
+                icon="filter"
+                title="No transactions match your filters"
+                description="Try adjusting or clearing your filters."
+                actionLabel="Clear filters"
+                onAction={clearFilters}
+              />
+            ) : (
+              <EmptyState
+                icon="book-open"
+                title="No transactions yet"
+                description="Start by recording your first transaction."
+                actionLabel="Add Transaction"
+                onAction={() => router.push("/transaction-form")}
+              />
+            )}
           </View>
         </View>
       ) : (
@@ -275,6 +372,93 @@ export default function Transactions() {
         label="Add Transaction"
         onPress={() => router.push("/transaction-form")}
         accessibilityLabel="Add transaction"
+      />
+
+      <Modal
+        visible={dateSheetOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateSheetOpen(false)}
+        accessibilityLabel="Select date range"
+      >
+        <Pressable
+          className="flex-1 justify-end bg-black/40 px-5 pb-8"
+          onPress={() => setDateSheetOpen(false)}
+        >
+          <Pressable
+            className="max-h-[70%] overflow-hidden rounded-2xl bg-background p-5 dark:bg-background-dark"
+            style={Shadow.card}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+              Date Range
+            </Text>
+            <View className="mt-3">
+              {DATE_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => {
+                    setDateFilter(opt.id);
+                    if (opt.id !== "custom") setDateSheetOpen(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: dateFilter === opt.id }}
+                  className="min-h-12 flex-row items-center justify-between"
+                >
+                  <Text className="text-base text-text-primary dark:text-text-primary-dark">
+                    {opt.label}
+                  </Text>
+                  {dateFilter === opt.id ? (
+                    <Feather name="check" size={18} color={C.primary} />
+                  ) : null}
+                </Pressable>
+              ))}
+            </View>
+            {dateFilter === "custom" ? (
+              <View className="mt-2 flex-row gap-3">
+                <View className="flex-1">
+                  <DateField
+                    label="From"
+                    value={customFrom}
+                    maximumDate={new Date()}
+                    onChange={setCustomFrom}
+                  />
+                </View>
+                <View className="flex-1">
+                  <DateField
+                    label="To"
+                    value={customTo}
+                    maximumDate={new Date()}
+                    error={
+                      invalidCustomRange
+                        ? "To date must be on or after the From date."
+                        : null
+                    }
+                    onChange={setCustomTo}
+                  />
+                </View>
+              </View>
+            ) : null}
+            <View className="mt-5">
+              <Button title="Done" onPress={() => setDateSheetOpen(false)} />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <FilterSheet
+        visible={filterSheetOpen}
+        typeFilter={typeFilter}
+        accountIds={accountIds}
+        categoryIds={categoryIds}
+        accounts={accountsResult?.accounts ?? []}
+        categories={categoriesResult?.categories ?? []}
+        onApply={(type, accountIds, categoryIds) => {
+          setTypeFilter(type);
+          setAccountIds(accountIds);
+          setCategoryIds(categoryIds);
+        }}
+        onClose={() => setFilterSheetOpen(false)}
       />
     </SafeAreaView>
   );

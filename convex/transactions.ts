@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { Expression } from "convex/server";
 import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
 import {
   validateNote,
@@ -15,6 +16,22 @@ const transactionType = v.union(
 );
 
 const MAX_LIST_ROWS = 1000;
+
+type ListFilters = {
+  accountIds?: Id<"accounts">[];
+  categoryIds?: Id<"categories">[];
+  type?: "income" | "expense" | "transfer";
+};
+
+function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean {
+  if (filters.accountIds !== undefined && !filters.accountIds.includes(row.accountId)) return false;
+  if (filters.categoryIds !== undefined) {
+    if (row.categoryId === undefined) return false;
+    if (!filters.categoryIds.includes(row.categoryId)) return false;
+  }
+  if (filters.type !== undefined && row.type !== filters.type) return false;
+  return true;
+}
 
 async function hydrate(
   ctx: QueryCtx,
@@ -186,6 +203,9 @@ export const list = query({
     startDate: v.number(),
     endDate: v.number(),
     limit: v.optional(v.number()),
+    accountIds: v.optional(v.array(v.id("accounts"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    type: v.optional(transactionType),
   },
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
@@ -204,17 +224,86 @@ export const list = query({
       Doc<"accounts"> | Doc<"categories"> | undefined
     >();
 
+    const filters: ListFilters = {};
+    if (args.accountIds !== undefined && args.accountIds.length > 0) filters.accountIds = args.accountIds;
+    if (args.categoryIds !== undefined && args.categoryIds.length > 0) filters.categoryIds = args.categoryIds;
+    if (args.type !== undefined) filters.type = args.type;
+
+    const pinnedDim: "account" | "category" | "type" | "none" =
+      filters.accountIds !== undefined && filters.accountIds.length === 1
+        ? "account"
+        : filters.categoryIds !== undefined && filters.categoryIds.length === 1
+          ? "category"
+          : filters.type !== undefined
+            ? "type"
+            : "none";
+
+    const needsFilter =
+      (filters.accountIds !== undefined && pinnedDim !== "account") ||
+      (filters.categoryIds !== undefined && pinnedDim !== "category") ||
+      (filters.type !== undefined && pinnedDim !== "type");
+
     if (isOwner) {
-      const rows = await ctx.db
-        .query("transactions")
-        .withIndex("by_household_date", (q) =>
+      const base = ctx.db.query("transactions");
+      let queryBuilder: ReturnType<typeof base.withIndex>;
+      if (pinnedDim === "account") {
+        queryBuilder = base.withIndex("by_household_account_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("accountId", filters.accountIds![0])
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else if (pinnedDim === "category") {
+        queryBuilder = base.withIndex("by_household_category_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("categoryId", filters.categoryIds![0])
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else if (pinnedDim === "type") {
+        queryBuilder = base.withIndex("by_household_type_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("type", filters.type!)
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else {
+        queryBuilder = base.withIndex("by_household_date", (q) =>
           q
             .eq("householdId", membership.householdId)
             .gte("date", args.startDate)
             .lt("date", args.endDate),
-        )
-        .order("desc")
-        .take(limit);
+        );
+      }
+
+      let rows: Doc<"transactions">[];
+      if (needsFilter) {
+        rows = await queryBuilder
+          .filter((q) => {
+            const parts: Expression<boolean>[] = [];
+            if (filters.accountIds !== undefined && pinnedDim !== "account") {
+              parts.push(
+                q.or(...filters.accountIds.map((id) => q.eq(q.field("accountId"), id))),
+              );
+            }
+            if (filters.categoryIds !== undefined && pinnedDim !== "category") {
+              parts.push(
+                q.or(...filters.categoryIds.map((id) => q.eq(q.field("categoryId"), id))),
+              );
+            }
+            if (filters.type !== undefined && pinnedDim !== "type") {
+              parts.push(q.eq(q.field("type"), filters.type));
+            }
+            return parts.length === 1 ? parts[0] : q.and(...parts);
+          })
+          .order("desc")
+          .take(limit);
+      } else {
+        rows = await queryBuilder.order("desc").take(limit);
+      }
 
       const transactions = [];
       for (const row of rows) {
@@ -265,6 +354,9 @@ export const list = query({
 
         const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
         if (category !== undefined && category.hidden) {
+          continue;
+        }
+        if (!matchesFilters(row, filters)) {
           continue;
         }
         collected.push({ ...row, category, account, toAccount });
