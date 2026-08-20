@@ -1228,7 +1228,7 @@ Expected: no errors.
 
 In the Transactions row (line 94), append to the cell:
 
-```
+```text
 Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip.
 ```
 
@@ -1236,7 +1236,7 @@ Supports server-side filtering by transaction type, account, and category; a con
 
 Add a new paragraph at the end of §3.6:
 
-```
+```markdown
 **Filtering (as of 2026-08-20):** the Transactions page filters the visible list
 server-side by **type** (income/expense/transfer), **account**, and **category**,
 with the date range (This Month / Last Month / Custom Range) consolidated behind a
@@ -1255,7 +1255,7 @@ filters action).
 
 After §4.8 ("Change Appearance Theme"), add a new subsection §4.9 "Filter Transactions" (do NOT renumber the other §4.x subsections):
 
-```
+````markdown
 ### 4.9 Filter Transactions
 
 ```text
@@ -1264,13 +1264,13 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
     (search when >8 options; Reset clears all)
   → list, summary card, and per-day net totals reflect the active filters
 ```
-```
+````
 
 - [ ] **Step 4: Update §5.2 Responsibilities**
 
 Change the `app/(tabs)/transactions.tsx` row to:
 
-```
+```text
 | `app/(tabs)/transactions.tsx` | Transactions list (date + type/account/category filters, summary, day-grouped with net totals) |
 ```
 
@@ -1278,7 +1278,7 @@ Change the `app/(tabs)/transactions.tsx` row to:
 
 Change the `transactions` index line to:
 
-```
+```text
 **Indexes:** `by_householdId`, `by_household_date`, `by_household_account_date`
 (`["householdId", "accountId", "date"]`), `by_household_category_date`
 (`["householdId", "categoryId", "date"]`), `by_household_type_date`
@@ -1288,7 +1288,7 @@ Change the `transactions` index line to:
 
 Change the `transactions.list` row in the Convex Functions table to:
 
-```
+```text
 | `transactions` | `list` | query | Date-range + optional `accountId`/`categoryId`/`type` filtered (index-driven); optional `limit` (default/max 1 000); cached hydration |
 ```
 
@@ -1296,7 +1296,7 @@ Change the `transactions.list` row in the Convex Functions table to:
 
 Insert at the top of the change-log table (below the header row):
 
-```
+```text
 | 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountId`/`categoryId`/`type`, backed by three new compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) so filters never scan the full date window; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + account/category option lists with search, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` component. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 ```
 

@@ -271,9 +271,11 @@ no filter. Category options are contextual to the selected type (income → inco
 categories, expense → expense categories); selecting type `transfer` clears active
 category filters, since transfers have no category. A filter dimension with a single
 selected value is pinned to its compound index
-(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`);
-dimensions with multiple values are applied as a post-index `or` filter, so a filter
-never scans the full date window. For Members, the existing bounded scan (limit × 10)
+(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`),
+narrowing the scanned range; when no dimension is pinned (all are empty or multi-valued),
+the remaining filters are applied as a post-index `or` filter that may walk the full date
+window until the requested limit is collected, especially when matches are sparse. For
+Members, the existing bounded scan (limit × 10)
 still applies — hidden-category rows cannot be indexed away — so heavy filtering over
 long ranges may return fewer rows than the limit. Interactions inside the filter sheet
 (type chips, account/category checkboxes, select-all, Reset) edit a local draft and do not
@@ -713,7 +715,7 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer |
 | `transactions` | `update` | mutation | Reverse old + apply new balances |
 | `transactions` | `remove` | mutation | Reverse balances |
-| `transactions` | `list` | query | Date-range + optional `accountId`/`categoryId`/`type` filtered (index-driven); optional `limit` (default/max 1 000); cached hydration |
+| `transactions` | `list` | query | Date-range + optional `accountIds`/`categoryIds`/`type` filtered (index-driven); optional `limit` (default/max 1 000); cached hydration |
 | `transactions` | `recent` | query | Latest N with cursor pagination |
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted (undefined) for Members on hidden categories |
@@ -767,7 +769,7 @@ sections above; fixes are logged here only.
 | Date | Type | Description |
 |------|------|-------------|
 | 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
-| 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index and multi-value dimensions applied as a post-index `or` filter, so a filter never scans the full date window; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + Account/Category multi-select comboboxes with tri-state header, select-all/unselect-all, search, checkbox rows, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` + `MultiSelectField` components. Updates §2.1, §3.6, §4.9, §5.2, §6 |
+| 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index (narrowing the scan) and multi-value dimensions applied as a post-index `or` filter that may walk the full date window until the limit is collected; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + Account/Category multi-select comboboxes with tri-state header, select-all/unselect-all, search, checkbox rows, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` + `MultiSelectField` components. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 | 2026-08-18 | UX | Login screen branding refresh: replaced the Feather "home" icon inside a gradient card with the full `splash-icon.png` asset (160×160, no wrapper card, `resizeMode="contain"`); removed the separate "Kin Finance" text heading — the brand name is now rendered only within the image itself; the subtitle ("Welcome back…" / "Create an account…") remains below the icon. Removes unused `LinearGradient`, `Radius`, `Shadow`, and `useThemeGradients` from `app/index.tsx`. |
 | 2026-08-17 | UX | Day net totals on the Transactions page: each day-group section header now shows the day's net (income − expense) in sign color (+ green / − red / 0 neutral), mirroring the Home dashboard pattern; the shared helper `sumNetExcludingTransfers` (`utils/format.ts`) computes it with transfers excluded, and Home's Recent Transactions day total was switched to the same helper so transfers no longer inflate the day's net. Updates §3.6, §3.8, §5.2 |
 | 2026-08-17 | UX | Home Recent Transactions now shows the latest 5 transactions (was 2): `limit` raised 2 → 5 in `app/(tabs)/home.tsx` (single `RECENT_TRANSACTIONS_LIMIT` constant), the auto-fetch cursor heuristic updated so the section keeps fetching while under 5 items and the accumulated list is capped at 5 (`.slice(0, 5)`) — preventing overshoot past 5 when a continuation page returns a full page on top of a partial one (hidden-category Members) — and the loading skeleton renders 5 placeholder rows to match. Rationale (design reference — Copilot Money, Nubank, and finance dashboard kits surface 5–10 recent items; the old 2-item preview was below standard and forced an extra "See All" tap for a frequent task). Updates §3.8 |
