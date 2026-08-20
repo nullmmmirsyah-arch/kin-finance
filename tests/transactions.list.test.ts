@@ -390,6 +390,85 @@ describe("transactions.list", () => {
     expect(result.transactions![0].note).toBe("bank-expense");
   });
 
+  it("owner intersects type, account, and category filters", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const foodCatId = await ctx.db.insert("categories", {
+        householdId: s.householdId,
+        name: "Food",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const txns = [
+        {
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          type: "expense",
+          note: "match",
+          date: 100,
+        },
+        {
+          accountId: s.accountId,
+          categoryId: foodCatId,
+          type: "expense",
+          note: "wrong-category",
+          date: 150,
+        },
+        {
+          accountId: bankId,
+          categoryId: s.visibleCatId,
+          type: "expense",
+          note: "wrong-account",
+          date: 200,
+        },
+        {
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          type: "income",
+          note: "wrong-type",
+          date: 250,
+        },
+      ];
+      for (const tx of txns) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: tx.accountId,
+          categoryId: tx.categoryId,
+          amount: tx.type === "income" ? 50 : -100,
+          type: tx.type,
+          note: tx.note,
+          date: tx.date,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: tx.date,
+          updatedAt: tx.date,
+        });
+      }
+      return { ...s, bankId, foodCatId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      type: "expense",
+      accountId: ids.accountId,
+      categoryId: ids.visibleCatId,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("match");
+  });
+
   it("member filtering a hidden category returns empty", async () => {
     const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
     const ids = await t.run(async (ctx) => {
@@ -428,6 +507,105 @@ describe("transactions.list", () => {
       categoryId: ids.hiddenCatId,
     });
     expect(result.transactions!.length).toBe(0);
+  });
+
+  it("member filters by type", async () => {
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const incomeCatId = await ctx.db.insert("categories", {
+        householdId: s.householdId,
+        name: "Salary",
+        type: "income",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "member-expense",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: incomeCatId,
+        amount: 50,
+        type: "income",
+        note: "member-income",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return s;
+    });
+    const result = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      type: "income",
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("member-income");
+  });
+
+  it("member filters by account", async () => {
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "member-cash-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: s.visibleCatId,
+        amount: -200,
+        type: "expense",
+        note: "member-bank-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return { ...s, bankId };
+    });
+    const result = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      accountId: ids.accountId,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("member-cash-tx");
   });
 
   it("respects the limit cap after filtering", async () => {

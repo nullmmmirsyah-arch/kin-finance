@@ -430,7 +430,13 @@ export default function Transactions() {
         categories={categoriesResult?.categories ?? []}
         onTypeFilterChange={(type) => {
           setTypeFilter(type);
-          if (type === "transfer") setCategoryFilter(null);
+          setCategoryFilter((current) => {
+            if (current === null || type === "all") return current;
+            if (type === "transfer") return null;
+            const cat = categoriesResult?.categories?.find((c) => c._id === current);
+            if (cat && cat.type !== type) return null;
+            return current;
+          });
         }}
         onAccountFilterChange={setAccountFilter}
         onCategoryFilterChange={setCategoryFilter}

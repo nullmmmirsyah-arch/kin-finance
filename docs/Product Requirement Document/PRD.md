@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-18
+> Last updated: 2026-08-20
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -268,9 +268,11 @@ contextual to the selected type (income → income categories, expense → expen
 categories); selecting type `transfer` clears an active category filter, since
 transfers have no category. Filtering is pushed into compound indexes
 (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`)
-so a filter never scans the full date window. The empty state distinguishes
-"no transactions at all" from "no transactions match your filters" (with a Clear
-filters action).
+so a filter never scans the full date window. For Members, the existing bounded
+scan (limit × 10) still applies — hidden-category rows cannot be indexed away —
+so heavy filtering over long ranges may return fewer rows than the limit. The
+empty state distinguishes "no transactions at all" from "no transactions match
+your filters" (with a Clear filters action).
 
 ### 3.7 Budgets
 

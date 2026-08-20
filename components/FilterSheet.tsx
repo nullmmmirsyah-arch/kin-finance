@@ -153,9 +153,10 @@ export function FilterSheet({
           style={Shadow.card}
           onPress={(e) => e.stopPropagation()}
         >
-          <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-            Filter
-          </Text>
+          <ScrollView keyboardShouldPersistTaps="handled" className="flex-grow">
+            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+              Filter
+            </Text>
 
           <View className="mt-4">
             <Text className="text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
@@ -225,6 +226,7 @@ export function FilterSheet({
               </Text>
             </Pressable>
           </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
