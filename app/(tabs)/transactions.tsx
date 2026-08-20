@@ -195,7 +195,10 @@ export default function Transactions() {
     categoryState,
     categorySelected,
   );
-  const filtersActive = activeFilterCount > 0;
+  const dateActive =
+    dateFilter === "lastMonth" ||
+    (dateFilter === "custom" && !invalidCustomRange);
+  const filtersActive = activeFilterCount > 0 || dateActive;
 
   const dateLabel = useMemo(() => {
     if (dateFilter === "thisMonth") return "This Month";
@@ -204,6 +207,7 @@ export default function Transactions() {
   }, [dateFilter, customFrom, customTo, timezone]);
 
   const clearFilters = () => {
+    setDateFilter("thisMonth");
     setTypeFilter("all");
     setAccountIds([]);
     setCategoryIds([]);
