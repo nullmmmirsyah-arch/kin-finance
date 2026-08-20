@@ -1238,17 +1238,20 @@ Add a new paragraph at the end of §3.6:
 
 ```markdown
 **Filtering (as of 2026-08-20):** the Transactions page filters the visible list
-server-side by **type** (income/expense/transfer), **account**, and **category**,
+server-side by **type** (income/expense/transfer), **accounts**, and **categories**,
 with the date range (This Month / Last Month / Custom Range) consolidated behind a
 single Date chip. The summary card and per-day net totals derive from the filtered
-query result, so they always match the visible rows. Category options are
-contextual to the selected type (income → income categories, expense → expense
-categories); selecting type `transfer` clears an active category filter, since
-transfers have no category. Filtering is pushed into compound indexes
-(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`)
-so a filter never scans the full date window. The empty state distinguishes
-"no transactions at all" from "no transactions match your filters" (with a Clear
-filters action).
+query result, so they always match the visible rows. Account and Category are
+multi-select: the `list` query takes `accountIds` and `categoryIds` arrays, where an
+empty or full selection is treated as no filter. Category options are contextual to
+the selected type (income → income categories, expense → expense categories);
+selecting type `transfer` clears an active category filter, since transfers have no
+category. A filter dimension with a single selected value is pinned to its compound
+index (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`),
+narrowing the scanned range; when no dimension is pinned, filters are applied
+post-index and may walk the full date window until the requested limit is collected.
+The empty state distinguishes "no transactions at all" from "no transactions match
+your filters" (with a Clear filters action).
 ```
 
 - [ ] **Step 3: Add §4.9 Filter Transactions flow**
@@ -1260,9 +1263,10 @@ After §4.8 ("Change Appearance Theme"), add a new subsection §4.9 "Filter Tran
 
 ```text
 Transactions tab → Date chip (default This Month) → Last Month / Custom Range (From/To) → Done
-  → Filter chip → Type chips (All/Income/Expense/Transfer) + Account/Category lists
-    (search when >8 options; Reset clears all)
-  → list, summary card, and per-day net totals reflect the active filters
+  → Filter chip → sheet edits a local draft (Type chips All/Income/Expense/Transfer,
+    Account/Category multi-select comboboxes, Reset clears the draft)
+  → Done → filters apply → list, summary card, and per-day net totals reflect the active filters
+  → closing the sheet without Done (backdrop tap or Android back) discards the draft
 ```
 ````
 
@@ -1297,7 +1301,7 @@ Change the `transactions.list` row in the Convex Functions table to:
 Insert at the top of the change-log table (below the header row):
 
 ```text
-| 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountId`/`categoryId`/`type`, backed by three new compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) so filters never scan the full date window; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + account/category option lists with search, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` component. Updates §2.1, §3.6, §4.9, §5.2, §6 |
+| 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by three compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index (narrowing the scan) and multi-value dimensions applied post-index (may walk the full date window until the limit is collected); Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + account/category option lists with search, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` component. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 ```
 
 - [ ] **Step 7: Verify**
