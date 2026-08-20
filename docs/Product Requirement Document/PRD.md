@@ -273,8 +273,9 @@ category filters, since transfers have no category. A filter dimension with a si
 selected value is pinned to its compound index
 (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`),
 narrowing the scanned range; when no dimension is pinned (all are empty or multi-valued),
-the remaining filters are applied as a post-index `or` filter that may walk the full date
-window until the requested limit is collected, especially when matches are sparse. For
+the remaining filters are applied post-index — combined with AND across the account, category,
+and type dimensions, while each selected ID array uses OR semantics — and may walk the full
+date window until the requested limit is collected, especially when matches are sparse. For
 Members, the existing bounded scan (limit × 10)
 still applies — hidden-category rows cannot be indexed away — so heavy filtering over
 long ranges may return fewer rows than the limit. Interactions inside the filter sheet
