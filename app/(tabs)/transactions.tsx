@@ -201,7 +201,7 @@ export default function Transactions() {
     if (dateFilter === "thisMonth") return "This Month";
     if (dateFilter === "lastMonth") return "Last Month";
     return `${formatDateShortTz(startOfDay(customFrom).getTime(), timezone)} – ${formatDateShortTz(startOfDay(customTo).getTime(), timezone)}`;
-  }, [dateFilter, customFrom, customTo, invalidCustomRange, timezone]);
+  }, [dateFilter, customFrom, customTo, timezone]);
 
   const clearFilters = () => {
     setTypeFilter("all");
