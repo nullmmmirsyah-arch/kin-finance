@@ -260,19 +260,24 @@ Core records of financial activity: income, expense, or transfer.
   1 000 rows.
 
 **Filtering (as of 2026-08-20):** the Transactions page filters the visible list
-server-side by **type** (income/expense/transfer), **account**, and **category**,
+server-side by **type** (income/expense/transfer), **accounts**, and **categories**,
 with the date range (This Month / Last Month / Custom Range) consolidated behind a
 single Date chip. The summary card and per-day net totals derive from the filtered
-query result, so they always match the visible rows. Category options are
-contextual to the selected type (income → income categories, expense → expense
-categories); selecting type `transfer` clears an active category filter, since
-transfers have no category. Filtering is pushed into compound indexes
-(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`)
-so a filter never scans the full date window. For Members, the existing bounded
-scan (limit × 10) still applies — hidden-category rows cannot be indexed away —
-so heavy filtering over long ranges may return fewer rows than the limit. The
-empty state distinguishes "no transactions at all" from "no transactions match
-your filters" (with a Clear filters action).
+query result, so they always match the visible rows. Account and Category are
+multi-select: each is a compact combobox with a tri-state header (empty / partial /
+all), a "select all / unselect all" action, and checkbox rows; the `list` query takes
+`accountIds` and `categoryIds` arrays, where an empty or full selection is treated as
+no filter. Category options are contextual to the selected type (income → income
+categories, expense → expense categories); selecting type `transfer` clears active
+category filters, since transfers have no category. A filter dimension with a single
+selected value is pinned to its compound index
+(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`);
+dimensions with multiple values are applied as a post-index `or` filter, so a filter
+never scans the full date window. For Members, the existing bounded scan (limit × 10)
+still applies — hidden-category rows cannot be indexed away — so heavy filtering over
+long ranges may return fewer rows than the limit. The empty state distinguishes "no
+transactions at all" from "no transactions match your filters" (with a Clear filters
+action).
 
 ### 3.7 Budgets
 
