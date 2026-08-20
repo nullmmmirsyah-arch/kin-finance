@@ -256,7 +256,7 @@ export default function Transactions() {
         <HeaderPill
           icon="calendar"
           label={dateLabel}
-          active={false}
+          active={dateFilter !== "thisMonth"}
           onPress={() => setDateSheetOpen(true)}
         />
         <HeaderPill
@@ -298,7 +298,15 @@ export default function Transactions() {
             style={{ backgroundColor: C.background }}
             className="rounded-[16px]"
           >
-            {filtersActive ? (
+            {invalidCustomRange ? (
+              <EmptyState
+                icon="calendar"
+                title="Invalid date range"
+                description="Set a From date that is on or before the To date."
+                actionLabel="Adjust date range"
+                onAction={() => setDateSheetOpen(true)}
+              />
+            ) : filtersActive ? (
               <EmptyState
                 icon="filter"
                 title="No transactions match your filters"

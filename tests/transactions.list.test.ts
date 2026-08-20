@@ -1048,4 +1048,46 @@ describe("transactions.list", () => {
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("food-tx");
   });
+
+  it("treats empty accountIds/categoryIds arrays as no filter", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "first",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -50,
+        type: "expense",
+        note: "second",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return s;
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      accountIds: [],
+      categoryIds: [],
+    });
+    expect(result.transactions!.length).toBe(2);
+    expect(result.transactions!.map((t) => t.note)).toEqual(["second", "first"]);
+  });
 });

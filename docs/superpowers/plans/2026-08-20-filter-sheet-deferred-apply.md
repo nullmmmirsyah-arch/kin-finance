@@ -316,7 +316,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 
 Insert a new row at the top of the §8 table (below the header row `|------|------|-------------|`, above the existing `2026-08-20 | Feature | Transactions filters: ...` row):
 
-```
+```markdown
 | 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
 ```
 
