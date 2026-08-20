@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { Expression } from "convex/server";
 import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
 import {
   validateNote,
@@ -17,14 +18,17 @@ const transactionType = v.union(
 const MAX_LIST_ROWS = 1000;
 
 type ListFilters = {
-  accountId?: Id<"accounts">;
-  categoryId?: Id<"categories">;
+  accountIds?: Id<"accounts">[];
+  categoryIds?: Id<"categories">[];
   type?: "income" | "expense" | "transfer";
 };
 
 function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean {
-  if (filters.accountId !== undefined && row.accountId !== filters.accountId) return false;
-  if (filters.categoryId !== undefined && row.categoryId !== filters.categoryId) return false;
+  if (filters.accountIds !== undefined && !filters.accountIds.includes(row.accountId)) return false;
+  if (filters.categoryIds !== undefined) {
+    if (row.categoryId === undefined) return false;
+    if (!filters.categoryIds.includes(row.categoryId)) return false;
+  }
   if (filters.type !== undefined && row.type !== filters.type) return false;
   return true;
 }
@@ -199,8 +203,8 @@ export const list = query({
     startDate: v.number(),
     endDate: v.number(),
     limit: v.optional(v.number()),
-    accountId: v.optional(v.id("accounts")),
-    categoryId: v.optional(v.id("categories")),
+    accountIds: v.optional(v.array(v.id("accounts"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
     type: v.optional(transactionType),
   },
   handler: async (ctx, args) => {
@@ -221,39 +225,48 @@ export const list = query({
     >();
 
     const filters: ListFilters = {};
-    if (args.accountId !== undefined) filters.accountId = args.accountId;
-    if (args.categoryId !== undefined) filters.categoryId = args.categoryId;
+    if (args.accountIds !== undefined && args.accountIds.length > 0) filters.accountIds = args.accountIds;
+    if (args.categoryIds !== undefined && args.categoryIds.length > 0) filters.categoryIds = args.categoryIds;
     if (args.type !== undefined) filters.type = args.type;
 
-    const activeFilterCount =
-      (filters.accountId !== undefined ? 1 : 0) +
-      (filters.categoryId !== undefined ? 1 : 0) +
-      (filters.type !== undefined ? 1 : 0);
+    const pinnedDim: "account" | "category" | "type" | "none" =
+      filters.accountIds !== undefined && filters.accountIds.length === 1
+        ? "account"
+        : filters.categoryIds !== undefined && filters.categoryIds.length === 1
+          ? "category"
+          : filters.type !== undefined
+            ? "type"
+            : "none";
+
+    const needsFilter =
+      (filters.accountIds !== undefined && pinnedDim !== "account") ||
+      (filters.categoryIds !== undefined && pinnedDim !== "category") ||
+      (filters.type !== undefined && pinnedDim !== "type");
 
     if (isOwner) {
       const base = ctx.db.query("transactions");
       let queryBuilder: ReturnType<typeof base.withIndex>;
-      if (filters.accountId !== undefined) {
+      if (pinnedDim === "account") {
         queryBuilder = base.withIndex("by_household_account_date", (q) =>
           q
             .eq("householdId", membership.householdId)
-            .eq("accountId", filters.accountId as Id<"accounts">)
+            .eq("accountId", filters.accountIds![0])
             .gte("date", args.startDate)
             .lt("date", args.endDate),
         );
-      } else if (filters.categoryId !== undefined) {
+      } else if (pinnedDim === "category") {
         queryBuilder = base.withIndex("by_household_category_date", (q) =>
           q
             .eq("householdId", membership.householdId)
-            .eq("categoryId", filters.categoryId as Id<"categories">)
+            .eq("categoryId", filters.categoryIds![0])
             .gte("date", args.startDate)
             .lt("date", args.endDate),
         );
-      } else if (filters.type !== undefined) {
+      } else if (pinnedDim === "type") {
         queryBuilder = base.withIndex("by_household_type_date", (q) =>
           q
             .eq("householdId", membership.householdId)
-            .eq("type", filters.type as "income" | "expense" | "transfer")
+            .eq("type", filters.type!)
             .gte("date", args.startDate)
             .lt("date", args.endDate),
         );
@@ -267,21 +280,25 @@ export const list = query({
       }
 
       let rows: Doc<"transactions">[];
-      if (activeFilterCount > 1) {
+      if (needsFilter) {
         rows = await queryBuilder
-          .filter((q) =>
-            q.and(
-              filters.type !== undefined
-                ? q.eq(q.field("type"), filters.type)
-                : q.eq(q.field("_id"), q.field("_id")),
-              filters.accountId !== undefined
-                ? q.eq(q.field("accountId"), filters.accountId)
-                : q.eq(q.field("_id"), q.field("_id")),
-              filters.categoryId !== undefined
-                ? q.eq(q.field("categoryId"), filters.categoryId)
-                : q.eq(q.field("_id"), q.field("_id")),
-            ),
-          )
+          .filter((q) => {
+            const parts: Expression<boolean>[] = [];
+            if (filters.accountIds !== undefined && pinnedDim !== "account") {
+              parts.push(
+                q.or(...filters.accountIds.map((id) => q.eq(q.field("accountId"), id))),
+              );
+            }
+            if (filters.categoryIds !== undefined && pinnedDim !== "category") {
+              parts.push(
+                q.or(...filters.categoryIds.map((id) => q.eq(q.field("categoryId"), id))),
+              );
+            }
+            if (filters.type !== undefined && pinnedDim !== "type") {
+              parts.push(q.eq(q.field("type"), filters.type));
+            }
+            return parts.length === 1 ? parts[0] : q.and(...parts);
+          })
           .order("desc")
           .take(limit);
       } else {

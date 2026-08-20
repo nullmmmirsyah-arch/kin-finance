@@ -216,7 +216,7 @@ describe("transactions.list", () => {
     const result = await owner.query(api.transactions.list, {
       startDate: 0,
       endDate: 1_000_000_000_000,
-      accountId: ids.accountId,
+      accountIds: [ids.accountId],
     });
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("cash-tx");
@@ -279,7 +279,7 @@ describe("transactions.list", () => {
     const result = await owner.query(api.transactions.list, {
       startDate: 0,
       endDate: 1_000_000_000_000,
-      categoryId: ids.visibleCatId,
+      categoryIds: [ids.visibleCatId],
     });
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("cat-expense");
@@ -384,7 +384,7 @@ describe("transactions.list", () => {
       startDate: 0,
       endDate: 1_000_000_000_000,
       type: "expense",
-      accountId: ids.bankId,
+      accountIds: [ids.bankId],
     });
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("bank-expense");
@@ -462,8 +462,8 @@ describe("transactions.list", () => {
       startDate: 0,
       endDate: 1_000_000_000_000,
       type: "expense",
-      accountId: ids.accountId,
-      categoryId: ids.visibleCatId,
+      accountIds: [ids.accountId],
+      categoryIds: [ids.visibleCatId],
     });
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("match");
@@ -504,7 +504,7 @@ describe("transactions.list", () => {
     const result = await member.query(api.transactions.list, {
       startDate: 0,
       endDate: 1_000_000_000_000,
-      categoryId: ids.hiddenCatId,
+      categoryIds: [ids.hiddenCatId],
     });
     expect(result.transactions!.length).toBe(0);
   });
@@ -602,7 +602,7 @@ describe("transactions.list", () => {
     const result = await member.query(api.transactions.list, {
       startDate: 0,
       endDate: 1_000_000_000_000,
-      accountId: ids.accountId,
+      accountIds: [ids.accountId],
     });
     expect(result.transactions!.length).toBe(1);
     expect(result.transactions![0].note).toBe("member-cash-tx");
@@ -636,5 +636,184 @@ describe("transactions.list", () => {
       limit: 2,
     });
     expect(result.transactions!.length).toBe(2);
+  });
+
+  it("owner filters by multiple account ids", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "cash-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: s.visibleCatId,
+        amount: -200,
+        type: "expense",
+        note: "bank-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return { ...s, bankId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      accountIds: [ids.accountId, ids.bankId],
+    });
+    expect(result.transactions!.length).toBe(2);
+    expect(result.transactions!.map((t) => t.note).sort()).toEqual(["bank-tx", "cash-tx"]);
+  });
+
+  it("owner filters by multiple category ids", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const foodCatId = await ctx.db.insert("categories", {
+        householdId: s.householdId,
+        name: "Food",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "vis-cat-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: foodCatId,
+        amount: -50,
+        type: "expense",
+        note: "food-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return { ...s, foodCatId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      categoryIds: [ids.visibleCatId, ids.foodCatId],
+    });
+    expect(result.transactions!.length).toBe(2);
+    expect(result.transactions!.map((t) => t.note).sort()).toEqual(["food-tx", "vis-cat-tx"]);
+  });
+
+  it("member filters by multiple account and category ids", async () => {
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const foodCatId = await ctx.db.insert("categories", {
+        householdId: s.householdId,
+        name: "Food",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "match-1",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: foodCatId,
+        amount: -50,
+        type: "expense",
+        note: "match-2",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      const gasCatId = await ctx.db.insert("categories", {
+        householdId: s.householdId,
+        name: "Gas",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: gasCatId,
+        amount: -30,
+        type: "expense",
+        note: "wrong-category",
+        date: 300,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 300,
+        updatedAt: 300,
+      });
+      return { ...s, bankId, foodCatId, gasCatId };
+    });
+    const result = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      accountIds: [ids.accountId, ids.bankId],
+      categoryIds: [ids.visibleCatId, ids.foodCatId],
+    });
+    expect(result.transactions!.length).toBe(2);
+    expect(result.transactions!.map((t) => t.note).sort()).toEqual(["match-1", "match-2"]);
   });
 });
