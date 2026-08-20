@@ -95,7 +95,10 @@ export function MultiSelectField({
           <Pressable
             onPress={() => onToggleAll(state !== "all")}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: state !== "empty" }}
+            accessibilityState={{
+              checked:
+                state === "all" ? true : state === "partial" ? "mixed" : false,
+            }}
             className="min-h-11 flex-row items-center justify-between border-b border-border px-4 py-2.5 dark:border-border-dark"
           >
             <Text className="text-sm font-medium text-primary dark:text-primary-dark">
@@ -125,7 +128,7 @@ export function MultiSelectField({
               />
             </View>
           ) : null}
-          <ScrollView keyboardShouldPersistTaps="handled" className="max-h-52">
+          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled className="max-h-52">
             {filtered.length === 0 ? (
               <Text className="px-4 py-6 text-center text-sm text-text-secondary dark:text-text-secondary-dark">
                 No results found

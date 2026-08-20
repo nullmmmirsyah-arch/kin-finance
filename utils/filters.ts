@@ -11,7 +11,7 @@ export function normalizeSelection<T extends string>(
   optionIds: T[],
 ): T[] | undefined {
   if (optionIds.length === 0) return undefined;
-  const selected = selectedIds.filter((id) => optionIds.includes(id));
+  const selected = [...new Set(selectedIds)].filter((id) => optionIds.includes(id));
   if (selected.length === 0) return undefined;
   if (selected.length >= optionIds.length) return undefined;
   return selected;

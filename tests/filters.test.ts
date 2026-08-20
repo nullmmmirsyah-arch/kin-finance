@@ -35,6 +35,12 @@ describe("normalizeSelection", () => {
   it("filters out ids not in the option list", () => {
     expect(normalizeSelection(["a", "x"], ids)).toEqual(["a"]);
   });
+  it("deduplicates repeated selections before the full-selection check", () => {
+    expect(normalizeSelection(["a", "a", "b"], ids)).toEqual(["a", "b"]);
+  });
+  it("treats duplicates of every option as a full selection", () => {
+    expect(normalizeSelection(["a", "a", "b", "b", "c", "c"], ids)).toBeUndefined();
+  });
   it("returns undefined when there are no options", () => {
     expect(normalizeSelection(["a"], [])).toBeUndefined();
   });
