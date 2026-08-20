@@ -1,8 +1,8 @@
-import Feather from "@expo/vector-icons/Feather";
-import { Shadow, useThemeColors } from "@/constants/theme";
-import { useMemo, useState } from "react";
-import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Shadow } from "@/constants/theme";
+import { useMemo } from "react";
+import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { MultiSelectField } from "@/components/MultiSelectField";
 
 export type TransactionType = "income" | "expense" | "transfer";
 export type TypeFilter = "all" | TransactionType;
@@ -14,122 +14,34 @@ const TYPE_OPTIONS: { id: TypeFilter; label: string }[] = [
   { id: "transfer", label: "Transfer" },
 ];
 
-const SEARCH_THRESHOLD = 8;
-
 type Props = {
   visible: boolean;
   typeFilter: TypeFilter;
-  accountFilter: Id<"accounts"> | null;
-  categoryFilter: Id<"categories"> | null;
+  accountIds: Id<"accounts">[];
+  categoryIds: Id<"categories">[];
   accounts: Doc<"accounts">[];
   categories: Doc<"categories">[];
   onTypeFilterChange: (type: TypeFilter) => void;
-  onAccountFilterChange: (id: Id<"accounts"> | null) => void;
-  onCategoryFilterChange: (id: Id<"categories"> | null) => void;
+  onAccountToggle: (id: Id<"accounts">) => void;
+  onAccountIdsChange: (ids: Id<"accounts">[]) => void;
+  onCategoryToggle: (id: Id<"categories">) => void;
+  onCategoryIdsChange: (ids: Id<"categories">[]) => void;
   onReset: () => void;
   onClose: () => void;
 };
 
-function OptionList({
-  title,
-  options,
-  selectedId,
-  onSelect,
-  disabled,
-}: {
-  title: string;
-  options: { _id: string; name: string }[];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  disabled?: boolean;
-}) {
-  const [search, setSearch] = useState("");
-  const C = useThemeColors();
-  const showSearch = options.length > SEARCH_THRESHOLD;
-
-  const filtered = useMemo(() => {
-    if (!showSearch || search.trim() === "") return options;
-    const q = search.toLowerCase();
-    return options.filter((o) => o.name.toLowerCase().includes(q));
-  }, [options, showSearch, search]);
-
-  return (
-    <View className="gap-1.5">
-      <Text className="text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-        {title}
-      </Text>
-      {showSearch ? (
-        <TextInput
-          placeholder="Search…"
-          placeholderTextColor={C.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-          className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-text-primary dark:border-border-dark dark:bg-background-dark dark:text-text-primary-dark"
-        />
-      ) : null}
-      <View className="max-h-52 overflow-hidden rounded-xl border border-border dark:border-border-dark">
-        <ScrollView keyboardShouldPersistTaps="handled">
-          <Pressable
-            onPress={() => {
-              Keyboard.dismiss();
-              onSelect(null);
-            }}
-            disabled={disabled}
-            accessibilityRole="button"
-            className="min-h-12 flex-row items-center justify-between px-4 py-3"
-          >
-            <Text
-              className={`text-base ${
-                selectedId === null
-                  ? "text-primary dark:text-primary-dark"
-                  : "text-text-primary dark:text-text-primary-dark"
-              }`}
-            >
-              All {title.toLowerCase() === "account" ? "accounts" : "categories"}
-            </Text>
-            {selectedId === null ? <Feather name="check" size={18} color={C.primary} /> : null}
-          </Pressable>
-          {filtered.map((option) => (
-            <Pressable
-              key={option._id}
-              onPress={() => {
-                Keyboard.dismiss();
-                onSelect(option._id);
-              }}
-              disabled={disabled}
-              accessibilityRole="button"
-              accessibilityState={{ selected: option._id === selectedId }}
-              className="min-h-12 flex-row items-center justify-between px-4 py-3"
-            >
-              <Text
-                className={`text-base ${
-                  option._id === selectedId
-                    ? "text-primary dark:text-primary-dark"
-                    : "text-text-primary dark:text-text-primary-dark"
-                }`}
-              >
-                {option.name}
-              </Text>
-              {option._id === selectedId ? <Feather name="check" size={18} color={C.primary} /> : null}
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-    </View>
-  );
-}
-
 export function FilterSheet({
   visible,
   typeFilter,
-  accountFilter,
-  categoryFilter,
+  accountIds,
+  categoryIds,
   accounts,
   categories,
   onTypeFilterChange,
-  onAccountFilterChange,
-  onCategoryFilterChange,
+  onAccountToggle,
+  onAccountIdsChange,
+  onCategoryToggle,
+  onCategoryIdsChange,
   onReset,
   onClose,
 }: Props) {
@@ -138,6 +50,15 @@ export function FilterSheet({
     if (typeFilter === "all") return categories;
     return categories.filter((c) => c.type === typeFilter);
   }, [categories, typeFilter]);
+
+  const accountOptionItems = useMemo(
+    () => accounts.map((a) => ({ _id: a._id, name: a.name })),
+    [accounts],
+  );
+  const categoryOptionItems = useMemo(
+    () => categoryOptions.map((c) => ({ _id: c._id, name: c.name })),
+    [categoryOptions],
+  );
 
   return (
     <Modal
@@ -190,20 +111,28 @@ export function FilterSheet({
           </View>
 
           <View className="mt-4">
-            <OptionList
+            <MultiSelectField
               title="Account"
-              options={accounts}
-              selectedId={accountFilter}
-              onSelect={(id) => onAccountFilterChange(id as Id<"accounts"> | null)}
+              options={accountOptionItems}
+              selectedIds={accountIds}
+              onToggle={(id) => onAccountToggle(id as Id<"accounts">)}
+              onToggleAll={(selectAll) =>
+                onAccountIdsChange(selectAll ? accounts.map((a) => a._id) : [])
+              }
             />
           </View>
 
           <View className="mt-4">
-            <OptionList
+            <MultiSelectField
               title="Category"
-              options={categoryOptions}
-              selectedId={categoryFilter}
-              onSelect={(id) => onCategoryFilterChange(id as Id<"categories"> | null)}
+              options={categoryOptionItems}
+              selectedIds={categoryIds}
+              onToggle={(id) => onCategoryToggle(id as Id<"categories">)}
+              onToggleAll={(selectAll) =>
+                onCategoryIdsChange(
+                  selectAll ? categoryOptions.map((c) => c._id) : [],
+                )
+              }
               disabled={typeFilter === "transfer"}
             />
           </View>

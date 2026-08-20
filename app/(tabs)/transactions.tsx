@@ -29,6 +29,7 @@ import {
   getMonthBounds,
   startOfDay,
 } from "@/utils/date";
+import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
 import { resolveTimezone } from "@/constants/timezones";
 
 type DateFilter = "thisMonth" | "lastMonth" | "custom";
@@ -89,8 +90,8 @@ export default function Transactions() {
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [accountFilter, setAccountFilter] = useState<Id<"accounts"> | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<Id<"categories"> | null>(null);
+  const [accountIds, setAccountIds] = useState<Id<"accounts">[]>([]);
+  const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
@@ -122,15 +123,32 @@ export default function Transactions() {
   const accountsResult = useQuery(api.accounts.list);
   const categoriesResult = useQuery(api.categories.list);
 
-  const queryArgs = useMemo(
-    () => ({
+  const accountOptions = useMemo(() => accountsResult?.accounts ?? [], [accountsResult]);
+  const categoryOptions = useMemo(
+    () => categoriesResult?.categories ?? [],
+    [categoriesResult],
+  );
+  const accountSelected = accountOptions.filter((a) => accountIds.includes(a._id)).length;
+  const categorySelected = categoryOptions.filter((c) => categoryIds.includes(c._id)).length;
+  const accountState = getSelectionState(accountOptions.length, accountSelected);
+  const categoryState = getSelectionState(categoryOptions.length, categorySelected);
+
+  const queryArgs = useMemo(() => {
+    const normalizedAccounts = normalizeSelection(
+      accountIds,
+      accountOptions.map((a) => a._id),
+    );
+    const normalizedCategories = normalizeSelection(
+      categoryIds,
+      categoryOptions.map((c) => c._id),
+    );
+    return {
       ...range,
       ...(typeFilter !== "all" ? { type: typeFilter } : {}),
-      ...(accountFilter !== null ? { accountId: accountFilter } : {}),
-      ...(categoryFilter !== null ? { categoryId: categoryFilter } : {}),
-    }),
-    [range, typeFilter, accountFilter, categoryFilter],
-  );
+      ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts as Id<"accounts">[] } : {}),
+      ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories as Id<"categories">[] } : {}),
+    };
+  }, [range, typeFilter, accountIds, categoryIds, accountOptions, categoryOptions]);
 
   const result = useQuery(api.transactions.list, queryArgs);
 
@@ -165,12 +183,14 @@ export default function Transactions() {
     return { income, expense, net: income - expense };
   }, [result]);
 
-  const filtersActive =
-    typeFilter !== "all" || accountFilter !== null || categoryFilter !== null;
-  const activeFilterCount =
-    (typeFilter !== "all" ? 1 : 0) +
-    (accountFilter !== null ? 1 : 0) +
-    (categoryFilter !== null ? 1 : 0);
+  const activeFilterCount = filterBadgeCount(
+    typeFilter !== "all",
+    accountState,
+    accountSelected,
+    categoryState,
+    categorySelected,
+  );
+  const filtersActive = activeFilterCount > 0;
 
   const dateLabel = useMemo(() => {
     if (dateFilter === "thisMonth") return "This Month";
@@ -180,8 +200,8 @@ export default function Transactions() {
 
   const clearFilters = () => {
     setTypeFilter("all");
-    setAccountFilter(null);
-    setCategoryFilter(null);
+    setAccountIds([]);
+    setCategoryIds([]);
   };
 
   if (result === undefined) {
@@ -424,22 +444,33 @@ export default function Transactions() {
       <FilterSheet
         visible={filterSheetOpen}
         typeFilter={typeFilter}
-        accountFilter={accountFilter}
-        categoryFilter={categoryFilter}
+        accountIds={accountIds}
+        categoryIds={categoryIds}
         accounts={accountsResult?.accounts ?? []}
         categories={categoriesResult?.categories ?? []}
         onTypeFilterChange={(type) => {
           setTypeFilter(type);
-          setCategoryFilter((current) => {
-            if (current === null || type === "all") return current;
-            if (type === "transfer") return null;
-            const cat = categoriesResult?.categories?.find((c) => c._id === current);
-            if (cat && cat.type !== type) return null;
-            return current;
+          setCategoryIds((current) => {
+            if (current.length === 0 || type === "all") return current;
+            if (type === "transfer") return [];
+            return current.filter((id) => {
+              const cat = categoriesResult?.categories?.find((c) => c._id === id);
+              return cat !== undefined && cat.type === type;
+            });
           });
         }}
-        onAccountFilterChange={setAccountFilter}
-        onCategoryFilterChange={setCategoryFilter}
+        onAccountToggle={(id) =>
+          setAccountIds((cur) =>
+            cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
+          )
+        }
+        onAccountIdsChange={setAccountIds}
+        onCategoryToggle={(id) =>
+          setCategoryIds((cur) =>
+            cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
+          )
+        }
+        onCategoryIdsChange={setCategoryIds}
         onReset={clearFilters}
         onClose={() => setFilterSheetOpen(false)}
       />
