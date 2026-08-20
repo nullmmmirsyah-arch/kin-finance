@@ -91,7 +91,7 @@ visible) without exposing transaction detail.
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
-| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per call (server cap, optional `limit`). |
+| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per call (server cap, optional `limit`). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
 | Home | Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All"). |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -259,6 +259,19 @@ Core records of financial activity: income, expense, or transfer.
 - The `list` query hydrates entities with a per-query cache and caps results at
   1 000 rows.
 
+**Filtering (as of 2026-08-20):** the Transactions page filters the visible list
+server-side by **type** (income/expense/transfer), **account**, and **category**,
+with the date range (This Month / Last Month / Custom Range) consolidated behind a
+single Date chip. The summary card and per-day net totals derive from the filtered
+query result, so they always match the visible rows. Category options are
+contextual to the selected type (income → income categories, expense → expense
+categories); selecting type `transfer` clears an active category filter, since
+transfers have no category. Filtering is pushed into compound indexes
+(`by_household_account_date`, `by_household_category_date`, `by_household_type_date`)
+so a filter never scans the full date window. The empty state distinguishes
+"no transactions at all" from "no transactions match your filters" (with a Clear
+filters action).
+
 ### 3.7 Budgets
 
 Monthly spending limits per expense category. Identified by
@@ -420,6 +433,15 @@ Settings → Appearance → System / Light / Dark
   → persisted to SecureStore, applied before first render on next launch
 ```
 
+### 4.9 Filter Transactions
+
+```text
+Transactions tab → Date chip (default This Month) → Last Month / Custom Range (From/To) → Done
+  → Filter chip → Type chips (All/Income/Expense/Transfer) + Account/Category lists
+    (search when >8 options; Reset clears all)
+  → list, summary card, and per-day net totals reflect the active filters
+```
+
 ---
 
 ## 5. Architecture
@@ -452,7 +474,7 @@ Settings → Appearance → System / Light / Dark
 | `app/index.tsx` | Signed-out entry |
 | `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
-| `app/(tabs)/transactions.tsx` | Transactions list (date filters, summary, day-grouped with net totals) |
+| `app/(tabs)/transactions.tsx` | Transactions list (date + type/account/category filters, summary, day-grouped with net totals) |
 | `app/(tabs)/budgets.tsx` | Budgets list (month selector, progress) |
 | `app/(tabs)/settings.tsx` | Settings (Household, Appearance, Categories, Sign Out) |
 | `app/onboarding.tsx` | Create/Join household |
@@ -628,8 +650,11 @@ updatedBy: id<users>
 createdAt: number
 updatedAt: number
 ```
-**Indexes:** `by_householdId`, `by_household_date`, `by_accountId`,
-`by_toAccountId`, `by_categoryId`
+**Indexes:** `by_householdId`, `by_household_date`, `by_household_account_date`
+(`["householdId", "accountId", "date"]`), `by_household_category_date`
+(`["householdId", "categoryId", "date"]`), `by_household_type_date`
+(`["householdId", "type", "date"]`), `by_accountId`, `by_toAccountId`,
+`by_categoryId`
 
 **Invariants:** amount sign matches type; category type matches transaction
 type; transfers have no category and `toAccountId !== accountId`.
@@ -678,7 +703,7 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer |
 | `transactions` | `update` | mutation | Reverse old + apply new balances |
 | `transactions` | `remove` | mutation | Reverse balances |
-| `transactions` | `list` | query | Date-range filtered; optional `limit` (default/max 1 000); cached hydration |
+| `transactions` | `list` | query | Date-range + optional `accountId`/`categoryId`/`type` filtered (index-driven); optional `limit` (default/max 1 000); cached hydration |
 | `transactions` | `recent` | query | Latest N with cursor pagination |
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted (undefined) for Members on hidden categories |
@@ -731,6 +756,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountId`/`categoryId`/`type`, backed by three new compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) so filters never scan the full date window; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + account/category option lists with search, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` component. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 | 2026-08-18 | UX | Login screen branding refresh: replaced the Feather "home" icon inside a gradient card with the full `splash-icon.png` asset (160×160, no wrapper card, `resizeMode="contain"`); removed the separate "Kin Finance" text heading — the brand name is now rendered only within the image itself; the subtitle ("Welcome back…" / "Create an account…") remains below the icon. Removes unused `LinearGradient`, `Radius`, `Shadow`, and `useThemeGradients` from `app/index.tsx`. |
 | 2026-08-17 | UX | Day net totals on the Transactions page: each day-group section header now shows the day's net (income − expense) in sign color (+ green / − red / 0 neutral), mirroring the Home dashboard pattern; the shared helper `sumNetExcludingTransfers` (`utils/format.ts`) computes it with transfers excluded, and Home's Recent Transactions day total was switched to the same helper so transfers no longer inflate the day's net. Updates §3.6, §3.8, §5.2 |
 | 2026-08-17 | UX | Home Recent Transactions now shows the latest 5 transactions (was 2): `limit` raised 2 → 5 in `app/(tabs)/home.tsx` (single `RECENT_TRANSACTIONS_LIMIT` constant), the auto-fetch cursor heuristic updated so the section keeps fetching while under 5 items and the accumulated list is capped at 5 (`.slice(0, 5)`) — preventing overshoot past 5 when a continuation page returns a full page on top of a partial one (hidden-category Members) — and the loading skeleton renders 5 placeholder rows to match. Rationale (design reference — Copilot Money, Nubank, and finance dashboard kits surface 5–10 recent items; the old 2-item preview was below standard and forced an extra "See All" tap for a frequent task). Updates §3.8 |
