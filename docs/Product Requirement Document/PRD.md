@@ -275,9 +275,12 @@ selected value is pinned to its compound index
 dimensions with multiple values are applied as a post-index `or` filter, so a filter
 never scans the full date window. For Members, the existing bounded scan (limit × 10)
 still applies — hidden-category rows cannot be indexed away — so heavy filtering over
-long ranges may return fewer rows than the limit. The empty state distinguishes "no
-transactions at all" from "no transactions match your filters" (with a Clear filters
-action).
+long ranges may return fewer rows than the limit. Interactions inside the filter sheet
+(type chips, account/category checkboxes, select-all, Reset) edit a local draft and do not
+change the visible list; the filters apply only when the user taps **Done**, and closing the
+sheet without Done (backdrop tap or Android back) discards the draft. The empty state
+distinguishes "no transactions at all" from "no transactions match your filters" (with a
+Clear filters action).
 
 ### 3.7 Budgets
 
@@ -444,9 +447,9 @@ Settings → Appearance → System / Light / Dark
 
 ```text
 Transactions tab → Date chip (default This Month) → Last Month / Custom Range (From/To) → Done
-  → Filter chip → Type chips (All/Income/Expense/Transfer) + Account/Category lists
-    (search when >8 options; Reset clears all)
-  → list, summary card, and per-day net totals reflect the active filters
+  → Filter chip → sheet edits a local draft (Type chips All/Income/Expense/Transfer,
+    Account/Category multi-select comboboxes, Reset clears the draft)
+  → Done → filters apply → list, summary card, and per-day net totals reflect the active filters
 ```
 
 ---
@@ -763,6 +766,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
 | 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index and multi-value dimensions applied as a post-index `or` filter, so a filter never scans the full date window; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + Account/Category multi-select comboboxes with tri-state header, select-all/unselect-all, search, checkbox rows, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` + `MultiSelectField` components. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 | 2026-08-18 | UX | Login screen branding refresh: replaced the Feather "home" icon inside a gradient card with the full `splash-icon.png` asset (160×160, no wrapper card, `resizeMode="contain"`); removed the separate "Kin Finance" text heading — the brand name is now rendered only within the image itself; the subtitle ("Welcome back…" / "Create an account…") remains below the icon. Removes unused `LinearGradient`, `Radius`, `Shadow`, and `useThemeGradients` from `app/index.tsx`. |
 | 2026-08-17 | UX | Day net totals on the Transactions page: each day-group section header now shows the day's net (income − expense) in sign color (+ green / − red / 0 neutral), mirroring the Home dashboard pattern; the shared helper `sumNetExcludingTransfers` (`utils/format.ts`) computes it with transfers excluded, and Home's Recent Transactions day total was switched to the same helper so transfers no longer inflate the day's net. Updates §3.6, §3.8, §5.2 |
