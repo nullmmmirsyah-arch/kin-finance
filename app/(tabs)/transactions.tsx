@@ -453,30 +453,11 @@ export default function Transactions() {
         categoryIds={categoryIds}
         accounts={accountsResult?.accounts ?? []}
         categories={categoriesResult?.categories ?? []}
-        onTypeFilterChange={(type) => {
+        onApply={(type, accountIds, categoryIds) => {
           setTypeFilter(type);
-          setCategoryIds((current) => {
-            if (current.length === 0 || type === "all") return current;
-            if (type === "transfer") return [];
-            return current.filter((id) => {
-              const cat = categoriesResult?.categories?.find((c) => c._id === id);
-              return cat !== undefined && cat.type === type;
-            });
-          });
+          setAccountIds(accountIds);
+          setCategoryIds(categoryIds);
         }}
-        onAccountToggle={(id) =>
-          setAccountIds((cur) =>
-            cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
-          )
-        }
-        onAccountIdsChange={setAccountIds}
-        onCategoryToggle={(id) =>
-          setCategoryIds((cur) =>
-            cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
-          )
-        }
-        onCategoryIdsChange={setCategoryIds}
-        onReset={clearFilters}
         onClose={() => setFilterSheetOpen(false)}
       />
     </SafeAreaView>
