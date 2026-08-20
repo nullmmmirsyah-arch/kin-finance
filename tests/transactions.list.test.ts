@@ -171,4 +171,292 @@ describe("transactions.list", () => {
       expect.arrayContaining(["visible-1", "visible-2"]),
     );
   });
+
+  it("owner filters by account", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "cash-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: s.visibleCatId,
+        amount: -200,
+        type: "expense",
+        note: "bank-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return { ...s, bankId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      accountId: ids.accountId,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("cash-tx");
+  });
+
+  it("owner filters by category and excludes transfers", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const toAccountId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "cat-expense",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.hiddenCatId,
+        amount: -50,
+        type: "expense",
+        note: "hidden-expense",
+        date: 150,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 150,
+        updatedAt: 150,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        toAccountId,
+        amount: 300,
+        type: "transfer",
+        note: "transfer-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return { ...s, toAccountId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      categoryId: ids.visibleCatId,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("cat-expense");
+  });
+
+  it("owner filters by type", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "expense-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: 50,
+        type: "income",
+        note: "income-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return s;
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      type: "income",
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("income-tx");
+  });
+
+  it("owner combines type and account filters", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "cash-expense",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: s.visibleCatId,
+        amount: -200,
+        type: "expense",
+        note: "bank-expense",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: bankId,
+        categoryId: s.visibleCatId,
+        amount: 50,
+        type: "income",
+        note: "bank-income",
+        date: 300,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 300,
+        updatedAt: 300,
+      });
+      return { ...s, bankId };
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      type: "expense",
+      accountId: ids.bankId,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.transactions![0].note).toBe("bank-expense");
+  });
+
+  it("member filtering a hidden category returns empty", async () => {
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.hiddenCatId,
+        amount: -100,
+        type: "expense",
+        note: "hidden-tx",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -50,
+        type: "expense",
+        note: "visible-tx",
+        date: 200,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 200,
+        updatedAt: 200,
+      });
+      return s;
+    });
+    const result = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      categoryId: ids.hiddenCatId,
+    });
+    expect(result.transactions!.length).toBe(0);
+  });
+
+  it("respects the limit cap after filtering", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 5; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `match-${i}`,
+          date: 100 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100 + i,
+          updatedAt: 100 + i,
+        });
+      }
+      return s;
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      type: "expense",
+      limit: 2,
+    });
+    expect(result.transactions!.length).toBe(2);
+  });
 });

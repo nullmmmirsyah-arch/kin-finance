@@ -16,6 +16,19 @@ const transactionType = v.union(
 
 const MAX_LIST_ROWS = 1000;
 
+type ListFilters = {
+  accountId?: Id<"accounts">;
+  categoryId?: Id<"categories">;
+  type?: "income" | "expense" | "transfer";
+};
+
+function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean {
+  if (filters.accountId !== undefined && row.accountId !== filters.accountId) return false;
+  if (filters.categoryId !== undefined && row.categoryId !== filters.categoryId) return false;
+  if (filters.type !== undefined && row.type !== filters.type) return false;
+  return true;
+}
+
 async function hydrate(
   ctx: QueryCtx,
   row: Doc<"transactions">,
@@ -186,6 +199,9 @@ export const list = query({
     startDate: v.number(),
     endDate: v.number(),
     limit: v.optional(v.number()),
+    accountId: v.optional(v.id("accounts")),
+    categoryId: v.optional(v.id("categories")),
+    type: v.optional(transactionType),
   },
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
@@ -204,17 +220,73 @@ export const list = query({
       Doc<"accounts"> | Doc<"categories"> | undefined
     >();
 
+    const filters: ListFilters = {};
+    if (args.accountId !== undefined) filters.accountId = args.accountId;
+    if (args.categoryId !== undefined) filters.categoryId = args.categoryId;
+    if (args.type !== undefined) filters.type = args.type;
+
+    const activeFilterCount =
+      (filters.accountId !== undefined ? 1 : 0) +
+      (filters.categoryId !== undefined ? 1 : 0) +
+      (filters.type !== undefined ? 1 : 0);
+
     if (isOwner) {
-      const rows = await ctx.db
-        .query("transactions")
-        .withIndex("by_household_date", (q) =>
+      const base = ctx.db.query("transactions");
+      let queryBuilder: ReturnType<typeof base.withIndex>;
+      if (filters.accountId !== undefined) {
+        queryBuilder = base.withIndex("by_household_account_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("accountId", filters.accountId as Id<"accounts">)
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else if (filters.categoryId !== undefined) {
+        queryBuilder = base.withIndex("by_household_category_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("categoryId", filters.categoryId as Id<"categories">)
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else if (filters.type !== undefined) {
+        queryBuilder = base.withIndex("by_household_type_date", (q) =>
+          q
+            .eq("householdId", membership.householdId)
+            .eq("type", filters.type as "income" | "expense" | "transfer")
+            .gte("date", args.startDate)
+            .lt("date", args.endDate),
+        );
+      } else {
+        queryBuilder = base.withIndex("by_household_date", (q) =>
           q
             .eq("householdId", membership.householdId)
             .gte("date", args.startDate)
             .lt("date", args.endDate),
-        )
-        .order("desc")
-        .take(limit);
+        );
+      }
+
+      let rows: Doc<"transactions">[];
+      if (activeFilterCount > 1) {
+        rows = await queryBuilder
+          .filter((q) =>
+            q.and(
+              filters.type !== undefined
+                ? q.eq(q.field("type"), filters.type)
+                : q.eq(q.field("_id"), q.field("_id")),
+              filters.accountId !== undefined
+                ? q.eq(q.field("accountId"), filters.accountId)
+                : q.eq(q.field("_id"), q.field("_id")),
+              filters.categoryId !== undefined
+                ? q.eq(q.field("categoryId"), filters.categoryId)
+                : q.eq(q.field("_id"), q.field("_id")),
+            ),
+          )
+          .order("desc")
+          .take(limit);
+      } else {
+        rows = await queryBuilder.order("desc").take(limit);
+      }
 
       const transactions = [];
       for (const row of rows) {
@@ -265,6 +337,9 @@ export const list = query({
 
         const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
         if (category !== undefined && category.hidden) {
+          continue;
+        }
+        if (!matchesFilters(row, filters)) {
           continue;
         }
         collected.push({ ...row, category, account, toAccount });
