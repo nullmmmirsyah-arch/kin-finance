@@ -30,6 +30,7 @@ export function MultiSelectField({
   const total = options.length;
   const selectedCount = options.filter((o) => selectedIds.includes(o._id)).length;
   const state = getSelectionState(total, selectedCount);
+  const isDisabled = disabled || total === 0;
   const showSearch = total > SEARCH_THRESHOLD;
   const plural = pluralLabel(title);
 
@@ -59,14 +60,10 @@ export function MultiSelectField({
             setOpen(true);
           }
         }}
-        disabled={disabled}
+        disabled={isDisabled}
         accessibilityRole="button"
-        accessibilityState={{ disabled, expanded: open }}
-        className={`h-12 flex-row items-center justify-between rounded-xl border px-4 ${
-          disabled
-            ? "border-border bg-background opacity-50 dark:border-border-dark dark:bg-background-dark"
-            : "border-border bg-background dark:border-border-dark dark:bg-background-dark"
-        }`}
+        accessibilityState={{ disabled: isDisabled, expanded: open }}
+        className={`h-12 flex-row items-center justify-between rounded-xl border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark ${isDisabled ? "opacity-50" : ""}`}
       >
         <View className="flex-row items-center gap-2">
           <Feather
@@ -82,22 +79,23 @@ export function MultiSelectField({
           />
           <Text
             className={`text-base ${
-              disabled
+              isDisabled
                 ? "text-text-secondary dark:text-text-secondary-dark"
                 : "text-text-primary dark:text-text-primary-dark"
             }`}
           >
-            {disabled ? `All ${plural}` : label}
+            {isDisabled ? `All ${plural}` : label}
           </Text>
         </View>
         <Feather name="chevron-down" size={20} color={C.textSecondary} />
       </Pressable>
 
-      {open && !disabled ? (
+      {open && !isDisabled ? (
         <View className="overflow-hidden rounded-xl border border-border dark:border-border-dark">
           <Pressable
             onPress={() => onToggleAll(state !== "all")}
-            accessibilityRole="button"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: state !== "empty" }}
             className="min-h-11 flex-row items-center justify-between border-b border-border px-4 py-2.5 dark:border-border-dark"
           >
             <Text className="text-sm font-medium text-primary dark:text-primary-dark">
@@ -139,7 +137,6 @@ export function MultiSelectField({
                   <Pressable
                     key={option._id}
                     onPress={() => {
-                      Keyboard.dismiss();
                       onToggle(option._id);
                     }}
                     accessibilityRole="checkbox"

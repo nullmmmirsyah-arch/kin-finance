@@ -6,10 +6,10 @@ export function getSelectionState(total: number, selected: number): SelectionSta
   return "partial";
 }
 
-export function normalizeSelection(
-  selectedIds: string[],
-  optionIds: string[],
-): string[] | undefined {
+export function normalizeSelection<T extends string>(
+  selectedIds: T[],
+  optionIds: T[],
+): T[] | undefined {
   if (optionIds.length === 0) return undefined;
   const selected = selectedIds.filter((id) => optionIds.includes(id));
   if (selected.length === 0) return undefined;

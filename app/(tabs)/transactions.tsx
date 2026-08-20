@@ -128,10 +128,15 @@ export default function Transactions() {
     () => categoriesResult?.categories ?? [],
     [categoriesResult],
   );
+  const contextualCategoryOptions = useMemo(() => {
+    if (typeFilter === "transfer") return [];
+    if (typeFilter === "all") return categoryOptions;
+    return categoryOptions.filter((c) => c.type === typeFilter);
+  }, [typeFilter, categoryOptions]);
   const accountSelected = accountOptions.filter((a) => accountIds.includes(a._id)).length;
-  const categorySelected = categoryOptions.filter((c) => categoryIds.includes(c._id)).length;
+  const categorySelected = contextualCategoryOptions.filter((c) => categoryIds.includes(c._id)).length;
   const accountState = getSelectionState(accountOptions.length, accountSelected);
-  const categoryState = getSelectionState(categoryOptions.length, categorySelected);
+  const categoryState = getSelectionState(contextualCategoryOptions.length, categorySelected);
 
   const queryArgs = useMemo(() => {
     const normalizedAccounts = normalizeSelection(
@@ -140,15 +145,15 @@ export default function Transactions() {
     );
     const normalizedCategories = normalizeSelection(
       categoryIds,
-      categoryOptions.map((c) => c._id),
+      contextualCategoryOptions.map((c) => c._id),
     );
     return {
       ...range,
       ...(typeFilter !== "all" ? { type: typeFilter } : {}),
-      ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts as Id<"accounts">[] } : {}),
-      ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories as Id<"categories">[] } : {}),
+      ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts } : {}),
+      ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories } : {}),
     };
-  }, [range, typeFilter, accountIds, categoryIds, accountOptions, categoryOptions]);
+  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions]);
 
   const result = useQuery(api.transactions.list, queryArgs);
 
@@ -196,7 +201,7 @@ export default function Transactions() {
     if (dateFilter === "thisMonth") return "This Month";
     if (dateFilter === "lastMonth") return "Last Month";
     return `${formatDateShortTz(startOfDay(customFrom).getTime(), timezone)} – ${formatDateShortTz(startOfDay(customTo).getTime(), timezone)}`;
-  }, [dateFilter, customFrom, customTo, timezone]);
+  }, [dateFilter, customFrom, customTo, invalidCustomRange, timezone]);
 
   const clearFilters = () => {
     setTypeFilter("all");
