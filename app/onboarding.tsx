@@ -5,13 +5,11 @@ import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
@@ -92,14 +90,12 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerClassName="flex-grow justify-center px-4 py-10"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={16}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-4 py-10"
-          keyboardShouldPersistTaps="handled"
-        >
           <View className="items-center gap-6">
             <LinearGradient
               colors={gradients.card}
@@ -214,8 +210,7 @@ export default function Onboarding() {
               </Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
   );
 }

@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-20
+> Last updated: 2026-08-21
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -413,7 +413,8 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - **Keyboard behavior:** tapping any non-text-input field (Account/Category/
   From-To selector, Date, type chip, "Repeat last") dismisses the keyboard
   before the field action runs; tapping a text input (Amount, Note) keeps the
-  keyboard open so focus transfers.
+  keyboard open so focus transfers. The form scrolls via `KeyboardAwareScrollView`
+  so the focused input stays visible above the keyboard on both platforms.
 
 ### 4.5 Owner Invites Member
 
@@ -483,7 +484,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 
 | Component | Responsibility |
 |-----------|---------------|
-| `app/_layout.tsx` | ThemeProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, root Stack + auth gating |
+| `app/_layout.tsx` | ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, root Stack + auth gating |
 | `app/index.tsx` | Signed-out entry |
 | `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
@@ -738,6 +739,7 @@ updatedAt: number
 | Backend | Convex (`convex` 1.43) |
 | Styling | NativeWind 4 (Tailwind CSS 3.4), `global.css`, `cssInterop` for `LinearGradient` |
 | Animation | React Native Reanimated 4.1 |
+| Keyboard handling | `react-native-keyboard-controller` (`KeyboardProvider` global + `KeyboardAwareScrollView` on input screens) |
 | Language | TypeScript 5.9 |
 | Persistence (device) | `expo-secure-store` (theme preference) |
 | Date picker | `@react-native-community/datetimepicker` |
@@ -757,6 +759,14 @@ updatedAt: number
 - SelectField: modal dropdown with search (auto-shows when >8 options),
   `keyboardShouldPersistTaps="handled"` on options list, `Shadow.card` token
   for modal sheet, `min-h-12` option items for 48px touch targets.
+- Forms use `KeyboardAwareScrollView` (`react-native-keyboard-controller`)
+  instead of RN `KeyboardAvoidingView`. `KeyboardAvoidingView` itself supports
+  both platforms, but this app wired it iOS-only
+  (`behavior={Platform.OS === "ios" ? "padding" : undefined}`), making it a
+  no-op on Android; with `edgeToEdgeEnabled: true`, Android's native
+  keyboard resize no longer reliably keeps bottom fields visible, so the
+  keyboard covered them. Keep `KeyboardAwareScrollView` on form screens —
+  do not reintroduce `KeyboardAvoidingView`.
 - **NativeWind v4 gotcha:** never use `style={({ pressed }) => [...]}` on
   `Pressable` — it breaks `className`. Use `useState` + static style.
 
@@ -769,6 +779,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-21 | Fix | Keyboard covering input fields app-wide: RN `KeyboardAvoidingView` supports both platforms, but this app wired it iOS-only (`behavior={Platform.OS === "ios" ? "padding" : undefined}`), making it a no-op on Android; with `edgeToEdgeEnabled: true`, Android's native keyboard resize no longer reliably keeps bottom fields visible, so the device keyboard covered them — e.g. the login Password field when email was the last-used method (email inputs render below the Google CTA in that layout) and the transaction form's Note. Replaced `KeyboardAvoidingView` + `ScrollView` with `KeyboardAwareScrollView` from new dependency `react-native-keyboard-controller` 1.18 on all six input screens (`app/index.tsx`, `onboarding`, `transaction-form`, `account-form`, `category-form`, `budget-form`); added global `KeyboardProvider` and a `cssInterop` mapping (`className` → `style`, `contentContainerClassName` → `contentContainerStyle`) for it in `app/_layout.tsx`. Focused inputs now scroll above the keyboard on both platforms; runs in Expo Go SDK 54 without a native rebuild. Updates §4.4, §5.2, §7 |
 | 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
 | 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index (narrowing the scan) and multi-value dimensions applied as a post-index `or` filter that may walk the full date window until the limit is collected; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + Account/Category multi-select comboboxes with tri-state header, select-all/unselect-all, search, checkbox rows, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` + `MultiSelectField` components. Updates §2.1, §3.6, §4.9, §5.2, §6 |
 | 2026-08-18 | UX | Login screen branding refresh: replaced the Feather "home" icon inside a gradient card with the full `splash-icon.png` asset (160×160, no wrapper card, `resizeMode="contain"`); removed the separate "Kin Finance" text heading — the brand name is now rendered only within the image itself; the subtitle ("Welcome back…" / "Create an account…") remains below the icon. Removes unused `LinearGradient`, `Radius`, `Shadow`, and `useThemeGradients` from `app/index.tsx`. |

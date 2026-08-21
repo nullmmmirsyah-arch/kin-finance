@@ -9,11 +9,19 @@ import { Stack } from "expo-router";
 import { cssInterop } from "nativewind";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  KeyboardAwareScrollView,
+  KeyboardProvider,
+} from "react-native-keyboard-controller";
 import { useThemeColors } from "@/constants/theme";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
 
 cssInterop(LinearGradient, { className: "style" });
+cssInterop(KeyboardAwareScrollView, {
+  className: "style",
+  contentContainerClassName: "contentContainerStyle",
+});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -56,22 +64,24 @@ export default function RootLayout() {
   const C = useThemeColors();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <SnackbarProvider>
-              <ClerkLoading>
-                <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-                  <ActivityIndicator size="large" color={C.primary} />
-                </View>
-              </ClerkLoading>
-              <ClerkLoaded>
-                <RootNavigator />
-              </ClerkLoaded>
-            </SnackbarProvider>
-          </ConvexProviderWithClerk>
-        </ClerkProvider>
-      </ThemeProvider>
+      <KeyboardProvider>
+        <ThemeProvider>
+          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+            <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+              <SnackbarProvider>
+                <ClerkLoading>
+                  <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
+                    <ActivityIndicator size="large" color={C.primary} />
+                  </View>
+                </ClerkLoading>
+                <ClerkLoaded>
+                  <RootNavigator />
+                </ClerkLoaded>
+              </SnackbarProvider>
+            </ConvexProviderWithClerk>
+          </ClerkProvider>
+        </ThemeProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }
