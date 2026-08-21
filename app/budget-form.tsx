@@ -2,13 +2,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
@@ -147,10 +145,7 @@ export default function BudgetForm() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
             onPress={() => router.back()}
@@ -166,9 +161,11 @@ export default function BudgetForm() {
           </Text>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
+          className="flex-1"
           contentContainerClassName="gap-4 px-5 py-6"
           keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
         >
           <View className="gap-1.5">
             <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
@@ -233,8 +230,8 @@ export default function BudgetForm() {
             loading={isLoading}
             disabled={!canSubmit}
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </SafeAreaView>
   );
 }

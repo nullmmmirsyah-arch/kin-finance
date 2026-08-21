@@ -4,13 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
@@ -479,10 +477,7 @@ export default function TransactionForm() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View className="flex-1">
         <View className="flex-row items-center gap-3 px-5 pt-4">
           <Pressable
             onPress={handleBack}
@@ -509,9 +504,11 @@ export default function TransactionForm() {
           </View>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
+          className="flex-1"
           contentContainerClassName="gap-4 px-5 py-6"
           keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
         >
           {error ? (
             <View className="rounded-2xl bg-error/10 px-4 py-3">
@@ -694,8 +691,8 @@ export default function TransactionForm() {
               disabled={isLoading}
             />
           ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </SafeAreaView>
   );
 }

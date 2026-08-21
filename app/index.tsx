@@ -10,14 +10,13 @@ import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef, useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -639,14 +638,12 @@ export default function Index() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerClassName="flex-grow justify-center px-4 py-10"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={16}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-4 py-10"
-          keyboardShouldPersistTaps="handled"
-        >
           <View className="items-center gap-6">
             <Image
               source={require("../assets/images/splash-icon.png")}
@@ -912,8 +909,7 @@ export default function Index() {
             )}
             <View nativeID="clerk-captcha" />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
   );
 }
