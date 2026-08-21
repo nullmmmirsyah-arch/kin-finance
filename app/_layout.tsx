@@ -16,6 +16,7 @@ import {
 import { useThemeColors } from "@/constants/theme";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
+import { OtaUpdater } from "@/components/OtaUpdater";
 
 cssInterop(LinearGradient, { className: "style" });
 cssInterop(KeyboardAwareScrollView, {
@@ -69,6 +70,7 @@ export default function RootLayout() {
           <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
             <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
               <SnackbarProvider>
+                <OtaUpdater />
                 <ClerkLoading>
                   <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
                     <ActivityIndicator size="large" color={C.primary} />
