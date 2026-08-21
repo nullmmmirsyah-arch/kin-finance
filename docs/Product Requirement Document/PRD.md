@@ -484,7 +484,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 
 | Component | Responsibility |
 |-----------|---------------|
-| `app/_layout.tsx` | ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, root Stack + auth gating |
+| `app/_layout.tsx` | ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, `<OtaUpdater />` (background OTA check), root Stack + auth gating |
 | `app/index.tsx` | Signed-out entry |
 | `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
@@ -494,7 +494,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
-| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) |
+| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) + non-UI controllers (OtaUpdater) |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
@@ -556,6 +556,37 @@ with the household) and errors if it does not, rather than creating it on the
 fly. These categories are protected:
 `categories.create` cannot duplicate them; update/delete reject rename/hide/
 retype/delete; they never appear in user-facing category selection.
+
+### 5.7 Over-the-Air (OTA) Updates & Distribution
+
+Updates ship via **EAS Update** (`updates.url`, `runtimeVersion` policy
+`appVersion`) and the app binary via EAS Build APK (`eas.json` production:
+`buildType: "apk"`, internal distribution).
+
+**Startup policy (as of 2026-08-21):** `app.json` sets
+`updates.checkAutomatically: "ON_ERROR_RECOVERY"` with
+`fallbackToCacheTimeout: 0`. Cold boot therefore launches the embedded or
+cached update immediately and never blocks on a network manifest check.
+Rationale: in release builds expo-updates delays React instance creation until
+its controller finishes startup; combined with an automatic launch-time check,
+the first launch after install/update had to create the updates SQLite DB,
+copy and hash every embedded asset, and fetch the remote manifest before the
+first frame drew — exceeding Android's ANR threshold on low-end devices
+(frozen splash icon → "kin-finance isn't responding"; kill + relaunch worked
+because the DB was then initialized). Native config changed here requires a
+new APK build to reach users.
+
+**Background check:** `components/OtaUpdater.tsx` (mounted in
+`app/_layout.tsx` inside `SnackbarProvider`) runs once per session, 5 s after
+launch: `checkForUpdateAsync()` → if available, silent `fetchUpdateAsync()` →
+Snackbar "Update baru sudah siap" with a **Restart** action calling
+`reloadAsync()`; if dismissed, the update applies at the next cold start
+automatically. Skipped entirely when `__DEV__` or `!Updates.isEnabled`
+(Expo Go). Failures are swallowed silently.
+
+**Release rule:** changes to native config (anything in `app.json` plugins,
+`updates`, dependencies with native code) require a new build + APK
+redistribution; JS-only changes can ship via `eas update --channel production`.
 
 ---
 
@@ -742,6 +773,7 @@ updatedAt: number
 | Keyboard handling | `react-native-keyboard-controller` (`KeyboardProvider` global + `KeyboardAwareScrollView` on input screens) |
 | Language | TypeScript 5.9 |
 | Persistence (device) | `expo-secure-store` (theme preference) |
+| OTA updates | `expo-updates` 29 (EAS Update, `checkAutomatically: ON_ERROR_RECOVERY` + background check via `components/OtaUpdater.tsx`) |
 | Date picker | `@react-native-community/datetimepicker` |
 | Device locale / timezone | `expo-localization` (`getCalendars()[0].timeZone`) |
 | Clipboard / Share / Haptics | `expo-clipboard`, native share sheet, `expo-haptics` |
@@ -779,6 +811,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-21 | Fix | ANR on first launch after install/update (frozen splash icon → "kin-finance isn't responding"; kill + relaunch worked): in release builds expo-updates delays React instance creation until its controller finishes startup, so with the default `checkAutomatically: ON_LOAD` the first launch had to create the updates SQLite DB, copy + hash every embedded asset, and fetch the remote manifest from `u.expo.dev` before drawing the first frame — exceeding Android's ANR threshold on low-end devices; second launch hit the fast path (DB initialized). Fix: `app.json` sets `updates.checkAutomatically: "ON_ERROR_RECOVERY"` + `fallbackToCacheTimeout: 0` (cold boot never blocks on network); new `components/OtaUpdater.tsx` mounted in `app/_layout.tsx` checks for OTA updates 5 s after launch, downloads silently, and shows a Snackbar "Restart" prompt (update auto-applies at next cold start if dismissed; skipped in dev/Expo Go). Requires a new APK build to take effect. Updates §5.2, §5.7, §7 |
 | 2026-08-21 | Fix | Keyboard covering input fields app-wide: RN `KeyboardAvoidingView` supports both platforms, but this app wired it iOS-only (`behavior={Platform.OS === "ios" ? "padding" : undefined}`), making it a no-op on Android; with `edgeToEdgeEnabled: true`, Android's native keyboard resize no longer reliably keeps bottom fields visible, so the device keyboard covered them — e.g. the login Password field when email was the last-used method (email inputs render below the Google CTA in that layout) and the transaction form's Note. Replaced `KeyboardAvoidingView` + `ScrollView` with `KeyboardAwareScrollView` from new dependency `react-native-keyboard-controller` 1.18 on all six input screens (`app/index.tsx`, `onboarding`, `transaction-form`, `account-form`, `category-form`, `budget-form`); added global `KeyboardProvider` and a `cssInterop` mapping (`className` → `style`, `contentContainerClassName` → `contentContainerStyle`) for it in `app/_layout.tsx`. Focused inputs now scroll above the keyboard on both platforms; runs in Expo Go SDK 54 without a native rebuild. Updates §4.4, §5.2, §7 |
 | 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
 | 2026-08-20 | Feature | Transactions filters: server-side `transactions.list` args `accountIds`/`categoryIds`/`type` (multi-select arrays; empty or full selection = no filter), backed by compound indexes (`by_household_account_date`, `by_household_category_date`, `by_household_type_date`) with a singleton dimension pinned to its index (narrowing the scan) and multi-value dimensions applied as a post-index `or` filter that may walk the full date window until the limit is collected; Transactions page header consolidated to a Date chip (This Month default / Last Month / Custom Range in a bottom-sheet modal) and a Filter chip (type chips + Account/Category multi-select comboboxes with tri-state header, select-all/unselect-all, search, checkbox rows, Reset); summary card and per-day net totals derive from the filtered query; filter-aware empty state; new `FilterSheet` + `MultiSelectField` components. Updates §2.1, §3.6, §4.9, §5.2, §6 |
