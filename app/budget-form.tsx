@@ -17,6 +17,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatAmountInput } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
@@ -75,6 +76,16 @@ export default function BudgetForm() {
   const parsedAmount = Number(rawAmount);
   const amountValid = validateBudgetAmount(parsedAmount) === null;
 
+  const isDirty = useMemo(() => {
+    if (!isEdit) {
+      return amount !== "" || selectedCategoryId !== null;
+    }
+    if (!existingBudget) return false;
+    return amount.replace(/,/g, "") !== String(existingBudget.amount);
+  }, [isEdit, existingBudget, amount, selectedCategoryId]);
+
+  const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
+
   const canSubmit =
     !isLoading &&
     household !== undefined &&
@@ -111,6 +122,7 @@ export default function BudgetForm() {
         });
       }
       show(isEdit ? "Budget updated" : "Budget created");
+      markIntentional();
       router.back();
     } catch (e) {
       const message = getConvexErrorMessage(
@@ -148,7 +160,7 @@ export default function BudgetForm() {
       <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 48, height: 48 }}

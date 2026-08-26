@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-21
+> Last updated: 2026-08-26
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -76,6 +76,10 @@ visible) without exposing transaction detail.
 - One Household per user in MVP; no household switching or multiple households.
 - Transaction dates cannot be in the future; amounts are signed
   (+income / −expense / +transfer magnitude).
+- **No currency symbol by design:** amounts render as bare whole numbers with
+  thousand separators only. Kin Finance is currency-agnostic — household
+  amounts are not tied to one currency, so no symbol or locale-currency
+  formatting is applied anywhere in the UI.
 - Data can only be accessed by Household members.
 
 ---
@@ -308,7 +312,8 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   (green for positive, red for negative).
 - **Budgets** (when budgets exist): up to 3 budget pills showing category name,
   spent/budgeted amounts, and a color-threshold progress bar (green → amber →
-  red). "See All" links to the Budgets tab.
+  red). "See All" links to the Budgets tab. When no budgets exist, the empty
+  state's "Create Budget" action is available to Owners and Members alike.
 - **My Accounts**: horizontal account cards with type-specific tinted icon
   backgrounds (green for cash, amber for bank, blue for e-wallet, red for credit
   card); "Add Account" card for Owner; "Manage" link to the Accounts tab. For
@@ -402,6 +407,12 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - Discard guard: header back button and Android hardware back button both
   show an Alert when the form has unsaved changes (type change from default
   or date change from today counts as interaction for new transactions).
+  The guard plumbing lives in the shared `useDiscardGuard` hook
+  (`hooks/useDiscardGuard.ts`) — `beforeRemove` listener + confirmation
+  Alert + intentional-navigation flag — and is reused identically by the
+  account, category, and budget forms, which each compute their own
+  dirty flag by comparing current fields against their defaults
+  (create) or seeded entity (edit).
 - **Inline validation:** field-specific error states (`amountError`,
   `accountError`, `categoryError`, `dateError`) display directly beneath
   each field on blur or submit attempt. Type change clears all error states.
@@ -414,7 +425,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   From-To selector, Date, type chip, "Repeat last") dismisses the keyboard
   before the field action runs; tapping a text input (Amount, Note) keeps the
   keyboard open so focus transfers. The form scrolls via `KeyboardAwareScrollView`
-  so the focused input stays visible above the keyboard on both platforms.
+   so the focused input stays visible above the keyboard on both platforms.
+- **Loading state:** while form data loads (the account list on create, the
+  transaction on edit), the screen renders the header plus Skeleton
+  placeholders mirroring the three-section layout instead of plain text.
 
 ### 4.5 Owner Invites Member
 
@@ -495,6 +509,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) + non-UI controllers (OtaUpdater) |
+| `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `beforeRemove` listener and discard Alert used by all four forms |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
@@ -579,7 +594,7 @@ new APK build to reach users.
 **Background check:** `components/OtaUpdater.tsx` (mounted in
 `app/_layout.tsx` inside `SnackbarProvider`) runs once per session, 5 s after
 launch: `checkForUpdateAsync()` → if available, silent `fetchUpdateAsync()` →
-Snackbar "Update baru sudah siap" with a **Restart** action calling
+Snackbar "A new update is ready" with a **Restart** action calling
 `reloadAsync()`; if dismissed, the update applies at the next cold start
 automatically. Skipped entirely when `__DEV__` or `!Updates.isEnabled`
 (Expo Go). Failures are swallowed silently.
@@ -811,6 +826,8 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-26 | Docs | Documented two deliberate product decisions: amounts render **without a currency symbol by design** — Kin Finance is currency-agnostic, showing bare whole numbers with thousand separators (§1 Constraints); haptic feedback deferred — `expo-haptics` stays installed but intentionally unused for now (Appendix A) |
+| 2026-08-26 | Polish | P0 polish batch: Home empty-budget "Create Budget" CTA now shown to Members too (was Owner-gated, contradicting the §2.3 matrix where Members fully manage budgets and the Budgets tab FAB which was never gated); AccountCard gains a passive eye-off "Hidden" pill so Owners can spot hidden accounts without opening the edit form (Members never receive hidden accounts from `accounts.list`); new shared `hooks/useDiscardGuard.ts` (`beforeRemove` listener + discard Alert + intentional-navigation flag) now protects unsaved changes on account, category, and budget forms via per-form dirty checks, and transaction-form migrated onto it (behavior unchanged); transaction-form's plain-text loading state replaced with header + Skeleton placeholders mirroring the three-section layout; OtaUpdater snackbar copy switched to English ("A new update is ready. Restart the app to apply it.") per the English UI policy. Updates §1, §3.8, §4.4, §5.2, §5.7, Appendix A |
 | 2026-08-21 | Fix | ANR on first launch after install/update (frozen splash icon → "kin-finance isn't responding"; kill + relaunch worked): in release builds expo-updates delays React instance creation until its controller finishes startup, so with the default `checkAutomatically: ON_LOAD` the first launch had to create the updates SQLite DB, copy + hash every embedded asset, and fetch the remote manifest from `u.expo.dev` before drawing the first frame — exceeding Android's ANR threshold on low-end devices; second launch hit the fast path (DB initialized). Fix: `app.json` sets `updates.checkAutomatically: "ON_ERROR_RECOVERY"` + `fallbackToCacheTimeout: 0` (cold boot never blocks on network); new `components/OtaUpdater.tsx` mounted in `app/_layout.tsx` checks for OTA updates 5 s after launch, downloads silently, and shows a Snackbar "Restart" prompt (update auto-applies at next cold start if dismissed; skipped in dev/Expo Go). Requires a new APK build to take effect. Updates §5.2, §5.7, §7 |
 | 2026-08-21 | Fix | Keyboard covering input fields app-wide: RN `KeyboardAvoidingView` supports both platforms, but this app wired it iOS-only (`behavior={Platform.OS === "ios" ? "padding" : undefined}`), making it a no-op on Android; with `edgeToEdgeEnabled: true`, Android's native keyboard resize no longer reliably keeps bottom fields visible, so the device keyboard covered them — e.g. the login Password field when email was the last-used method (email inputs render below the Google CTA in that layout) and the transaction form's Note. Replaced `KeyboardAvoidingView` + `ScrollView` with `KeyboardAwareScrollView` from new dependency `react-native-keyboard-controller` 1.18 on all six input screens (`app/index.tsx`, `onboarding`, `transaction-form`, `account-form`, `category-form`, `budget-form`); added global `KeyboardProvider` and a `cssInterop` mapping (`className` → `style`, `contentContainerClassName` → `contentContainerStyle`) for it in `app/_layout.tsx`. Focused inputs now scroll above the keyboard on both platforms; runs in Expo Go SDK 54 without a native rebuild. Updates §4.4, §5.2, §7 |
 | 2026-08-20 | UX | Transactions filter sheet now applies filters only on "Done": interactions inside the sheet (type chips, account/category checkboxes, select-all, Reset) edit a local draft and no longer re-query the list per tap; the committed filters update — and the list/header badge refresh — only when the user taps Done; closing the sheet without Done (backdrop tap or Android back) discards the draft. Updates §3.6, §4.9 |
@@ -859,4 +876,6 @@ Not implemented; kept for roadmap reference.
 - Split transactions; recurring transactions; attachments/receipts; search;
   CSV/PDF export.
 - Budget rollover; weekly/yearly budgets; notifications; templates.
+- Haptic feedback — deferred for now (`expo-haptics` is installed but
+  intentionally unused).
 - Reports/analytics beyond current Budget progress.

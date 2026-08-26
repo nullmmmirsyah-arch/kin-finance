@@ -21,7 +21,7 @@ export function OtaUpdater() {
         if (!check.isAvailable || cancelled) return;
         await Updates.fetchUpdateAsync();
         if (cancelled) return;
-        show("Update baru sudah siap. Restart aplikasi untuk menerapkan.", {
+        show("A new update is ready. Restart the app to apply it.", {
           label: "Restart",
           onPress: () => {
             void Updates.reloadAsync();

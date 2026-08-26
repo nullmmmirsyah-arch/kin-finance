@@ -8,11 +8,12 @@ type Props = {
   name: string;
   type: AccountType;
   balance: number;
+  hidden?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
 };
 
-export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
+export function AccountCard({ name, type, balance, hidden, onEdit, onDelete }: Props) {
   const C = useThemeColors();
   const meta = ACCOUNT_TYPES.find((t) => t.id === type) ?? ACCOUNT_TYPES[0];
 
@@ -47,6 +48,16 @@ export function AccountCard({ name, type, balance, onEdit, onDelete }: Props) {
         <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
           {meta.label}
         </Text>
+        {hidden ? (
+          <View className="mt-1 self-start rounded-full border border-border bg-background px-2 py-0.5 dark:border-border-dark dark:bg-background-dark">
+            <View className="flex-row items-center gap-1">
+              <Feather name="eye-off" size={12} color={C.textSecondary} />
+              <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+                Hidden
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
       {onEdit !== undefined || onDelete !== undefined ? (
         <View className="flex-row items-center gap-1">
