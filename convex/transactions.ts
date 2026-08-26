@@ -383,6 +383,87 @@ export const list = query({
   },
 });
 
+const SUMMARY_BATCH_SIZE = 500;
+
+export const summary = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+    accountIds: v.optional(v.array(v.id("accounts"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    type: v.optional(transactionType),
+  },
+  handler: async (ctx, args) => {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) return null;
+    const { membership } = result;
+    const isOwner = membership.role === "owner";
+
+    const filters = normalizeListFilters(args);
+    const pinnedDim = pickPinnedDim(filters);
+
+    let income = 0;
+    let expense = 0;
+    const hiddenCategoryCache = new Map<Id<"categories">, boolean>();
+
+    let cursorDate: number | undefined;
+    let cursorId: Id<"transactions"> | undefined;
+    let atBoundary = false;
+
+    for (;;) {
+      const rows: Doc<"transactions">[] = await pinnedRangeQuery(
+        ctx,
+        membership.householdId,
+        filters,
+        pinnedDim,
+        args.startDate,
+        args.endDate,
+        cursorDate,
+        atBoundary,
+      )
+        .order("desc")
+        .take(SUMMARY_BATCH_SIZE);
+
+      if (rows.length === 0) break;
+
+      let pastCursor = cursorDate === undefined || atBoundary;
+
+      for (const row of rows) {
+        if (!pastCursor) {
+          if (row.date === cursorDate && row._id === cursorId) {
+            pastCursor = true;
+          }
+          continue;
+        }
+        if (!isOwner && row.categoryId !== undefined) {
+          let hidden = hiddenCategoryCache.get(row.categoryId);
+          if (hidden === undefined) {
+            const category = await ctx.db.get(row.categoryId);
+            hidden = category?.hidden ?? false;
+            hiddenCategoryCache.set(row.categoryId, hidden);
+          }
+          if (hidden) continue;
+        }
+        if (!matchesFilters(row, filters)) continue;
+        if (row.type === "income") {
+          income += row.amount;
+        } else if (row.type === "expense") {
+          expense += Math.abs(row.amount);
+        }
+      }
+
+      if (rows.length < SUMMARY_BATCH_SIZE) break;
+
+      const lastRow = rows[rows.length - 1];
+      atBoundary = lastRow.date === cursorDate;
+      cursorDate = lastRow.date;
+      cursorId = lastRow._id;
+    }
+
+    return { income, expense, net: income - expense };
+  },
+});
+
 export const recent = query({
   args: {
     limit: v.optional(v.number()),
