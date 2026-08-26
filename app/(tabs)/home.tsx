@@ -166,7 +166,7 @@ export default function Home() {
     resolveTimezone(household?.timezone),
   );
 
-  const monthTransactions = useQuery(api.transactions.list, {
+  const monthSummary = useQuery(api.transactions.summary, {
     startDate: monthStart,
     endDate: monthEnd,
   });
@@ -175,21 +175,6 @@ export default function Home() {
     periodStart: monthStart,
     periodEnd: monthEnd,
   });
-
-  const monthlySummary = useMemo(() => {
-    const txs = monthTransactions?.transactions;
-    if (!txs) return null;
-    let income = 0;
-    let expense = 0;
-    for (const tx of txs) {
-      if (tx.type === "income") {
-        income += tx.amount;
-      } else if (tx.type === "expense") {
-        expense += Math.abs(tx.amount);
-      }
-    }
-    return { income, expense, net: income - expense };
-  }, [monthTransactions]);
 
   const budgetPills = useMemo(() => {
     const budgets = monthBudgets?.budgets;
@@ -304,15 +289,15 @@ export default function Home() {
                 {formatNumber(totalBalance)}
               </Text>
             )}
-            {monthlySummary ? (
+            {monthSummary !== undefined && monthSummary !== null ? (
               <Text
                 className="text-center text-sm font-medium"
                 style={{
-                  color: monthlySummary.net >= 0 ? C.success : C.error,
+                  color: monthSummary.net >= 0 ? C.success : C.error,
                 }}
               >
-                {monthlySummary.net >= 0 ? "+" : ""}
-                {formatNumber(monthlySummary.net)} this month
+                {monthSummary.net >= 0 ? "+" : ""}
+                {formatNumber(monthSummary.net)} this month
               </Text>
             ) : (
               <Skeleton style={{ width: 120, height: 14 }} />
