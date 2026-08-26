@@ -374,7 +374,7 @@ export const list = query({
 
     const pageFilled = collected.length >= limit;
     const resumeRow = pageFilled ? lastCollected : lastScanned;
-    const hasMore = !rangeExhausted && resumeRow !== undefined;
+    const hasMore = collected.length === 0 ? false : !rangeExhausted && resumeRow !== undefined;
     return {
       transactions: collected,
       isOwner,
@@ -387,7 +387,7 @@ export const list = query({
   },
 });
 
-const SUMMARY_BATCH_SIZE = 1000;
+const SUMMARY_BATCH_SIZE = 10000;
 
 export const summary = query({
   args: {
