@@ -20,6 +20,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function AccountForm() {
@@ -63,6 +64,25 @@ export default function AccountForm() {
     !isLoading &&
     (!isEdit || editingAccount !== undefined);
 
+  const isDirty = useMemo(() => {
+    if (!isEdit) {
+      return (
+        name.trim() !== "" ||
+        type !== "cash" ||
+        openingBalance !== "" ||
+        hidden !== false
+      );
+    }
+    if (!editingAccount) return false;
+    return (
+      name !== editingAccount.name ||
+      type !== editingAccount.type ||
+      hidden !== editingAccount.hidden
+    );
+  }, [isEdit, editingAccount, name, type, openingBalance, hidden]);
+
+  const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
+
   const handleSubmit = async () => {
     setError(null);
     const err = validateAccountName(trimmedName);
@@ -102,6 +122,7 @@ export default function AccountForm() {
         });
       }
       show(isEdit ? "Account updated" : "Account created");
+      markIntentional();
       router.back();
     } catch (e) {
       const message = getConvexErrorMessage(
@@ -135,7 +156,7 @@ export default function AccountForm() {
       <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 48, height: 48 }}

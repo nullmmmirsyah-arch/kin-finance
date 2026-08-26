@@ -347,12 +347,8 @@ export default function Home() {
                 icon="pie-chart"
                 title="No budgets yet"
                 description="Set a budget for each category to track your spending"
-                actionLabel={monthBudgets.isOwner ? "Create Budget" : undefined}
-                onAction={
-                  monthBudgets.isOwner
-                    ? () => router.push("/budget-form")
-                    : undefined
-                }
+                actionLabel="Create Budget"
+                onAction={() => router.push("/budget-form")}
               />
             )}
           </View>

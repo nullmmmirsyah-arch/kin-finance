@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { TRANSACTION_TYPES, TransactionType } from "@/constants/transactions";
 import {
   validateNote,
@@ -27,12 +27,13 @@ import { Chip } from "@/components/Chip";
 import { SelectField } from "@/components/SelectField";
 import { DateField } from "@/components/DateField";
 import { useSnackbar } from "@/components/Snackbar";
+import { Skeleton } from "@/components/Skeleton";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatNumber } from "@/utils/format";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function TransactionForm() {
   const router = useRouter();
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string }>();
   const transactionId = params.id;
   const isEdit = transactionId !== undefined;
@@ -249,53 +250,9 @@ export default function TransactionForm() {
     note,
   ]);
 
-  const intentionalBack = useRef(false);
-
-  const handleBack = useCallback(() => {
-    if (!hasInteracted) {
-      router.back();
-      return;
-    }
-    Alert.alert(
-      "Discard unsaved changes?",
-      "You have unsaved changes that will be lost.",
-      [
-        { text: "Keep editing", style: "cancel" },
-        {
-          text: "Discard",
-          style: "destructive",
-          onPress: () => {
-            intentionalBack.current = true;
-            router.back();
-          },
-        },
-      ],
-    );
-  }, [hasInteracted, router]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      if (intentionalBack.current) {
-        intentionalBack.current = false;
-        return;
-      }
-      if (!hasInteracted) return;
-      e.preventDefault();
-      Alert.alert(
-        "Discard unsaved changes?",
-        "You have unsaved changes that will be lost.",
-        [
-          { text: "Keep editing", style: "cancel" },
-          {
-            text: "Discard",
-            style: "destructive",
-            onPress: () => navigation.dispatch(e.data.action),
-          },
-        ],
-      );
-    });
-    return unsubscribe;
-  }, [hasInteracted, navigation]);
+  const { handleBack, markIntentional } = useDiscardGuard({
+    isDirty: hasInteracted,
+  });
 
   const handleSubmit = async () => {
     setError(null);
@@ -377,7 +334,7 @@ export default function TransactionForm() {
         };
       }
       show(isEdit ? "Transaction updated" : "Transaction added");
-      intentionalBack.current = true;
+      markIntentional();
       router.back();
     } catch (e) {
       setError(
@@ -418,7 +375,7 @@ export default function TransactionForm() {
               transactionId: transactionId as Id<"transactions">,
             })
               .then(() => {
-                intentionalBack.current = true;
+                markIntentional();
                 router.back();
                 show("Transaction deleted", {
                   label: "Undo",
@@ -449,8 +406,28 @@ export default function TransactionForm() {
 
   if (accountResult === undefined || (isEdit && getResult === undefined)) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Loading…</Text>
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="flex-row items-center gap-3 px-5 pt-4">
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={{ width: 48, height: 48 }}
+            className="items-center justify-center"
+          >
+            <Feather name="arrow-left" size={22} color={C.textPrimary} />
+          </Pressable>
+          <View className="flex-1 gap-2">
+            <Skeleton style={{ width: "55%", height: 28 }} />
+            <Skeleton style={{ width: "70%", height: 16 }} />
+          </View>
+        </View>
+        <View className="gap-4 px-5 pt-6">
+          <Skeleton style={{ height: 148, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 132, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 148, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 48, borderRadius: Radius.sm }} />
+        </View>
       </SafeAreaView>
     );
   }

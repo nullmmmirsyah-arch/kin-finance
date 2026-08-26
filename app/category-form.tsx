@@ -19,6 +19,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function CategoryForm() {
@@ -62,6 +63,24 @@ export default function CategoryForm() {
     result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
 
+  const isDirty = useMemo(() => {
+    if (!isEdit) {
+      return (
+        name.trim() !== "" ||
+        type !== "expense" ||
+        hidden !== false
+      );
+    }
+    if (!editingCategory) return false;
+    return (
+      name !== editingCategory.name ||
+      type !== editingCategory.type ||
+      hidden !== editingCategory.hidden
+    );
+  }, [isEdit, editingCategory, name, type, hidden]);
+
+  const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
+
   const handleSubmit = async () => {
     setError(null);
     const err = validateCategoryName(trimmedName);
@@ -87,6 +106,7 @@ export default function CategoryForm() {
         });
       }
       show(isEdit ? "Category updated" : "Category created");
+      markIntentional();
       router.back();
     } catch (e) {
       const message = getConvexErrorMessage(
@@ -130,7 +150,7 @@ export default function CategoryForm() {
       <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 48, height: 48 }}

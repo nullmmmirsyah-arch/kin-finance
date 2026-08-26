@@ -151,6 +151,7 @@ export default function Accounts() {
                 name={item.name}
                 type={item.type}
                 balance={item.balance}
+                hidden={item.hidden}
                 onEdit={() =>
                   router.push({
                     pathname: "/account-form",
@@ -164,6 +165,7 @@ export default function Accounts() {
                 name={item.name}
                 type={item.type}
                 balance={item.balance}
+                hidden={item.hidden}
               />
             )
           }
