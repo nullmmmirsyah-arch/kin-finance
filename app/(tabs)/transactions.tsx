@@ -180,10 +180,9 @@ export default function Transactions() {
 
   const activeCursorRef = useRef(activeCursor);
   activeCursorRef.current = activeCursor;
-  const pagedRef = useRef(pagedTransactions);
-  pagedRef.current = pagedTransactions;
   const isLoadingMoreRef = useRef(isLoadingMore);
   isLoadingMoreRef.current = isLoadingMore;
+  const pagesMapRef = useRef<Map<string, Tx[]>>(new Map());
 
   const queryKey = useMemo(() => JSON.stringify(queryArgs), [queryArgs]);
 
@@ -193,6 +192,7 @@ export default function Transactions() {
     setHasMore(false);
     setIsLoadingMore(false);
     setPagedTransactions(null);
+    pagesMapRef.current.clear();
   }, [queryKey]);
 
   useEffect(() => {
@@ -202,13 +202,16 @@ export default function Transactions() {
       setHasMore(false);
       setNextCursor(undefined);
       setIsLoadingMore(false);
+      pagesMapRef.current.clear();
       return;
     }
-    const isFirstPage = activeCursorRef.current === undefined;
-    const base =
-      isFirstPage || pagedRef.current === null ? [] : pagedRef.current;
-    const merged = isFirstPage ? [...result.transactions] : [...base, ...result.transactions];
-    setPagedTransactions(merged);
+    const key =
+      activeCursorRef.current === undefined
+        ? "__first__"
+        : JSON.stringify(activeCursorRef.current);
+    pagesMapRef.current.set(key, [...result.transactions]);
+    const ordered = Array.from(pagesMapRef.current.values()).flat();
+    setPagedTransactions(ordered);
     setNextCursor(result.cursor ?? undefined);
     setHasMore(result.hasMore);
     setIsLoadingMore(false);
