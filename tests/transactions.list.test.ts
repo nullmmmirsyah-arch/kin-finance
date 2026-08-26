@@ -1337,4 +1337,45 @@ describe("transactions.list", () => {
     expect(result.hasMore).toBe(false);
     expect(result.cursor).toBeUndefined();
   });
+
+  it("pages through a single-date tie larger than the batch without losing rows", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 10; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `tie-big-${i}`,
+          date: 100,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100,
+          updatedAt: 100,
+        });
+      }
+    });
+    const collected: string[] = [];
+    let cursor: any = undefined;
+    let hasMore = true;
+    while (hasMore) {
+      const page: any = await owner.query(api.transactions.list, {
+        startDate: 0,
+        endDate: 1_000_000_000_000,
+        limit: 2,
+        ...(cursor ? { cursor } : {}),
+      });
+      for (const tx of page.transactions!) collected.push(tx.note);
+      hasMore = page.hasMore;
+      cursor = page.cursor;
+      if (collected.length > 20) break;
+    }
+    expect(new Set(collected).size).toBe(10);
+    expect(collected.sort()).toEqual(
+      Array.from({ length: 10 }, (_, i) => `tie-big-${i}`).sort(),
+    );
+  });
 });

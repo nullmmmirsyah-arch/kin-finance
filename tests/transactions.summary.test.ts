@@ -213,4 +213,20 @@ describe("transactions.summary", () => {
     });
     expect(result).toEqual({ income: 0, expense: 0, net: 0 });
   });
+
+  it("counts a date tie larger than the summary batch", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 510; i++) {
+        await insertTx(ctx, s, { amount: -1, type: "expense", date: 100 });
+      }
+      await insertTx(ctx, s, { amount: 7, type: "income", categoryId: s.incomeCatId, date: 200 });
+    });
+    const result = await owner.query(api.transactions.summary, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+    });
+    expect(result).toEqual({ income: 7, expense: 510, net: -503 });
+  });
 });

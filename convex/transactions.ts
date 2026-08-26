@@ -315,8 +315,8 @@ export const list = query({
     let lastScanned: Doc<"transactions"> | undefined;
 
     while (collected.length < limit && scanned < SCAN_BUDGET) {
-      const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
-      const rows: Doc<"transactions">[] = await pinnedRangeQuery(
+      const batchSize = SCAN_BUDGET - scanned;
+      const fetched: Doc<"transactions">[] = await pinnedRangeQuery(
         ctx,
         membership.householdId,
         filters,
@@ -327,7 +327,10 @@ export const list = query({
         atBoundary,
       )
         .order("desc")
-        .take(batchSize);
+        .take(batchSize + 1);
+      const hasExtra = fetched.length > batchSize;
+      const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, batchSize) : fetched;
+      const extra = hasExtra ? fetched[batchSize] : undefined;
 
       scanned += rows.length;
 
@@ -363,7 +366,8 @@ export const list = query({
       }
 
       const lastRow = rows[rows.length - 1];
-      atBoundary = lastRow.date === cursorDate;
+      const tieContinues = extra !== undefined && extra.date === lastRow.date;
+      atBoundary = !tieContinues;
       cursorDate = lastRow.date;
       cursorId = lastRow._id;
     }
@@ -383,7 +387,7 @@ export const list = query({
   },
 });
 
-const SUMMARY_BATCH_SIZE = 500;
+const SUMMARY_BATCH_SIZE = 1000;
 
 export const summary = query({
   args: {
@@ -411,7 +415,7 @@ export const summary = query({
     let atBoundary = false;
 
     for (;;) {
-      const rows: Doc<"transactions">[] = await pinnedRangeQuery(
+      const fetched: Doc<"transactions">[] = await pinnedRangeQuery(
         ctx,
         membership.householdId,
         filters,
@@ -422,7 +426,10 @@ export const summary = query({
         atBoundary,
       )
         .order("desc")
-        .take(SUMMARY_BATCH_SIZE);
+        .take(SUMMARY_BATCH_SIZE + 1);
+      const hasExtra = fetched.length > SUMMARY_BATCH_SIZE;
+      const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, SUMMARY_BATCH_SIZE) : fetched;
+      const extra = hasExtra ? fetched[SUMMARY_BATCH_SIZE] : undefined;
 
       if (rows.length === 0) break;
 
@@ -455,7 +462,8 @@ export const summary = query({
       if (rows.length < SUMMARY_BATCH_SIZE) break;
 
       const lastRow = rows[rows.length - 1];
-      atBoundary = lastRow.date === cursorDate;
+      const tieContinues = extra !== undefined && extra.date === lastRow.date;
+      atBoundary = tieContinues ? false : true;
       cursorDate = lastRow.date;
       cursorId = lastRow._id;
     }
