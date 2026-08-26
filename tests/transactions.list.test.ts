@@ -1090,4 +1090,251 @@ describe("transactions.list", () => {
     expect(result.transactions!.length).toBe(2);
     expect(result.transactions!.map((t) => t.note)).toEqual(["second", "first"]);
   });
+
+  it("owner pages through all rows with cursor continuation", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 5; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `tx-${i}`,
+          date: 100 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100 + i,
+          updatedAt: 100 + i,
+        });
+      }
+    });
+    const page1 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+    });
+    expect(page1.transactions!.map((tx) => tx.note)).toEqual(["tx-4", "tx-3"]);
+    expect(page1.hasMore).toBe(true);
+    expect(page1.cursor).toBeDefined();
+
+    const page2 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      cursor: page1.cursor,
+    });
+    expect(page2.transactions!.map((tx) => tx.note)).toEqual(["tx-2", "tx-1"]);
+    expect(page2.hasMore).toBe(true);
+    expect(page2.cursor).toBeDefined();
+
+    const page3 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      cursor: page2.cursor,
+    });
+    expect(page3.transactions!.map((tx) => tx.note)).toEqual(["tx-0"]);
+    expect(page3.hasMore).toBe(false);
+    expect(page3.cursor).toBeUndefined();
+  });
+
+  it("cursor continuation has no duplicates or gaps on tied dates", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 4; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `tie-${i}`,
+          date: 100,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100,
+          updatedAt: 100,
+        });
+      }
+    });
+    const page1 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+    });
+    const page2 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      cursor: page1.cursor,
+    });
+    const all = [...page1.transactions!, ...page2.transactions!].map((tx) => tx.note);
+    expect(new Set(all).size).toBe(4);
+    expect(all.sort()).toEqual(["tie-0", "tie-1", "tie-2", "tie-3"]);
+    expect(page2.hasMore).toBe(false);
+  });
+
+  it("reports hasMore=false when the range is exhausted below the limit", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 2; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `few-${i}`,
+          date: 100 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100 + i,
+          updatedAt: 100 + i,
+        });
+      }
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 5,
+    });
+    expect(result.transactions!.length).toBe(2);
+    expect(result.hasMore).toBe(false);
+    expect(result.cursor).toBeUndefined();
+  });
+
+  it("fills the page despite many non-matching rows (multi-account filter)", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const ids = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const bankId = await ctx.db.insert("accounts", {
+        householdId: s.householdId,
+        name: "Bank",
+        type: "bank",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      for (let i = 0; i < 6; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: bankId,
+          categoryId: s.visibleCatId,
+          amount: -200,
+          type: "expense",
+          note: `bank-${i}`,
+          date: 100 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100 + i,
+          updatedAt: 100 + i,
+        });
+      }
+      for (let i = 0; i < 3; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `cash-${i}`,
+          date: 300 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 300 + i,
+          updatedAt: 300 + i,
+        });
+      }
+      return { ...s, bankId };
+    });
+    const page1 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      accountIds: [ids.accountId],
+    });
+    expect(page1.transactions!.map((tx) => tx.note)).toEqual(["cash-2", "cash-1"]);
+    expect(page1.hasMore).toBe(true);
+    expect(page1.cursor).toBeDefined();
+
+    const page2 = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      accountIds: [ids.accountId],
+      cursor: page1.cursor,
+    });
+    expect(page2.transactions!.map((tx) => tx.note)).toEqual(["cash-0"]);
+    expect(page2.hasMore).toBe(false);
+  });
+
+  it("member pages past hidden-category rows without duplicates or gaps", async () => {
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      for (let i = 0; i < 6; i++) {
+        await ctx.db.insert("transactions", {
+          householdId: s.householdId,
+          accountId: s.accountId,
+          categoryId: i % 2 === 0 ? s.hiddenCatId : s.visibleCatId,
+          amount: -100,
+          type: "expense",
+          note: `m-${i}`,
+          date: 100 + i,
+          createdBy: s.ownerId,
+          updatedBy: s.ownerId,
+          createdAt: 100 + i,
+          updatedAt: 100 + i,
+        });
+      }
+    });
+    const page1 = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+    });
+    expect(page1.transactions!.map((tx) => tx.note)).toEqual(["m-5", "m-3"]);
+
+    const page2 = await member.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+      limit: 2,
+      cursor: page1.cursor,
+    });
+    expect(page2.transactions!.map((tx) => tx.note)).toEqual(["m-1"]);
+    expect(page2.hasMore).toBe(false);
+  });
+
+  it("returns cursor and hasMore fields on the default (no-cursor) call", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      await ctx.db.insert("transactions", {
+        householdId: s.householdId,
+        accountId: s.accountId,
+        categoryId: s.visibleCatId,
+        amount: -100,
+        type: "expense",
+        note: "only",
+        date: 100,
+        createdBy: s.ownerId,
+        updatedBy: s.ownerId,
+        createdAt: 100,
+        updatedAt: 100,
+      });
+    });
+    const result = await owner.query(api.transactions.list, {
+      startDate: 0,
+      endDate: 1_000_000_000_000,
+    });
+    expect(result.transactions!.length).toBe(1);
+    expect(result.hasMore).toBe(false);
+    expect(result.cursor).toBeUndefined();
+  });
 });
