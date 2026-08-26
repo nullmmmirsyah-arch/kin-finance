@@ -1,5 +1,6 @@
 import { useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { usePreventRemove } from "@react-navigation/native";
+import { useCallback, useRef } from "react";
 import { Alert } from "react-native";
 
 type Options = {
@@ -21,18 +22,19 @@ export function useDiscardGuard({ isDirty }: Options) {
   const navigation = useNavigation();
   const intentionalLeave = useRef(false);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      if (intentionalLeave.current) {
-        intentionalLeave.current = false;
-        return;
-      }
-      if (!isDirty) return;
-      e.preventDefault();
-      confirmDiscard(() => navigation.dispatch(e.data.action));
+  // The prevented action carries the visited-route set internally, so
+  // re-dispatching it below does not re-trigger this callback.
+  usePreventRemove(isDirty, ({ data }) => {
+    if (intentionalLeave.current) {
+      intentionalLeave.current = false;
+      navigation.dispatch(data.action);
+      return;
+    }
+    confirmDiscard(() => {
+      intentionalLeave.current = true;
+      navigation.dispatch(data.action);
     });
-    return unsubscribe;
-  }, [isDirty, navigation]);
+  });
 
   const markIntentional = useCallback(() => {
     intentionalLeave.current = true;

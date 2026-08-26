@@ -408,8 +408,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   show an Alert when the form has unsaved changes (type change from default
   or date change from today counts as interaction for new transactions).
   The guard plumbing lives in the shared `useDiscardGuard` hook
-  (`hooks/useDiscardGuard.ts`) — `beforeRemove` listener + confirmation
-  Alert + intentional-navigation flag — and is reused identically by the
+  (`hooks/useDiscardGuard.ts`) — React Navigation's `usePreventRemove`
+  (native-stack-safe prevention) + confirmation Alert + an
+  intentional-navigation flag so app-initiated backs (header button,
+  post-save/delete) skip the Alert — and is reused identically by the
   account, category, and budget forms, which each compute their own
   dirty flag by comparing current fields against their defaults
   (create) or seeded entity (edit).
@@ -509,7 +511,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) + non-UI controllers (OtaUpdater) |
-| `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `beforeRemove` listener and discard Alert used by all four forms |
+| `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
@@ -826,6 +828,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-26 | Fix | Discard-guard reliability on native-stack: `hooks/useDiscardGuard.ts` replaced its manual `beforeRemove` listener with React Navigation's `usePreventRemove(isDirty, callback)` — raw `beforeRemove` prevention "may not work correctly with `@react-navigation/native-stack`" (per React Navigation docs) because native-side interception needs the prevent-remove registration pushed down to react-native-screens, so hardware back could pop a dirty form before the JS guard ran; `usePreventRemove` wires that registration. Behavior: dirty + system back → Alert → Discard re-dispatches the prevented action (loop-free via the library's internal visited-route set); app-initiated backs (header button, post-save/delete via `markIntentional`) keep bypassing the Alert through the intentional-navigation flag. Hook API (`handleBack`/`markIntentional`) unchanged — no form changes. Updates §4.4, §5.2 |
 | 2026-08-26 | Docs | Documented two deliberate product decisions: amounts render **without a currency symbol by design** — Kin Finance is currency-agnostic, showing bare whole numbers with thousand separators (§1 Constraints); haptic feedback deferred — `expo-haptics` stays installed but intentionally unused for now (Appendix A) |
 | 2026-08-26 | Polish | P0 polish batch: Home empty-budget "Create Budget" CTA now shown to Members too (was Owner-gated, contradicting the §2.3 matrix where Members fully manage budgets and the Budgets tab FAB which was never gated); AccountCard gains a passive eye-off "Hidden" pill so Owners can spot hidden accounts without opening the edit form (Members never receive hidden accounts from `accounts.list`); new shared `hooks/useDiscardGuard.ts` (`beforeRemove` listener + discard Alert + intentional-navigation flag) now protects unsaved changes on account, category, and budget forms via per-form dirty checks, and transaction-form migrated onto it (behavior unchanged); transaction-form's plain-text loading state replaced with header + Skeleton placeholders mirroring the three-section layout; OtaUpdater snackbar copy switched to English ("A new update is ready. Restart the app to apply it.") per the English UI policy. Updates §1, §3.8, §4.4, §5.2, §5.7, Appendix A |
 | 2026-08-21 | Fix | ANR on first launch after install/update (frozen splash icon → "kin-finance isn't responding"; kill + relaunch worked): in release builds expo-updates delays React instance creation until its controller finishes startup, so with the default `checkAutomatically: ON_LOAD` the first launch had to create the updates SQLite DB, copy + hash every embedded asset, and fetch the remote manifest from `u.expo.dev` before drawing the first frame — exceeding Android's ANR threshold on low-end devices; second launch hit the fast path (DB initialized). Fix: `app.json` sets `updates.checkAutomatically: "ON_ERROR_RECOVERY"` + `fallbackToCacheTimeout: 0` (cold boot never blocks on network); new `components/OtaUpdater.tsx` mounted in `app/_layout.tsx` checks for OTA updates 5 s after launch, downloads silently, and shows a Snackbar "Restart" prompt (update auto-applies at next cold start if dismissed; skipped in dev/Expo Go). Requires a new APK build to take effect. Updates §5.2, §5.7, §7 |
