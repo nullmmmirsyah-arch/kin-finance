@@ -1,5 +1,6 @@
-import { ComponentProps, useMemo, useState } from "react";
+import { ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   SectionList,
@@ -39,6 +40,8 @@ const DATE_OPTIONS: { id: DateFilter; label: string }[] = [
   { id: "lastMonth", label: "Last Month" },
   { id: "custom", label: "Custom Range" },
 ];
+
+const PAGE_SIZE = 30;
 
 function HeaderPill({
   icon,
@@ -155,10 +158,71 @@ export default function Transactions() {
     };
   }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions]);
 
-  const result = useQuery(api.transactions.list, queryArgs);
+  const [activeCursor, setActiveCursor] = useState<
+    { date: number; id: Id<"transactions"> } | undefined
+  >(undefined);
+
+  const result = useQuery(api.transactions.list, {
+    ...queryArgs,
+    limit: PAGE_SIZE,
+    ...(activeCursor !== undefined ? { cursor: activeCursor } : {}),
+  });
+  const summaryResult = useQuery(api.transactions.summary, queryArgs);
+
+  type Tx = NonNullable<NonNullable<typeof result>["transactions"]>[number];
+
+  const [nextCursor, setNextCursor] = useState<
+    { date: number; id: Id<"transactions"> } | undefined
+  >(undefined);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pagedTransactions, setPagedTransactions] = useState<Tx[] | null>(null);
+
+  const activeCursorRef = useRef(activeCursor);
+  activeCursorRef.current = activeCursor;
+  const pagedRef = useRef(pagedTransactions);
+  pagedRef.current = pagedTransactions;
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const queryKey = useMemo(() => JSON.stringify(queryArgs), [queryArgs]);
+
+  useEffect(() => {
+    setActiveCursor(undefined);
+    setNextCursor(undefined);
+    setHasMore(false);
+    setIsLoadingMore(false);
+    setPagedTransactions(null);
+  }, [queryKey]);
+
+  useEffect(() => {
+    if (result === undefined) return;
+    if (result.transactions === null) {
+      setPagedTransactions(null);
+      setHasMore(false);
+      setNextCursor(undefined);
+      setIsLoadingMore(false);
+      return;
+    }
+    const isFirstPage = activeCursorRef.current === undefined;
+    const base =
+      isFirstPage || pagedRef.current === null ? [] : pagedRef.current;
+    const merged = isFirstPage ? [...result.transactions] : [...base, ...result.transactions];
+    setPagedTransactions(merged);
+    setNextCursor(result.cursor ?? undefined);
+    setHasMore(result.hasMore);
+    setIsLoadingMore(false);
+  }, [result]);
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || isLoadingMoreRef.current || nextCursor === undefined) return;
+    if (pagedTransactions === null) return;
+    setIsLoadingMore(true);
+    setActiveCursor(nextCursor);
+  }, [hasMore, nextCursor, pagedTransactions]);
 
   const sections = useMemo(() => {
-    const transactions = result?.transactions ?? null;
+    const transactions = pagedTransactions;
     if (transactions === null) return null;
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
@@ -170,23 +234,18 @@ export default function Transactions() {
         groups.set(key, [tx]);
       }
     }
-    return Array.from(groups.entries()).map(([title, data]) => ({
+    const entries = Array.from(groups.entries()).map(([title, data]) => ({
       title,
       data,
       total: sumNetExcludingTransfers(data),
     }));
-  }, [result, timezone]);
+    return entries.map((entry, index) => ({
+      ...entry,
+      completeDay: index < entries.length - 1 || !hasMore,
+    }));
+  }, [pagedTransactions, timezone, hasMore]);
 
-  const summary = useMemo(() => {
-    const transactions = result?.transactions ?? [];
-    let income = 0;
-    let expense = 0;
-    for (const tx of transactions) {
-      if (tx.type === "income") income += tx.amount;
-      else if (tx.type === "expense") expense += Math.abs(tx.amount);
-    }
-    return { income, expense, net: income - expense };
-  }, [result]);
+  const summary = summaryResult ?? { income: 0, expense: 0, net: 0 };
 
   const activeFilterCount = filterBadgeCount(
     typeFilter !== "all",
@@ -213,7 +272,17 @@ export default function Transactions() {
     setCategoryIds([]);
   };
 
-  if (result === undefined) {
+  if (result !== undefined && result.transactions === null) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+          You are not a member of a household.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (pagedTransactions === null) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
@@ -234,16 +303,6 @@ export default function Transactions() {
             <Skeleton key={i} style={{ height: 64, borderRadius: Radius.md }} />
           ))}
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (result.transactions === null) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
-          You are not a member of a household.
-        </Text>
       </SafeAreaView>
     );
   }
@@ -336,25 +395,36 @@ export default function Transactions() {
           sections={sections ?? []}
           keyExtractor={(item) => item._id}
           stickySectionHeadersEnabled={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View className="items-center py-4">
+                <ActivityIndicator color={C.primary} />
+              </View>
+            ) : null
+          }
           renderSectionHeader={({ section }) => (
             <View className="flex-row items-center justify-between bg-background px-5 pb-1 pt-4 dark:bg-background-dark">
               <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
                 {section.title}
               </Text>
-              <Text
-                className="text-sm font-semibold"
-                style={{
-                  color:
-                    section.total > 0
-                      ? C.success
-                      : section.total < 0
-                        ? C.error
-                        : C.textSecondary,
-                }}
-              >
-                {section.total > 0 ? "+" : ""}
-                {formatNumber(section.total)}
-              </Text>
+              {section.completeDay ? (
+                <Text
+                  className="text-sm font-semibold"
+                  style={{
+                    color:
+                      section.total > 0
+                        ? C.success
+                        : section.total < 0
+                          ? C.error
+                          : C.textSecondary,
+                  }}
+                >
+                  {section.total > 0 ? "+" : ""}
+                  {formatNumber(section.total)}
+                </Text>
+              ) : null}
             </View>
           )}
           renderItem={({ item }) => (
