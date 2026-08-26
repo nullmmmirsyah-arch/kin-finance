@@ -95,7 +95,7 @@ visible) without exposing transaction detail.
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
-| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per call (server cap, optional `limit`). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. |
+| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
 | Home | Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All"). |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -289,6 +289,8 @@ sheet without Done (backdrop tap or Android back) discards the draft. The empty 
 distinguishes "no transactions at all" from "no transactions match your filters" (with a
 Clear filters action).
 
+**Pagination & server-side summary (as of 2026-08-26):** `transactions.list` accepts an optional `cursor {date, id}` and returns `cursor`/`hasMore`; owner and member share one bounded-scan engine (SCAN_BUDGET = limit × 10) with the same pinned-index priority as before. The Transactions page accumulates 30-row pages on scroll; the summary card uses `transactions.summary`, which walks the entire range uncapped (hydration-free; members skip hidden categories via a cached lookup). Day-group net totals render only for completed days — an older group has loaded, or `hasMore` is false.
+
 ### 3.7 Budgets
 
 Monthly spending limits per expense category. Identified by
@@ -308,7 +310,7 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   to profile name, then email prefix with dots replaced by spaces).
 - Household card (name + member count badge).
 - **Total Balance**: gradient card showing the sum of all account balances, with
-  a secondary line showing this month's net income/expense in semantic color
+  a secondary line showing this month's net income/expense (from `transactions.summary`, server-computed) in semantic color
   (green for positive, red for negative).
 - **Budgets** (when budgets exist): up to 3 budget pills showing category name,
   spent/budgeted amounts, and a color-threshold progress bar (green → amber →
@@ -765,7 +767,8 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer |
 | `transactions` | `update` | mutation | Reverse old + apply new balances |
 | `transactions` | `remove` | mutation | Reverse balances |
-| `transactions` | `list` | query | Date-range + optional `accountIds`/`categoryIds`/`type` filtered (index-driven); optional `limit` (default/max 1 000); cached hydration |
+| `transactions` | `list` | query | Date-range + optional `accountIds`/`categoryIds`/`type` filtered (index-driven); optional `limit` (default/max 1 000) per page; optional `cursor` continuation; returns `cursor`/`hasMore`; cached hydration |
+| `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list`; transfers excluded; uncapped walk; hidden-category aware for Members |
 | `transactions` | `recent` | query | Latest N with cursor pagination |
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted (undefined) for Members on hidden categories |
@@ -828,6 +831,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-26 | Feature | Transactions paging + server-side summary: `transactions.list` unified owner/member scan engine gains `cursor {date,id}` continuation and truthful `hasMore` (SCAN_BUDGET now also covers filtered owner scans, fixing potential under-fill); new `transactions.summary` computes uncapped range income/expense/net (transfers excluded, member hidden-category aware, hydration-free). Home's "net this month" and the Transactions summary card switched to `summary`; the Transactions list loads 30-row pages on scroll and shows day-net totals only for completed days (older group loaded or `hasMore=false`). Updates §2.1, §3.6, §3.8, §6 |
 | 2026-08-26 | Fix | Discard-guard reliability on native-stack: `hooks/useDiscardGuard.ts` replaced its manual `beforeRemove` listener with React Navigation's `usePreventRemove(isDirty, callback)` — raw `beforeRemove` prevention "may not work correctly with `@react-navigation/native-stack`" (per React Navigation docs) because native-side interception needs the prevent-remove registration pushed down to react-native-screens, so hardware back could pop a dirty form before the JS guard ran; `usePreventRemove` wires that registration. Behavior: dirty + system back → Alert → Discard re-dispatches the prevented action (loop-free via the library's internal visited-route set); app-initiated backs (header button, post-save/delete via `markIntentional`) keep bypassing the Alert through the intentional-navigation flag. Hook API (`handleBack`/`markIntentional`) unchanged — no form changes. Updates §4.4, §5.2 |
 | 2026-08-26 | Docs | Documented two deliberate product decisions: amounts render **without a currency symbol by design** — Kin Finance is currency-agnostic, showing bare whole numbers with thousand separators (§1 Constraints); haptic feedback deferred — `expo-haptics` stays installed but intentionally unused for now (Appendix A) |
 | 2026-08-26 | Polish | P0 polish batch: Home empty-budget "Create Budget" CTA now shown to Members too (was Owner-gated, contradicting the §2.3 matrix where Members fully manage budgets and the Budgets tab FAB which was never gated); AccountCard gains a passive eye-off "Hidden" pill so Owners can spot hidden accounts without opening the edit form (Members never receive hidden accounts from `accounts.list`); new shared `hooks/useDiscardGuard.ts` (`beforeRemove` listener + discard Alert + intentional-navigation flag) now protects unsaved changes on account, category, and budget forms via per-form dirty checks, and transaction-form migrated onto it (behavior unchanged); transaction-form's plain-text loading state replaced with header + Skeleton placeholders mirroring the three-section layout; OtaUpdater snackbar copy switched to English ("A new update is ready. Restart the app to apply it.") per the English UI policy. Updates §1, §3.8, §4.4, §5.2, §5.7, Appendix A |
