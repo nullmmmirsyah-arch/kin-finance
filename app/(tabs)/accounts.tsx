@@ -150,7 +150,11 @@ export default function Accounts() {
             <EmptyState
               icon="credit-card"
               title="No accounts yet"
-              description="Add your first account to start tracking your money."
+              description={
+                isOwner
+                  ? "Add your first account to start tracking your money."
+                  : "Only the Owner can add accounts. Contact your household Owner to set up your first account."
+              }
               actionLabel={isOwner ? "Add Account" : undefined}
               onAction={
                 isOwner ? () => router.push("/account-form") : undefined
