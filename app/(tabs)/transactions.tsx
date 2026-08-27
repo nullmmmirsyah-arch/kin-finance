@@ -180,10 +180,9 @@ export default function Transactions() {
 
   const activeCursorRef = useRef(activeCursor);
   activeCursorRef.current = activeCursor;
-  const pagedRef = useRef(pagedTransactions);
-  pagedRef.current = pagedTransactions;
   const isLoadingMoreRef = useRef(isLoadingMore);
   isLoadingMoreRef.current = isLoadingMore;
+  const pagesMapRef = useRef<Map<string, Tx[]>>(new Map());
 
   const queryKey = useMemo(() => JSON.stringify(queryArgs), [queryArgs]);
 
@@ -193,6 +192,7 @@ export default function Transactions() {
     setHasMore(false);
     setIsLoadingMore(false);
     setPagedTransactions(null);
+    pagesMapRef.current.clear();
   }, [queryKey]);
 
   useEffect(() => {
@@ -202,13 +202,30 @@ export default function Transactions() {
       setHasMore(false);
       setNextCursor(undefined);
       setIsLoadingMore(false);
+      pagesMapRef.current.clear();
       return;
     }
-    const isFirstPage = activeCursorRef.current === undefined;
-    const base =
-      isFirstPage || pagedRef.current === null ? [] : pagedRef.current;
-    const merged = isFirstPage ? [...result.transactions] : [...base, ...result.transactions];
-    setPagedTransactions(merged);
+    const key =
+      activeCursorRef.current === undefined
+        ? "__first__"
+        : JSON.stringify(activeCursorRef.current);
+    pagesMapRef.current.set(key, [...result.transactions]);
+    const flat = Array.from(pagesMapRef.current.values()).flat();
+    const byId = new Map<string, Tx>();
+    for (const tx of flat) {
+      const existing = byId.get(tx._id);
+      if (
+        !existing ||
+        (tx.updatedAt ?? 0) > (existing.updatedAt ?? 0) ||
+        ((tx.updatedAt ?? 0) === (existing.updatedAt ?? 0) && tx.date > existing.date)
+      ) {
+        byId.set(tx._id, tx);
+      }
+    }
+    const deduped = Array.from(byId.values()).sort(
+      (a, b) => b.date - a.date || (a._id < b._id ? 1 : -1),
+    );
+    setPagedTransactions(deduped);
     setNextCursor(result.cursor ?? undefined);
     setHasMore(result.hasMore);
     setIsLoadingMore(false);
