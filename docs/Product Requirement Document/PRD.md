@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-26
+> Last updated: 2026-08-27
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -95,7 +95,7 @@ visible) without exposing transaction detail.
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
-| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. |
+| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. Supports server-side substring search by note (≥2 chars) on `list` and `summary` (debounced 300ms, bounded scan); pull-to-refresh on Home/Transactions/Accounts/Budgets with stale-data banner. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
 | Home | Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All"). |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -291,6 +291,12 @@ Clear filters action).
 
 **Pagination & server-side summary (as of 2026-08-26):** `transactions.list` accepts an optional `cursor {date, id}` and returns `cursor`/`hasMore`; owner and member share one bounded-scan engine (SCAN_BUDGET = limit × 10) with the same pinned-index priority as before. The Transactions page accumulates 30-row pages on scroll; the summary card uses `transactions.summary`, which walks the entire range uncapped (hydration-free; members skip hidden categories via a cached lookup). Day-group net totals render only for completed days — an older group has loaded, or `hasMore` is false.
 
+**Search (as of 2026-08-27):** Text input above filter chips with 300ms debounce; committed search (≥2 chars, trimmed, case-insensitive) is sent as `search` to `list`/`summary`; matched via `note.toLowerCase().includes(search)` post-index, bounded by existing SCAN_BUDGET (no new index); `summary` checks `row.note` hydration-free; member hidden notes excluded; empty shows “No results for …” with Clear action. Search <2 chars is treated as no filter.
+
+**Recent unified engine (as of 2026-08-27):** `transactions.recent` uses a unified bounded scan (SCAN_BUDGET = limit × 10, `by_household_date` desc) for both roles with tie-aware cursor (extra-row detection) and truthful `hasMore`; Home caps at 5.
+
+**Pull-to-refresh & stale banner (as of 2026-08-27):** Home (ScrollView), Transactions (SectionList), Accounts (FlatList), Budgets (FlatList) all expose `RefreshControl` (600ms spinner, tint `primary`). A thin amber `ConnectivityBanner` (“You’re offline — showing cached data” + Retry) appears when any primary query stays `undefined` >3s; Retry shows Snackbar “Retrying…”. Full-screen null remains for non-member.
+
 ### 3.7 Budgets
 
 Monthly spending limits per expense category. Identified by
@@ -321,14 +327,16 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   card); "Add Account" card for Owner; "Manage" link to the Accounts tab. For
   Members, tapping a card goes to the Accounts tab (owner-only edit/delete stays
   in the Accounts tab).
-- **Recent Transactions**: latest 5 (paginated via cursor), grouped by day with
+- **Recent Transactions**: latest 5 (unified bounded scan, cursor-aware; cap unchanged), grouped by day with
   day net total (income − expense; transfers excluded), "See All" link to the
   Transactions tab. Transaction icons map category names to relevant Feather
   icons (shopping-cart, coffee, car, home, briefcase, etc.) with semantic colors
   (green for income, red for expense).
+- Pull-to-refresh via `RefreshControl` on the ScrollView (600ms); stale-data `ConnectivityBanner` appears after 3s if primary queries stay undefined.
 - Empty states include action CTAs (e.g., "Add Transaction" on empty transaction
-  list, "Add Account" for Owners on empty accounts).
+  list, "Add Account" for Owners vs. Owner-hint for Members on empty accounts).
 - FAB uses reanimated spring animation (scale on press) for tactile feedback.
+- Haptics: `hapticSuccess` on create/update, `hapticWarning` on validation, `hapticError` on failure (via `lib/haptics.ts`).
 - Sign-out is accessible only via the Settings tab, not the home header.
 
 ### 3.9 Design System
@@ -512,9 +520,10 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
-| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search) + non-UI controllers (OtaUpdater) |
+| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
+| `lib/haptics.ts` | Safe haptics wrapper (`hapticSuccess`/`hapticWarning`/`hapticError` via `expo-haptics`) |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
 | `convex/schema.ts` | Database schema (source of truth) |
 | `convex/helpers.ts` | Shared auth/scope helpers: `getUserAndMembership` (mutations, throws `ConvexError`), `findUserAndMembership` (queries, returns `{user, membership}` or `null`), `findUser` (user only, returns `null` when signed out), `requireOwner` (owner-gate check), `getScopedDoc` (fetch + household-scope guard that throws `"<Entity> not found."`) |
@@ -553,6 +562,8 @@ effects) — so create/update/delete balance math cannot drift apart.
   `Snackbar`; destructive actions (delete, remove member, revoke invite,
   sign out) require an `Alert.alert` confirmation first. Delete transaction
   shows a Snackbar with an **Undo** action that re-creates the transaction.
+- **Stale/ offline:** primary query stays `undefined` >3s → amber `ConnectivityBanner` (“You’re offline — showing cached data” + Retry → Snackbar “Retrying…”). Pull-to-refresh (`RefreshControl`, 600ms, `primary` tint) on Home/Transactions/Accounts/Budgets. Full-screen remains for non-member `null`.
+- **Haptics:** `hapticSuccess` on create/update, `hapticWarning` on validation, `hapticError` on mutation failure (all via `lib/haptics.ts`, safely no-ops in Expo Go/web).
 - Client and server share one validation module, `constants/validation.ts`
   (path alias `@/constants/validation`), eliminating drift (e.g. `isInteger`
   vs `isSafeInteger`).
@@ -767,9 +778,9 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer |
 | `transactions` | `update` | mutation | Reverse old + apply new balances |
 | `transactions` | `remove` | mutation | Reverse balances |
-| `transactions` | `list` | query | Date-range + optional `accountIds`/`categoryIds`/`type` filtered (index-driven); optional `limit` (default/max 1 000) per page; optional `cursor` continuation; returns `cursor`/`hasMore`; cached hydration |
-| `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list`; transfers excluded; uncapped walk; hidden-category aware for Members |
-| `transactions` | `recent` | query | Latest N with cursor pagination |
+| `transactions` | `list` | query | Date-range + optional `accountIds`/`categoryIds`/`type`/`search` (≥2 chars, note substring) filtered (index-driven + post-index search); optional `limit` (default/max 1 000) per page; optional `cursor` continuation; returns `cursor`/`hasMore`; cached hydration |
+| `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list` including `search`; transfers excluded; uncapped walk; hidden-category aware for Members (search checks `note` hydration-free) |
+| `transactions` | `recent` | query | Latest N with cursor pagination (unified bounded scan SCAN_BUDGET=limit×10 for owner/member, tie-aware, truthful `hasMore`) |
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted (undefined) for Members on hidden categories |
 | `budgets` | `get` | query | Single budget |
@@ -831,6 +842,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-27 | Polish | P0 Batch 2: Pull-to-refresh + stale `ConnectivityBanner` on Home/Transactions/Accounts/Budgets (RefreshControl 600ms, banner after 3s `undefined`); note search (≥2 chars, 300ms debounce) on `transactions.list`/`summary` (post-index substring on `note`, bounded by SCAN_BUDGET, hydration-free for summary, hidden-aware, “No results for …” empty); `transactions.recent` unified bounded scan (owner/member, tie-aware cursor, truthful `hasMore`, cap 5 unchanged); safe `lib/haptics.ts` wrapper (`hapticSuccess`/`hapticWarning`/`hapticError`) wired to 5 forms (transaction/account/category/budget/members); role-aware Accounts empty for Members (“Only the Owner can add accounts…”). Updates §2.1, §3.6, §3.8, §5.2, §5.4, §8 |
 | 2026-08-26 | Feature | Transactions paging + server-side summary: `transactions.list` unified owner/member scan engine gains `cursor {date,id}` continuation and truthful `hasMore` (SCAN_BUDGET now also covers filtered owner scans, fixing potential under-fill); new `transactions.summary` computes uncapped range income/expense/net (transfers excluded, member hidden-category aware, hydration-free). Home's "net this month" and the Transactions summary card switched to `summary`; the Transactions list loads 30-row pages on scroll and shows day-net totals only for completed days (older group loaded or `hasMore=false`). Updates §2.1, §3.6, §3.8, §6 |
 | 2026-08-26 | Fix | Discard-guard reliability on native-stack: `hooks/useDiscardGuard.ts` replaced its manual `beforeRemove` listener with React Navigation's `usePreventRemove(isDirty, callback)` — raw `beforeRemove` prevention "may not work correctly with `@react-navigation/native-stack`" (per React Navigation docs) because native-side interception needs the prevent-remove registration pushed down to react-native-screens, so hardware back could pop a dirty form before the JS guard ran; `usePreventRemove` wires that registration. Behavior: dirty + system back → Alert → Discard re-dispatches the prevented action (loop-free via the library's internal visited-route set); app-initiated backs (header button, post-save/delete via `markIntentional`) keep bypassing the Alert through the intentional-navigation flag. Hook API (`handleBack`/`markIntentional`) unchanged — no form changes. Updates §4.4, §5.2 |
 | 2026-08-26 | Docs | Documented two deliberate product decisions: amounts render **without a currency symbol by design** — Kin Finance is currency-agnostic, showing bare whole numbers with thousand separators (§1 Constraints); haptic feedback deferred — `expo-haptics` stays installed but intentionally unused for now (Appendix A) |
@@ -880,9 +892,8 @@ Not implemented; kept for roadmap reference.
 - Email-based invitations.
 - Member leaving household.
 - Account/category icons & colors; multi-currency; archiving/merging.
-- Split transactions; recurring transactions; attachments/receipts; search;
+- Split transactions; recurring transactions; attachments/receipts;
   CSV/PDF export.
 - Budget rollover; weekly/yearly budgets; notifications; templates.
-- Haptic feedback — deferred for now (`expo-haptics` is installed but
-  intentionally unused).
-- Reports/analytics beyond current Budget progress.
+- Haptic feedback — now enabled for key moments via `lib/haptics.ts` (`hapticSuccess` on create/update, `hapticWarning` on validation, `hapticError` on failure); selection haptics intentionally deferred.
+- Reports/analytics beyond current Budget progress; full-text search beyond note substring (≥2 chars).
