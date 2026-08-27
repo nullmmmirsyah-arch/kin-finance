@@ -210,8 +210,22 @@ export default function Transactions() {
         ? "__first__"
         : JSON.stringify(activeCursorRef.current);
     pagesMapRef.current.set(key, [...result.transactions]);
-    const ordered = Array.from(pagesMapRef.current.values()).flat();
-    setPagedTransactions(ordered);
+    const flat = Array.from(pagesMapRef.current.values()).flat();
+    const byId = new Map<string, Tx>();
+    for (const tx of flat) {
+      const existing = byId.get(tx._id);
+      if (
+        !existing ||
+        (tx.updatedAt ?? 0) > (existing.updatedAt ?? 0) ||
+        ((tx.updatedAt ?? 0) === (existing.updatedAt ?? 0) && tx.date > existing.date)
+      ) {
+        byId.set(tx._id, tx);
+      }
+    }
+    const deduped = Array.from(byId.values()).sort(
+      (a, b) => b.date - a.date || (a._id < b._id ? 1 : -1),
+    );
+    setPagedTransactions(deduped);
     setNextCursor(result.cursor ?? undefined);
     setHasMore(result.hasMore);
     setIsLoadingMore(false);
