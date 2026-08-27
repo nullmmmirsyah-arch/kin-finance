@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PendingInviteCard } from "@/components/PendingInviteCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
+import { hapticSuccess } from "@/lib/haptics";
 
 type Screen = "list" | "invite";
 
@@ -62,6 +63,7 @@ export default function Members() {
             ? "Timezone set to match device"
             : `Timezone set to ${formatTimezoneLabel(timezone)}`,
         );
+        void hapticSuccess();
       } catch (e: any) {
         show(getConvexErrorMessage(e, "Failed to update timezone."));
       }

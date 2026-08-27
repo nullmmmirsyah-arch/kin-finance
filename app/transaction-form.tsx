@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatNumber } from "@/utils/format";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 export default function TransactionForm() {
   const router = useRouter();
@@ -180,11 +181,13 @@ export default function TransactionForm() {
   const handleAmountBlur = useCallback(() => {
     if (amountValue !== null && amountValue <= 0) {
       setAmountError("Enter an amount greater than zero.");
+      void hapticWarning();
       return;
     }
     const err = validateTransactionAmount(signedAmount, type);
     if (err) {
       setAmountError(err);
+      void hapticWarning();
     }
   }, [amountValue, signedAmount, type]);
 
@@ -334,6 +337,7 @@ export default function TransactionForm() {
         };
       }
       show(isEdit ? "Transaction updated" : "Transaction added");
+      void hapticSuccess();
       markIntentional();
       router.back();
     } catch (e) {
