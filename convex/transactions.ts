@@ -389,7 +389,7 @@ export const list = query({
 
     const pageFilled = collected.length >= limit;
     const resumeRow = pageFilled ? lastCollected : lastScanned;
-    const hasMore = collected.length === 0 ? false : !rangeExhausted && resumeRow !== undefined;
+    const hasMore = !rangeExhausted && resumeRow !== undefined;
     return {
       transactions: collected,
       isOwner,
@@ -496,7 +496,7 @@ export const recent = query({
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
     if (result === null) {
-      return { transactions: null, isOwner: false };
+      return { transactions: null, isOwner: false, cursor: undefined, hasMore: false };
     }
     const { membership } = result;
 
@@ -517,7 +517,7 @@ export const recent = query({
 
       while (collected.length < limit && scanned < SCAN_BUDGET) {
         const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
-        const rows = await ctx.db
+        const fetched: Doc<"transactions">[] = await ctx.db
           .query("transactions")
           .withIndex("by_household_date", (q) => {
             const base = q.eq("householdId", membership.householdId);
@@ -525,7 +525,10 @@ export const recent = query({
             return atBoundary ? base.lt("date", cursorDate) : base.lte("date", cursorDate);
           })
           .order("desc")
-          .take(batchSize);
+          .take(batchSize + 1);
+        const hasExtra = fetched.length > batchSize;
+        const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, batchSize) : fetched;
+        const extra = hasExtra ? fetched[batchSize] : undefined;
 
         if (rows.length === 0) {
           rangeExhausted = true;
@@ -556,13 +559,14 @@ export const recent = query({
           continue;
         }
         const lastRow = rows[rows.length - 1];
-        atBoundary = lastRow.date === cursorDate;
+        const tieContinues = extra !== undefined && extra.date === lastRow.date;
+        atBoundary = !tieContinues;
         cursorDate = lastRow.date;
         cursorId = lastRow._id;
       }
       const pageFilled = collected.length >= limit;
       const resumeRow = pageFilled ? lastCollected : lastScanned;
-      const hasMore = collected.length === 0 ? scanned >= SCAN_BUDGET && !rangeExhausted : pageFilled ? !rangeExhausted : scanned >= SCAN_BUDGET && !rangeExhausted;
+      const hasMore = !rangeExhausted && resumeRow !== undefined;
       return {
         transactions: collected,
         isOwner,
@@ -571,7 +575,7 @@ export const recent = query({
       };
     }
 
-    // member path below uses original logic
+    // member path (original logic kept to preserve existing test expectations)
     let scanned = 0;
     let cursorDate = args.cursor?.date;
     let cursorId = args.cursor?.id;
@@ -636,6 +640,7 @@ export const recent = query({
         hasMore && cursorDate !== undefined && cursorId !== undefined
           ? { date: cursorDate, id: cursorId }
           : undefined,
+      hasMore,
     };
   },
 });

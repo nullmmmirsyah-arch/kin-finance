@@ -431,49 +431,66 @@ export default function Transactions() {
       )}
 
       {sections !== null && sections.length === 0 ? (
-        <View className="mt-6 flex-1 px-5">
-          <View
-            style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
-          >
-            {invalidCustomRange ? (
-              <EmptyState
-                icon="calendar"
-                title="Invalid date range"
-                description="Set a From date that is on or before the To date."
-                actionLabel="Adjust date range"
-                onAction={() => setDateSheetOpen(true)}
-              />
-            ) : searchCommitted.length >= 2 ? (
-              <EmptyState
-                icon="search"
-                title={`No results for "${searchCommitted}"`}
-                description="Try a different keyword or clear search."
-                actionLabel="Clear search"
-                onAction={() => {
-                  setSearchDraft("");
-                  setSearchCommitted("");
-                }}
-              />
-            ) : filtersActive ? (
-              <EmptyState
-                icon="filter"
-                title="No transactions match your filters"
-                description="Try adjusting or clearing your filters."
-                actionLabel="Clear filters"
-                onAction={clearFilters}
-              />
-            ) : (
-              <EmptyState
-                icon="book-open"
-                title="No transactions yet"
-                description="Start by recording your first transaction."
-                actionLabel="Add Transaction"
-                onAction={() => router.push("/transaction-form")}
-              />
-            )}
-          </View>
-        </View>
+        <SectionList
+          className="mt-6 flex-1"
+          contentContainerClassName="pb-28 px-5"
+          sections={[]}
+          keyExtractor={() => "empty"}
+          renderItem={() => null}
+          ListEmptyComponent={
+            <View
+              style={{ backgroundColor: C.background }}
+              className="rounded-[16px]"
+            >
+              {invalidCustomRange ? (
+                <EmptyState
+                  icon="calendar"
+                  title="Invalid date range"
+                  description="Set a From date that is on or before the To date."
+                  actionLabel="Adjust date range"
+                  onAction={() => setDateSheetOpen(true)}
+                />
+              ) : searchCommitted.length >= 2 ? (
+                <EmptyState
+                  icon="search"
+                  title={`No results for "${searchCommitted}"`}
+                  description="Try a different keyword or clear search."
+                  actionLabel="Clear search"
+                  onAction={() => {
+                    setSearchDraft("");
+                    setSearchCommitted("");
+                  }}
+                />
+              ) : filtersActive ? (
+                <EmptyState
+                  icon="filter"
+                  title="No transactions match your filters"
+                  description="Try adjusting or clearing your filters."
+                  actionLabel="Clear filters"
+                  onAction={clearFilters}
+                />
+              ) : (
+                <EmptyState
+                  icon="book-open"
+                  title="No transactions yet"
+                  description="Start by recording your first transaction."
+                  actionLabel="Add Transaction"
+                  onAction={() => router.push("/transaction-form")}
+                />
+              )}
+            </View>
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
+        />
       ) : (
         <SectionList
           className="mt-4 flex-1"

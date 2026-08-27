@@ -42,11 +42,11 @@ type Props = { visible: boolean; onRetry?: () => void }
 - Convex real-time: Retry tidak perlu manual refetch; `onRetry` cukup `show("Retrying…")` + trigger re-render (Convex auto re-subscribe). Untuk manual: `router.replace` same route forces remount.
 
 **Placement per tab:**
-- `app/(tabs)/home.tsx:252` ScrollView → `RefreshControl` + banner di atas `<ScrollView>` (sticky top 0).
-- `app/(tabs)/transactions.tsx:409` SectionList → `refreshControl` prop + banner di atas SectionList.
-- `app/(tabs)/accounts.tsx:143` FlatList → `refreshControl` + banner.
-- `app/(tabs)/budgets.tsx:248` FlatList → sama.
-- Semua pakai `useState refreshing` + `onRefresh` yang set `refreshing=true`, delay 600ms lalu false (Convex akan push data baru otomatis).
+- `app/(tabs)/home.tsx:252` ScrollView → `RefreshControl` + banner di atas `<ScrollView>` (sticky top 0); banner juga di-render di loading skeleton branch saat `result === undefined` dan `stale` true (sebelum skeleton), tetap visible sampai `result` ter-resolve.
+- `app/(tabs)/transactions.tsx:409` SectionList → `refreshControl` prop + banner di atas SectionList; banner di loading skeleton branch juga (sebelum skeleton) dan di empty PTR branch via SectionList `refreshControl`.
+- `app/(tabs)/accounts.tsx:143` FlatList → `refreshControl` + banner; banner di loading skeleton branch juga.
+- `app/(tabs)/budgets.tsx:248` FlatList → sama; banner di loading skeleton branch juga.
+- Semua pakai `useState refreshing` + `onRefresh` yang set `refreshing=true`, delay 600ms lalu false (Convex akan push data baru otomatis; retry juga re-query via subscription).
 
 **No offline queue** — out of scope Batch 2.
 

@@ -94,6 +94,11 @@ export default function Accounts() {
         <View className="px-5 pt-4">
           <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
         </View>
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          </View>
+        )}
         <View className="mt-4 flex-row flex-wrap gap-2 px-5">
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
@@ -142,26 +147,43 @@ export default function Accounts() {
       </View>
 
       {visibleAccounts !== null && visibleAccounts.length === 0 ? (
-        <View className="mt-6 flex-1 px-5">
-          <View
-            style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
-          >
-            <EmptyState
-              icon="credit-card"
-              title="No accounts yet"
-              description={
-                isOwner
-                  ? "Add your first account to start tracking your money."
-                  : "Only the Owner can add accounts. Contact your household Owner to set up your first account."
-              }
-              actionLabel={isOwner ? "Add Account" : undefined}
-              onAction={
-                isOwner ? () => router.push("/account-form") : undefined
-              }
+        <FlatList
+          className="mt-6 flex-1"
+          contentContainerClassName="gap-3 px-5 pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
             />
-          </View>
-        </View>
+          }
+          data={[]}
+          keyExtractor={() => "empty"}
+          renderItem={() => null}
+          ListEmptyComponent={
+            <View
+              style={{ backgroundColor: C.background }}
+              className="rounded-[16px]"
+            >
+              <EmptyState
+                icon="credit-card"
+                title="No accounts yet"
+                description={
+                  isOwner
+                    ? "Add your first account to start tracking your money."
+                    : "Only the Owner can add accounts. Contact your household Owner to set up your first account."
+                }
+                actionLabel={isOwner ? "Add Account" : undefined}
+                onAction={
+                  isOwner ? () => router.push("/account-form") : undefined
+                }
+              />
+            </View>
+          }
+        />
       ) : (
         <FlatList
           className="mt-4 flex-1"

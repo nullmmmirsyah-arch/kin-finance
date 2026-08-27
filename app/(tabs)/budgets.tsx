@@ -127,6 +127,11 @@ export default function Budgets() {
             Budgets
           </Text>
         </View>
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          </View>
+        )}
         <View className="mt-4 items-center justify-center gap-4 px-5">
           <Skeleton style={{ width: 200, height: 40, borderRadius: 999 }} />
         </View>
