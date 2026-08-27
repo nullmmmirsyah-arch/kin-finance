@@ -5,6 +5,7 @@ import {
   Pressable,
   SectionList,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -95,9 +96,16 @@ export default function Transactions() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [accountIds, setAccountIds] = useState<Id<"accounts">[]>([]);
   const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchCommitted, setSearchCommitted] = useState("");
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchCommitted(searchDraft.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
 
   const invalidCustomRange =
     dateFilter === "custom" &&
@@ -155,8 +163,9 @@ export default function Transactions() {
       ...(typeFilter !== "all" ? { type: typeFilter } : {}),
       ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts } : {}),
       ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories } : {}),
+      ...(searchCommitted.length >= 2 ? { search: searchCommitted } : {}),
     };
-  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions]);
+  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions, searchCommitted]);
 
   const [activeCursor, setActiveCursor] = useState<
     { date: number; id: Id<"transactions"> } | undefined
@@ -287,6 +296,8 @@ export default function Transactions() {
     setTypeFilter("all");
     setAccountIds([]);
     setCategoryIds([]);
+    setSearchDraft("");
+    setSearchCommitted("");
   };
 
   if (result !== undefined && result.transactions === null) {
@@ -330,6 +341,32 @@ export default function Transactions() {
         <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
           Transactions
         </Text>
+      </View>
+
+      <View className="mt-4 px-5">
+        <View className="flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
+          <Feather name="search" size={16} color={C.textSecondary} />
+          <TextInput
+            value={searchDraft}
+            onChangeText={setSearchDraft}
+            placeholder="Search notes…"
+            placeholderTextColor={C.textSecondary}
+            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
+            accessibilityLabel="Search notes"
+          />
+          {searchDraft.length > 0 && (
+            <Pressable
+              onPress={() => {
+                setSearchDraft("");
+                setSearchCommitted("");
+              }}
+              accessibilityLabel="Clear search"
+              className="h-10 w-10 items-center justify-center"
+            >
+              <Feather name="x" size={16} color={C.textSecondary} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View className="mt-4 flex-row gap-2 px-5">
@@ -385,6 +422,17 @@ export default function Transactions() {
                 description="Set a From date that is on or before the To date."
                 actionLabel="Adjust date range"
                 onAction={() => setDateSheetOpen(true)}
+              />
+            ) : searchCommitted.length >= 2 ? (
+              <EmptyState
+                icon="search"
+                title={`No results for "${searchCommitted}"`}
+                description="Try a different keyword or clear search."
+                actionLabel="Clear search"
+                onAction={() => {
+                  setSearchDraft("");
+                  setSearchCommitted("");
+                }}
               />
             ) : filtersActive ? (
               <EmptyState
