@@ -22,6 +22,7 @@ import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { hapticSuccess } from "@/lib/haptics";
 
 export default function AccountForm() {
   const router = useRouter();
@@ -122,6 +123,7 @@ export default function AccountForm() {
         });
       }
       show(isEdit ? "Account updated" : "Account created");
+      void hapticSuccess();
       markIntentional();
       router.back();
     } catch (e) {

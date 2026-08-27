@@ -19,6 +19,7 @@ import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatAmountInput } from "@/utils/format";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -122,9 +123,11 @@ export default function BudgetForm() {
         });
       }
       show(isEdit ? "Budget updated" : "Budget created");
+      void hapticSuccess();
       markIntentional();
       router.back();
     } catch (e) {
+      void hapticError();
       const message = getConvexErrorMessage(
         e,
         isEdit ? "Failed to update budget." : "Failed to create budget.",

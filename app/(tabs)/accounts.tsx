@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  RefreshControl,
   Text,
   View,
 } from "react-native";
@@ -18,6 +19,7 @@ import { AccountCard } from "@/components/AccountCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 type Filter = "all" | AccountType;
@@ -33,7 +35,18 @@ export default function Accounts() {
   const removeAccount = useMutation(api.accounts.remove);
   const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
   const C = useThemeColors();
+
+  useEffect(() => {
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   const accounts = result?.accounts ?? null;
   const isOwner = result?.isOwner ?? false;
@@ -81,6 +94,11 @@ export default function Accounts() {
         <View className="px-5 pt-4">
           <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
         </View>
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          </View>
+        )}
         <View className="mt-4 flex-row flex-wrap gap-2 px-5">
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
@@ -111,6 +129,12 @@ export default function Accounts() {
         <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
       </View>
 
+      {stale && (
+        <View className="pt-2">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+        </View>
+      )}
+
       <View className="mt-4 flex-row flex-wrap gap-2 px-5">
         {FILTERS.map((f) => (
           <Chip
@@ -123,26 +147,57 @@ export default function Accounts() {
       </View>
 
       {visibleAccounts !== null && visibleAccounts.length === 0 ? (
-        <View className="mt-6 flex-1 px-5">
-          <View
-            style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
-          >
-            <EmptyState
-              icon="credit-card"
-              title="No accounts yet"
-              description="Add your first account to start tracking your money."
-              actionLabel={isOwner ? "Add Account" : undefined}
-              onAction={
-                isOwner ? () => router.push("/account-form") : undefined
-              }
+        <FlatList
+          className="mt-6 flex-1"
+          contentContainerClassName="gap-3 px-5 pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
             />
-          </View>
-        </View>
+          }
+          data={[]}
+          keyExtractor={() => "empty"}
+          renderItem={() => null}
+          ListEmptyComponent={
+            <View
+              style={{ backgroundColor: C.background }}
+              className="rounded-[16px]"
+            >
+              <EmptyState
+                icon="credit-card"
+                title="No accounts yet"
+                description={
+                  isOwner
+                    ? "Add your first account to start tracking your money."
+                    : "Only the Owner can add accounts. Contact your household Owner to set up your first account."
+                }
+                actionLabel={isOwner ? "Add Account" : undefined}
+                onAction={
+                  isOwner ? () => router.push("/account-form") : undefined
+                }
+              />
+            </View>
+          }
+        />
       ) : (
         <FlatList
           className="mt-4 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
           data={visibleAccounts ?? []}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) =>

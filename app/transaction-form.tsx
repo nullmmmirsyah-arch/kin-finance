@@ -31,6 +31,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatNumber } from "@/utils/format";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 export default function TransactionForm() {
   const router = useRouter();
@@ -180,11 +181,13 @@ export default function TransactionForm() {
   const handleAmountBlur = useCallback(() => {
     if (amountValue !== null && amountValue <= 0) {
       setAmountError("Enter an amount greater than zero.");
+      void hapticWarning();
       return;
     }
     const err = validateTransactionAmount(signedAmount, type);
     if (err) {
       setAmountError(err);
+      void hapticWarning();
     }
   }, [amountValue, signedAmount, type]);
 
@@ -260,46 +263,55 @@ export default function TransactionForm() {
     setAccountError(null);
     setCategoryError(null);
     setDateError(null);
+    const validationWarning = () => void hapticWarning();
     if (
       amountValue === null ||
       amountValue <= 0 ||
       !Number.isFinite(amountValue)
     ) {
       setAmountError("Enter an amount greater than zero.");
+      validationWarning();
       return;
     }
     const err = validateTransactionAmount(signedAmount, type);
     if (err) {
       setAmountError(err);
+      validationWarning();
       return;
     }
     if (type === "transfer") {
       if (accountId === null || toAccountId === null) {
         setAccountError("Select both accounts.");
+        validationWarning();
         return;
       }
       if (accountId === toAccountId) {
         setAccountError("From and To accounts must be different.");
+        validationWarning();
         return;
       }
     } else {
       if (accountId === null) {
         setAccountError("Select an account.");
+        validationWarning();
         return;
       }
       if (categoryId === null) {
         setCategoryError("Select a category.");
+        validationWarning();
         return;
       }
     }
     const dateErr = validateTransactionDate(date.getTime());
     if (dateErr) {
       setDateError(dateErr);
+      validationWarning();
       return;
     }
     const noteErr = validateNote(note.trim());
     if (noteErr) {
       setError(noteErr);
+      validationWarning();
       return;
     }
 
@@ -334,6 +346,7 @@ export default function TransactionForm() {
         };
       }
       show(isEdit ? "Transaction updated" : "Transaction added");
+      void hapticSuccess();
       markIntentional();
       router.back();
     } catch (e) {

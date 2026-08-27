@@ -3,8 +3,10 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  RefreshControl,
   SectionList,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +24,8 @@ import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { Button } from "@/components/Button";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import {
   formatDateHeaderTz,
@@ -87,6 +91,7 @@ function HeaderPill({
 export default function Transactions() {
   const router = useRouter();
   const C = useThemeColors();
+  const { show: showSnackbar } = useSnackbar();
   const [dateFilter, setDateFilter] = useState<DateFilter>("thisMonth");
   const [customFrom, setCustomFrom] = useState(() => startOfDay(new Date()));
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
@@ -95,9 +100,18 @@ export default function Transactions() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [accountIds, setAccountIds] = useState<Id<"accounts">[]>([]);
   const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchCommitted, setSearchCommitted] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchCommitted(searchDraft.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
 
   const invalidCustomRange =
     dateFilter === "custom" &&
@@ -155,8 +169,9 @@ export default function Transactions() {
       ...(typeFilter !== "all" ? { type: typeFilter } : {}),
       ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts } : {}),
       ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories } : {}),
+      ...(searchCommitted.length >= 2 ? { search: searchCommitted } : {}),
     };
-  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions]);
+  }, [range, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions, searchCommitted]);
 
   const [activeCursor, setActiveCursor] = useState<
     { date: number; id: Id<"transactions"> } | undefined
@@ -194,6 +209,15 @@ export default function Transactions() {
     setPagedTransactions(null);
     pagesMapRef.current.clear();
   }, [queryKey]);
+
+  useEffect(() => {
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   useEffect(() => {
     if (result === undefined) return;
@@ -287,6 +311,8 @@ export default function Transactions() {
     setTypeFilter("all");
     setAccountIds([]);
     setCategoryIds([]);
+    setSearchDraft("");
+    setSearchCommitted("");
   };
 
   if (result !== undefined && result.transactions === null) {
@@ -332,6 +358,32 @@ export default function Transactions() {
         </Text>
       </View>
 
+      <View className="mt-4 px-5">
+        <View className="flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
+          <Feather name="search" size={16} color={C.textSecondary} />
+          <TextInput
+            value={searchDraft}
+            onChangeText={setSearchDraft}
+            placeholder="Search notes…"
+            placeholderTextColor={C.textSecondary}
+            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
+            accessibilityLabel="Search notes"
+          />
+          {searchDraft.length > 0 && (
+            <Pressable
+              onPress={() => {
+                setSearchDraft("");
+                setSearchCommitted("");
+              }}
+              accessibilityLabel="Clear search"
+              className="h-10 w-10 items-center justify-center"
+            >
+              <Feather name="x" size={16} color={C.textSecondary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       <View className="mt-4 flex-row gap-2 px-5">
         <HeaderPill
           icon="calendar"
@@ -372,43 +424,87 @@ export default function Transactions() {
         </GradientCard>
       </View>
 
-      {sections !== null && sections.length === 0 ? (
-        <View className="mt-6 flex-1 px-5">
-          <View
-            style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
-          >
-            {invalidCustomRange ? (
-              <EmptyState
-                icon="calendar"
-                title="Invalid date range"
-                description="Set a From date that is on or before the To date."
-                actionLabel="Adjust date range"
-                onAction={() => setDateSheetOpen(true)}
-              />
-            ) : filtersActive ? (
-              <EmptyState
-                icon="filter"
-                title="No transactions match your filters"
-                description="Try adjusting or clearing your filters."
-                actionLabel="Clear filters"
-                onAction={clearFilters}
-              />
-            ) : (
-              <EmptyState
-                icon="book-open"
-                title="No transactions yet"
-                description="Start by recording your first transaction."
-                actionLabel="Add Transaction"
-                onAction={() => router.push("/transaction-form")}
-              />
-            )}
-          </View>
+      {stale && (
+        <View className="mt-3">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); showSnackbar("Retrying…"); }} />
         </View>
+      )}
+
+      {sections !== null && sections.length === 0 ? (
+        <SectionList
+          className="mt-6 flex-1"
+          contentContainerClassName="pb-28 px-5"
+          sections={[]}
+          keyExtractor={() => "empty"}
+          renderItem={() => null}
+          ListEmptyComponent={
+            <View
+              style={{ backgroundColor: C.background }}
+              className="rounded-[16px]"
+            >
+              {invalidCustomRange ? (
+                <EmptyState
+                  icon="calendar"
+                  title="Invalid date range"
+                  description="Set a From date that is on or before the To date."
+                  actionLabel="Adjust date range"
+                  onAction={() => setDateSheetOpen(true)}
+                />
+              ) : searchCommitted.length >= 2 ? (
+                <EmptyState
+                  icon="search"
+                  title={`No results for "${searchCommitted}"`}
+                  description="Try a different keyword or clear search."
+                  actionLabel="Clear search"
+                  onAction={() => {
+                    setSearchDraft("");
+                    setSearchCommitted("");
+                  }}
+                />
+              ) : filtersActive ? (
+                <EmptyState
+                  icon="filter"
+                  title="No transactions match your filters"
+                  description="Try adjusting or clearing your filters."
+                  actionLabel="Clear filters"
+                  onAction={clearFilters}
+                />
+              ) : (
+                <EmptyState
+                  icon="book-open"
+                  title="No transactions yet"
+                  description="Start by recording your first transaction."
+                  actionLabel="Add Transaction"
+                  onAction={() => router.push("/transaction-form")}
+                />
+              )}
+            </View>
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
+        />
       ) : (
         <SectionList
           className="mt-4 flex-1"
           contentContainerClassName="pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
           sections={sections ?? []}
           keyExtractor={(item) => item._id}
           stickySectionHeadersEnabled={false}

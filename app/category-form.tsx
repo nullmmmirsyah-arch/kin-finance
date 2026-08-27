@@ -21,6 +21,7 @@ import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { hapticSuccess } from "@/lib/haptics";
 
 export default function CategoryForm() {
   const router = useRouter();
@@ -106,6 +107,7 @@ export default function CategoryForm() {
         });
       }
       show(isEdit ? "Category updated" : "Category created");
+      void hapticSuccess();
       markIntentional();
       router.back();
     } catch (e) {

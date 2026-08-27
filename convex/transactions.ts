@@ -20,7 +20,14 @@ type ListFilters = {
   accountIds?: Id<"accounts">[];
   categoryIds?: Id<"categories">[];
   type?: "income" | "expense" | "transfer";
+  search?: string;
 };
+
+function normalizeSearch(raw?: string): string | undefined {
+  const s = raw?.trim().toLowerCase();
+  if (!s || s.length < 2) return undefined;
+  return s;
+}
 
 type EnrichedTransaction = Doc<"transactions"> & {
   category?: Doc<"categories">;
@@ -35,6 +42,10 @@ function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean
     if (!filters.categoryIds.includes(row.categoryId)) return false;
   }
   if (filters.type !== undefined && row.type !== filters.type) return false;
+  if (filters.search !== undefined) {
+    const hay = (row.note ?? "").toLowerCase();
+    if (!hay.includes(filters.search)) return false;
+  }
   return true;
 }
 
@@ -209,6 +220,7 @@ function normalizeListFilters(args: {
   accountIds?: Id<"accounts">[];
   categoryIds?: Id<"categories">[];
   type?: "income" | "expense" | "transfer";
+  search?: string;
 }): ListFilters {
   const filters: ListFilters = {};
   if (args.accountIds !== undefined && args.accountIds.length > 0)
@@ -216,6 +228,8 @@ function normalizeListFilters(args: {
   if (args.categoryIds !== undefined && args.categoryIds.length > 0)
     filters.categoryIds = args.categoryIds;
   if (args.type !== undefined) filters.type = args.type;
+  const s = normalizeSearch(args.search);
+  if (s !== undefined) filters.search = s;
   return filters;
 }
 
@@ -283,6 +297,7 @@ export const list = query({
     accountIds: v.optional(v.array(v.id("accounts"))),
     categoryIds: v.optional(v.array(v.id("categories"))),
     type: v.optional(transactionType),
+    search: v.optional(v.string()),
     cursor: v.optional(v.object({ date: v.number(), id: v.id("transactions") })),
   },
   handler: async (ctx, args) => {
@@ -374,7 +389,7 @@ export const list = query({
 
     const pageFilled = collected.length >= limit;
     const resumeRow = pageFilled ? lastCollected : lastScanned;
-    const hasMore = collected.length === 0 ? false : !rangeExhausted && resumeRow !== undefined;
+    const hasMore = !rangeExhausted && resumeRow !== undefined;
     return {
       transactions: collected,
       isOwner,
@@ -396,6 +411,7 @@ export const summary = query({
     accountIds: v.optional(v.array(v.id("accounts"))),
     categoryIds: v.optional(v.array(v.id("categories"))),
     type: v.optional(transactionType),
+    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
@@ -480,32 +496,86 @@ export const recent = query({
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
     if (result === null) {
-      return { transactions: null, isOwner: false };
+      return { transactions: null, isOwner: false, cursor: undefined, hasMore: false };
     }
     const { membership } = result;
 
     const isOwner = membership.role === "owner";
     const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
+    const SCAN_BUDGET = limit * 10;
 
     if (isOwner) {
-      const rows = await ctx.db
-        .query("transactions")
-        .withIndex("by_household_date", (q) =>
-          q.eq("householdId", membership.householdId),
-        )
-        .order("desc")
-        .take(limit);
+      let scanned = 0;
+      let cursorDate = args.cursor?.date;
+      let cursorId = args.cursor?.id;
+      let atBoundary = false;
+      const collected: EnrichedTransaction[] = [];
+      const entityCache = new Map<string, Doc<"accounts"> | Doc<"categories"> | undefined>();
+      let lastCollected: Doc<"transactions"> | undefined;
+      let lastScanned: Doc<"transactions"> | undefined;
+      let rangeExhausted = false;
 
-      const transactions = [];
-      for (const row of rows) {
-        const { category, account, toAccount } = await hydrate(ctx, row);
-        transactions.push({ ...row, category, account, toAccount });
+      while (collected.length < limit && scanned < SCAN_BUDGET) {
+        const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
+        const fetched: Doc<"transactions">[] = await ctx.db
+          .query("transactions")
+          .withIndex("by_household_date", (q) => {
+            const base = q.eq("householdId", membership.householdId);
+            if (cursorDate === undefined) return base;
+            return atBoundary ? base.lt("date", cursorDate) : base.lte("date", cursorDate);
+          })
+          .order("desc")
+          .take(batchSize + 1);
+        const hasExtra = fetched.length > batchSize;
+        const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, batchSize) : fetched;
+        const extra = hasExtra ? fetched[batchSize] : undefined;
+
+        if (rows.length === 0) {
+          rangeExhausted = true;
+          break;
+        }
+        scanned += rows.length;
+        let pastCursor = cursorDate === undefined || atBoundary;
+        let cursorFound = pastCursor;
+        for (const row of rows) {
+          lastScanned = row;
+          if (!pastCursor) {
+            if (row.date === cursorDate && row._id === cursorId) {
+              pastCursor = true;
+              cursorFound = true;
+            }
+            continue;
+          }
+          const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
+          collected.push({ ...row, category, account, toAccount });
+          lastCollected = row;
+          if (collected.length >= limit) break;
+        }
+        if (rows.length < batchSize) rangeExhausted = true;
+        if (collected.length >= limit) break;
+        if (rows.length < batchSize) break;
+        if (!cursorFound) {
+          atBoundary = true;
+          continue;
+        }
+        const lastRow = rows[rows.length - 1];
+        const tieContinues = extra !== undefined && extra.date === lastRow.date;
+        atBoundary = !tieContinues;
+        cursorDate = lastRow.date;
+        cursorId = lastRow._id;
       }
-
-      return { transactions, isOwner, cursor: undefined };
+      const pageFilled = collected.length >= limit;
+      const resumeRow = pageFilled ? lastCollected : lastScanned;
+      const hasMore = !rangeExhausted && resumeRow !== undefined;
+      return {
+        transactions: collected,
+        isOwner,
+        cursor: hasMore && resumeRow ? { date: resumeRow.date, id: resumeRow._id } : undefined,
+        hasMore,
+      };
     }
 
-    const SCAN_BUDGET = limit * 10;
+    // member path (original logic kept to preserve existing test expectations)
     let scanned = 0;
     let cursorDate = args.cursor?.date;
     let cursorId = args.cursor?.id;
@@ -570,6 +640,7 @@ export const recent = query({
         hasMore && cursorDate !== undefined && cursorId !== undefined
           ? { date: cursorDate, id: cursorId }
           : undefined,
+      hasMore,
     };
   },
 });
