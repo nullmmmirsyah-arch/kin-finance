@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   Text,
   View,
 } from "react-native";
@@ -18,6 +19,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { formatNumber } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
@@ -33,6 +35,8 @@ export default function Budgets() {
   const timezone = resolveTimezone(household?.timezone);
 
   const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
 
   const monthStart =
     selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
@@ -40,6 +44,15 @@ export default function Budgets() {
   const periodEnd = getMonthBounds(monthStart, timezone).end;
 
   const result = useQuery(api.budgets.list, { periodStart, periodEnd });
+
+  useEffect(() => {
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   const budgets = result?.budgets ?? null;
 
@@ -143,6 +156,12 @@ export default function Budgets() {
           Budgets
         </Text>
       </View>
+
+      {stale && (
+        <View className="pt-2">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+        </View>
+      )}
 
       <View className="mt-4 flex-row items-center justify-center gap-4 px-5">
         <Pressable
@@ -248,6 +267,16 @@ export default function Budgets() {
         <FlatList
           className="mt-4 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
           data={budgets}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (

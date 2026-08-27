@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  RefreshControl,
   SectionList,
   Text,
   TextInput,
@@ -23,6 +24,8 @@ import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { Button } from "@/components/Button";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import {
   formatDateHeaderTz,
@@ -88,6 +91,7 @@ function HeaderPill({
 export default function Transactions() {
   const router = useRouter();
   const C = useThemeColors();
+  const { show: showSnackbar } = useSnackbar();
   const [dateFilter, setDateFilter] = useState<DateFilter>("thisMonth");
   const [customFrom, setCustomFrom] = useState(() => startOfDay(new Date()));
   const [customTo, setCustomTo] = useState(() => startOfDay(new Date()));
@@ -98,6 +102,8 @@ export default function Transactions() {
   const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
   const [searchDraft, setSearchDraft] = useState("");
   const [searchCommitted, setSearchCommitted] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
@@ -203,6 +209,15 @@ export default function Transactions() {
     setPagedTransactions(null);
     pagesMapRef.current.clear();
   }, [queryKey]);
+
+  useEffect(() => {
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result]);
 
   useEffect(() => {
     if (result === undefined) return;
@@ -409,6 +424,12 @@ export default function Transactions() {
         </GradientCard>
       </View>
 
+      {stale && (
+        <View className="mt-3">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); showSnackbar("Retrying…"); }} />
+        </View>
+      )}
+
       {sections !== null && sections.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
           <View
@@ -457,6 +478,16 @@ export default function Transactions() {
         <SectionList
           className="mt-4 flex-1"
           contentContainerClassName="pb-28"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
           sections={sections ?? []}
           keyExtractor={(item) => item._id}
           stickySectionHeadersEnabled={false}

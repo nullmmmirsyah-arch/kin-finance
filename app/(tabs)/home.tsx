@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -22,6 +23,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
@@ -190,7 +193,20 @@ export default function Home() {
 
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
+  const { show } = useSnackbar();
   const C = useThemeColors();
+
+  useEffect(() => {
+    const isLoading = household === undefined || accountData === undefined || recent === undefined || monthSummary === undefined;
+    if (!isLoading) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [household, accountData, recent, monthSummary]);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -250,7 +266,24 @@ export default function Home() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <ScrollView contentContainerClassName="px-5 pb-10 pt-4">
+      {stale && (
+        <View className="pt-2">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+        </View>
+      )}
+      <ScrollView
+        contentContainerClassName="px-5 pb-10 pt-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              setTimeout(() => setRefreshing(false), 600);
+            }}
+            tintColor={C.primary}
+          />
+        }
+      >
         <View className="mb-5 flex-row items-center justify-between">
           <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
             Hello, {firstName}!
