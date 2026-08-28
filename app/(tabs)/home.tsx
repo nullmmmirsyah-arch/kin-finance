@@ -29,6 +29,8 @@ import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { hapticSuccess } from "@/lib/haptics";
 
 const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
   cash: "accountCash",
@@ -195,10 +197,16 @@ export default function Home() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
+  const isConnected = useConnectivity();
+  const [refreshKey, setRefreshKey] = useState(0);
   const { show } = useSnackbar();
   const C = useThemeColors();
 
   useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
     const isLoading = household === undefined || accountData === undefined || recent === undefined || monthSummary === undefined;
     if (!isLoading) {
       setStale(false);
@@ -206,7 +214,7 @@ export default function Home() {
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [household, accountData, recent, monthSummary]);
+  }, [household, accountData, recent, monthSummary, isConnected, refreshKey]);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -268,7 +276,7 @@ export default function Home() {
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       {stale && (
         <View className="pt-2">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
         </View>
       )}
       <ScrollView
@@ -278,6 +286,8 @@ export default function Home() {
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
+              setRefreshKey(k=>k+1);
+              void hapticSuccess();
               setTimeout(() => setRefreshing(false), 600);
             }}
             tintColor={C.primary}

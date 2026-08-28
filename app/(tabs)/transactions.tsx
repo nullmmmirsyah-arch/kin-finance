@@ -27,6 +27,8 @@ import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { hapticSuccess } from "@/lib/haptics";
 import {
   formatDateHeaderTz,
   formatDateShortTz,
@@ -104,6 +106,8 @@ export default function Transactions() {
   const [searchCommitted, setSearchCommitted] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
+  const isConnected = useConnectivity();
+  const [refreshKey, setRefreshKey] = useState(0);
   const household = useQuery(api.households.getActive);
 
   const timezone = resolveTimezone(household?.timezone);
@@ -199,7 +203,7 @@ export default function Transactions() {
   isLoadingMoreRef.current = isLoadingMore;
   const pagesMapRef = useRef<Map<string, Tx[]>>(new Map());
 
-  const queryKey = useMemo(() => JSON.stringify(queryArgs), [queryArgs]);
+  const queryKey = useMemo(() => JSON.stringify({...queryArgs, refreshKey}), [queryArgs, refreshKey]);
 
   useEffect(() => {
     setActiveCursor(undefined);
@@ -211,13 +215,17 @@ export default function Transactions() {
   }, [queryKey]);
 
   useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
     if (result !== undefined) {
       setStale(false);
       return;
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [result]);
+  }, [result, isConnected, refreshKey]);
 
   useEffect(() => {
     if (result === undefined) return;
@@ -426,7 +434,7 @@ export default function Transactions() {
 
       {stale && (
         <View className="mt-3">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); showSnackbar("Retrying…"); }} />
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); showSnackbar("Retrying…"); void hapticSuccess(); }} />
         </View>
       )}
 
@@ -485,6 +493,8 @@ export default function Transactions() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
               tintColor={C.primary}
@@ -500,6 +510,8 @@ export default function Transactions() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
               tintColor={C.primary}

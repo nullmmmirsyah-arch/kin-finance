@@ -21,6 +21,8 @@ import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { hapticSuccess } from "@/lib/haptics";
 
 type Filter = "all" | AccountType;
 
@@ -37,16 +39,22 @@ export default function Accounts() {
   const [filter, setFilter] = useState<Filter>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
+  const isConnected = useConnectivity();
+  const [refreshKey, setRefreshKey] = useState(0);
   const C = useThemeColors();
 
   useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
     if (result !== undefined) {
       setStale(false);
       return;
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [result]);
+  }, [result, isConnected, refreshKey]);
 
   const accounts = result?.accounts ?? null;
   const isOwner = result?.isOwner ?? false;
@@ -96,7 +104,7 @@ export default function Accounts() {
         </View>
         {stale && (
           <View className="pt-2">
-            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
           </View>
         )}
         <View className="mt-4 flex-row flex-wrap gap-2 px-5">
@@ -131,7 +139,7 @@ export default function Accounts() {
 
       {stale && (
         <View className="pt-2">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
         </View>
       )}
 
@@ -155,6 +163,8 @@ export default function Accounts() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
               tintColor={C.primary}
@@ -193,6 +203,8 @@ export default function Accounts() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
               tintColor={C.primary}
