@@ -108,7 +108,18 @@ export default function Transactions() {
   const [stale, setStale] = useState(false);
   const isConnected = useConnectivity();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const household = useQuery(api.households.getActive);
+
+  const handleRetry = useCallback(() => {
+    if (isRetrying) return;
+    setIsRetrying(true);
+    setStale(false);
+    setRefreshKey((k) => k + 1);
+    showSnackbar("Retrying…");
+    void hapticSuccess();
+    setTimeout(() => setIsRetrying(false), 600);
+  }, [isRetrying, showSnackbar]);
 
   const timezone = resolveTimezone(household?.timezone);
 
@@ -341,9 +352,9 @@ export default function Transactions() {
             Transactions
           </Text>
         </View>
-        {stale && (
+        {(stale || isRetrying) && (
           <View className="pt-2">
-            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey((k) => k + 1); showSnackbar("Retrying…"); void hapticSuccess(); }} />
+            <ConnectivityBanner visible={stale || isRetrying} onRetry={handleRetry} isRetrying={isRetrying} />
           </View>
         )}
         <View className="mt-4 flex-row gap-2 px-5">
@@ -437,9 +448,9 @@ export default function Transactions() {
         </GradientCard>
       </View>
 
-      {stale && (
+      {(stale || isRetrying) && (
         <View className="mt-3">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); showSnackbar("Retrying…"); void hapticSuccess(); }} />
+          <ConnectivityBanner visible={stale || isRetrying} onRetry={handleRetry} isRetrying={isRetrying} />
         </View>
       )}
 

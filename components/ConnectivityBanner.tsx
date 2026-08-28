@@ -1,13 +1,15 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 export function ConnectivityBanner({
   visible,
   onRetry,
+  isRetrying,
 }: {
   visible: boolean;
   onRetry?: () => void;
+  isRetrying?: boolean;
 }) {
   const C = useThemeColors();
   if (!visible) return null;
@@ -31,8 +33,12 @@ export function ConnectivityBanner({
         </Text>
       </View>
       {onRetry && (
-        <Pressable onPress={onRetry} className="ml-3 min-h-12 justify-center">
-          <Text className="text-sm font-medium text-primary dark:text-primary-dark">Retry</Text>
+        <Pressable onPress={onRetry} disabled={!!isRetrying} className="ml-3 min-h-12 items-center justify-center">
+          {isRetrying ? (
+            <ActivityIndicator size="small" color={C.primary} />
+          ) : (
+            <Text className="text-sm font-medium text-primary dark:text-primary-dark">Retry</Text>
+          )}
         </Pressable>
       )}
     </View>
