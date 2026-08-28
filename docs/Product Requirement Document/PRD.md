@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-27
+> Last updated: 2026-08-28
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -90,7 +90,7 @@ visible) without exposing transaction detail.
 
 | Feature | Requirements |
 |---------|--------------|
-| Authentication | Sign in, sign up (with confirm password), email verification, MFA email code, Google SSO, forgot-password reset (Clerk). Last-used method remembered per device (SecureStore) and leads the login CTA order. Auth gate in `app/_layout.tsx`. |
+| Authentication | Sign in, sign up (with confirm password), email verification, MFA email code, Google SSO, forgot-password reset (Clerk). Last-used method remembered per device (SecureStore) and leads the login CTA order. Auth gate in `app/_layout.tsx`. Password fields have visibility toggle (eye/eye-off, 48px); verification/MFA/reset codes use `oneTimeCode`/`sms-otp` autofill. |
 | Household | Create (first user becomes Owner), get active household, rename (Owner only), list members, remove member (Owner only; owner cannot be removed). |
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
@@ -184,6 +184,9 @@ profile on first load.
   preference is updated on every successful auth and never cleared.
 - **Transient success beat** — after email verification or password reset, a
   short confirmation screen shows before routing into the app.
+- **Password visibility:** eye icon toggles secureTextEntry; accessible label.
+- **OTP autofill:** code inputs use textContentType='oneTimeCode' + autoComplete='sms-otp' + keyboardType='numeric' + maxLength 6 + autoFocus.
+- **Modular structure:** app/index.tsx orchestrator (~150 lines) + hooks/useAuthFlow, hooks/useResetFlow, components/Auth/* (EmailField, PasswordField, CodeField, GoogleButton, ResetFlow).
 
 ### 3.2 Household
 
@@ -295,7 +298,7 @@ Clear filters action).
 
 **Recent unified engine (as of 2026-08-27):** `transactions.recent` uses a unified bounded scan (SCAN_BUDGET = limit × 10, `by_household_date` desc) for both roles with tie-aware cursor (extra-row detection) and truthful `hasMore`; Home caps at 5.
 
-**Pull-to-refresh & stale banner (as of 2026-08-27):** Home (ScrollView), Transactions (SectionList), Accounts (FlatList), Budgets (FlatList) all expose `RefreshControl` (600ms spinner, tint `primary`). A thin amber `ConnectivityBanner` (“You’re offline — showing cached data” + Retry) appears when any primary query stays `undefined` >3s; Retry shows Snackbar “Retrying…”. Full-screen null remains for non-member.
+**PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry bump a refreshKey to re-subscribe Convex queries (real re-query, 600ms spinner, haptic). Requires native rebuild for NetInfo.
 
 ### 3.7 Budgets
 
@@ -332,7 +335,7 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   Transactions tab. Transaction icons map category names to relevant Feather
   icons (shopping-cart, coffee, car, home, briefcase, etc.) with semantic colors
   (green for income, red for expense).
-- Pull-to-refresh via `RefreshControl` on the ScrollView (600ms); stale-data `ConnectivityBanner` appears after 3s if primary queries stay undefined.
+- **PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry bump a refreshKey to re-subscribe Convex queries (real re-query, 600ms spinner, haptic). Requires native rebuild for NetInfo.
 - Empty states include action CTAs (e.g., "Add Transaction" on empty transaction
   list, "Add Account" for Owners vs. Owner-hint for Members on empty accounts).
 - FAB uses reanimated spring animation (scale on press) for tactile feedback.
@@ -522,6 +525,10 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
+| `hooks/useConnectivity.ts` | NetInfo wrapper: subscribes to `@react-native-community/netinfo`, exposes `isConnected` (boolean \| null) for instant offline detection |
+| `components/Auth/*` | Auth dumb components: `EmailField`, `PasswordField`, `CodeField`, `GoogleButton`, `ResetFlow` |
+| `hooks/useAuthFlow.ts` / `hooks/useResetFlow.ts` | Clerk logic: sign-in/up, verification/MFA, Google SSO, password reset; orchestrated by `app/index.tsx` |
+| `components/Input.tsx` | `secureToggle` prop: eye/eye-off 48px button toggles `secureTextEntry` with accessible label; OTP fields use `oneTimeCode`/`sms-otp` |
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/haptics.ts` | Safe haptics wrapper (`hapticSuccess`/`hapticWarning`/`hapticError` via `expo-haptics`) |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
@@ -562,7 +569,8 @@ effects) — so create/update/delete balance math cannot drift apart.
   `Snackbar`; destructive actions (delete, remove member, revoke invite,
   sign out) require an `Alert.alert` confirmation first. Delete transaction
   shows a Snackbar with an **Undo** action that re-creates the transaction.
-- **Stale/ offline:** primary query stays `undefined` >3s → amber `ConnectivityBanner` (“You’re offline — showing cached data” + Retry → Snackbar “Retrying…” and re-query via Convex reactive subscription). Pull-to-refresh (`RefreshControl`, 600ms, `primary` tint) on Home/Transactions/Accounts/Budgets — triggers visual refresh and relies on Convex subscription for fresh data. Full-screen remains for non-member `null`.
+- **Stale/ offline:** NetInfo `isConnected===false` → instant `ConnectivityBanner` (“You’re offline — showing cached data” + Retry); fallback `undefined` >3s otherwise. Retry and pull-to-refresh (`RefreshControl`, 600ms, `primary` tint) on Home/Transactions/Accounts/Budgets bump a `refreshKey` to re-subscribe Convex queries (real re-query + haptic). Full-screen remains for non-member `null`.
+- **Offline:** NetInfo isConnected===false → instant ConnectivityBanner; fallback 3s for Convex undefined.
 - **Haptics:** `hapticSuccess` on create/update, `hapticWarning` on validation, `hapticError` on mutation failure (all via `lib/haptics.ts`, safely no-ops in Expo Go/web).
 - Client and server share one validation module, `constants/validation.ts`
   (path alias `@/constants/validation`), eliminating drift (e.g. `isInteger`
@@ -616,7 +624,7 @@ automatically. Skipped entirely when `__DEV__` or `!Updates.isEnabled`
 
 **Release rule:** changes to native config (anything in `app.json` plugins,
 `updates`, dependencies with native code) require a new build + APK
-redistribution; JS-only changes can ship via `eas update --channel production`.
+redistribution; JS-only changes can ship via `eas update --channel production`. NetInfo is native — changes require new EAS Build APK, not just `eas update`.
 
 ---
 
@@ -842,6 +850,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-28 | Polish | P0 Batch 3: PTR/Banner real (NetInfo + refreshKey re-query, instant offline, haptic) + Auth modular (5 Auth components + 2 hooks, Input eye toggle 48px, OTP autofill oneTimeCode/sms-otp). Updates §2.1, §3.1, §3.6, §3.8, §5.2, §5.4, §5.7 |
 | 2026-08-27 | Polish | P0 Batch 2: Pull-to-refresh + stale `ConnectivityBanner` on Home/Transactions/Accounts/Budgets (RefreshControl 600ms, banner after 3s `undefined`); note search (≥2 chars, 300ms debounce) on `transactions.list`/`summary` (post-index substring on `note`, bounded by SCAN_BUDGET, hydration-free for summary, hidden-aware, “No results for …” empty); `transactions.recent` unified bounded scan (owner/member, tie-aware cursor, truthful `hasMore`, cap 5 unchanged); safe `lib/haptics.ts` wrapper (`hapticSuccess`/`hapticWarning`/`hapticError`) wired to 5 forms (transaction/account/category/budget/members); role-aware Accounts empty for Members (“Only the Owner can add accounts…”). Updates §2.1, §3.6, §3.8, §5.2, §5.4, §8 |
 | 2026-08-26 | Feature | Transactions paging + server-side summary: `transactions.list` unified owner/member scan engine gains `cursor {date,id}` continuation and truthful `hasMore` (SCAN_BUDGET now also covers filtered owner scans, fixing potential under-fill); new `transactions.summary` computes uncapped range income/expense/net (transfers excluded, member hidden-category aware, hydration-free). Home's "net this month" and the Transactions summary card switched to `summary`; the Transactions list loads 30-row pages on scroll and shows day-net totals only for completed days (older group loaded or `hasMore=false`). Updates §2.1, §3.6, §3.8, §6 |
 | 2026-08-26 | Fix | Discard-guard reliability on native-stack: `hooks/useDiscardGuard.ts` replaced its manual `beforeRemove` listener with React Navigation's `usePreventRemove(isDirty, callback)` — raw `beforeRemove` prevention "may not work correctly with `@react-navigation/native-stack`" (per React Navigation docs) because native-side interception needs the prevent-remove registration pushed down to react-native-screens, so hardware back could pop a dirty form before the JS guard ran; `usePreventRemove` wires that registration. Behavior: dirty + system back → Alert → Discard re-dispatches the prevented action (loop-free via the library's internal visited-route set); app-initiated backs (header button, post-save/delete via `markIntentional`) keep bypassing the Alert through the intentional-navigation flag. Hook API (`handleBack`/`markIntentional`) unchanged — no form changes. Updates §4.4, §5.2 |
