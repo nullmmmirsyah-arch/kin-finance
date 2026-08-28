@@ -24,6 +24,8 @@ import { formatNumber } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { hapticSuccess } from "@/lib/haptics";
 
 export default function Budgets() {
   const router = useRouter();
@@ -37,6 +39,8 @@ export default function Budgets() {
   const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
+  const isConnected = useConnectivity();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const monthStart =
     selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
@@ -46,13 +50,17 @@ export default function Budgets() {
   const result = useQuery(api.budgets.list, { periodStart, periodEnd });
 
   useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
     if (result !== undefined) {
       setStale(false);
       return;
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [result]);
+  }, [result, isConnected, refreshKey]);
 
   const budgets = result?.budgets ?? null;
 
@@ -129,7 +137,7 @@ export default function Budgets() {
         </View>
         {stale && (
           <View className="pt-2">
-            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
           </View>
         )}
         <View className="mt-4 items-center justify-center gap-4 px-5">
@@ -164,7 +172,7 @@ export default function Budgets() {
 
       {stale && (
         <View className="pt-2">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); show("Retrying…"); }} />
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
         </View>
       )}
 
@@ -277,6 +285,8 @@ export default function Budgets() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
               tintColor={C.primary}
