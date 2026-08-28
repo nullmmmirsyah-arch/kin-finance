@@ -30,7 +30,6 @@ export function CodeField({
       maxLength={6}
       returnKeyType="done"
       textContentType="oneTimeCode"
-      autoComplete="sms-otp"
       onSubmitEditing={onSubmitEditing}
       error={error}
       {...rest}

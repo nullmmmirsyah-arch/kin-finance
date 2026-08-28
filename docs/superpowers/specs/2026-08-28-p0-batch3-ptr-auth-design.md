@@ -25,7 +25,7 @@
 
 ### 2.1 PTR/Banner Real
 
-```
+```text
 NetInfo (native) ──► useConnectivity() hook ──► isConnected boolean
                                           │
         ┌─────────────────────────────────┴──────────────────────────────┐
@@ -37,14 +37,14 @@ NetInfo (native) ──► useConnectivity() hook ──► isConnected boolean
 ```
 
 - Dependency baru: `@react-native-community/netinfo` (Expo SDK 54 compatible, `npx expo install`).
-- Hook baru `hooks/useConnectivity.ts`: `useEffect(()=> NetInfo.addEventListener(s=> setConnected(s.isConnected ?? true)), [])`, return `isConnected: boolean | null` (null = unknown awal).
+- Hook baru `hooks/useConnectivity.ts`: `useEffect(()=> NetInfo.addEventListener(s=> setConnected(s.isConnected)), [])`, return `isConnected: boolean | null` (null = unknown awal, preserves null contract).
 - Banner logic: `stale = isConnected===false || (result===undefined && timer3s)`. Saat offline, banner muncul instan tanpa tunggu 3s. Saat online tapi Convex lambat, tetap 3s timer sebagai fallback.
-- PTR: `const [refreshKey, setRefreshKey]=useState(0)` di tiap tab, `queryArgs` key include `refreshKey` (atau pakai dummy `refreshKey` untuk force resubscribe via Convex reactive query — Convex tidak punya manual invalidate, tapi bump key + `useQuery` akan re-subscribe). `onRefresh={()=>{ setRefreshing(true); setRefreshKey(k=>k+1); void hapticSuccess(); setTimeout(()=>setRefreshing(false),600)}}`. `onRetry` sama (`setStale(false); setRefreshKey(k=>k+1); show("Retrying…")`).
-- Tetap 600ms spinner agar tactile, tapi sekarang spinner disertai re-query nyata.
+- PTR: `const [refreshKey, setRefreshKey]=useState(0)` di tiap tab, `refreshKey` trigger visual spinner + clear stale + haptic; data fresh mengandalkan Convex reactive subscription (no manual invalidation). `onRefresh={()=>{ setRefreshing(true); setRefreshKey(k=>k+1); void hapticSuccess(); setTimeout(()=>setRefreshing(false),600)}}`. `onRetry` sama (`setStale(false); setRefreshKey(k=>k+1); show("Retrying…")`).
+- Tetap 600ms spinner agar tactile, mengandalkan subscription reaktif.
 
 ### 2.2 Auth Modular
 
-```
+```text
 app/index.tsx (orchestrator ~120 baris)
   ├─ hooks/useAuthFlow.ts      (signIn password, signUp, verify, mfa, google SSO state)
   ├─ hooks/useResetFlow.ts     (reset email/code/password steps)
@@ -57,7 +57,7 @@ app/index.tsx (orchestrator ~120 baris)
 
 - `app/index.tsx` simpan hanya: `mode`, `preferred`, `successScreen`, `isGoogleLoading`, wrapper `KeyboardAwareScrollView` + `WarmUpBrowser` + routing. Semua handler dipindah ke hooks.
 - `components/Input.tsx` enhancement: tambah prop `secureToggle?: boolean` dan `rightIcon?: ReactNode`. Jika `secureToggle` true, render `Pressable` eye/eye-off 48x48 di kanan absolute, toggle `secureTextEntry` state internal. Jaga `style` array tetap static.
-- `CodeField` selalu pakai `textContentType="oneTimeCode"` + `autoComplete="sms-otp"` (Android) + `keyboardType="numeric"` + `maxLength={6}` + `autoFocus` untuk autofill OTP.
+- `CodeField` selalu pakai `textContentType="oneTimeCode"` + `keyboardType="numeric"` + `maxLength={6}` + `autoFocus` untuk autofill OTP (email-delivered, no sms-otp).
 
 ## 3. Components & File Structure
 
@@ -85,7 +85,7 @@ app/index.tsx (orchestrator ~120 baris)
 
 ### PTR Flow
 1. `NetInfo` event → `isConnected=false` → `stale=true` instan → banner muncul.
-2. User pull → `RefreshControl` trigger → `setRefreshKey+1` → `useQuery(api.*, {...queryArgs, _refreshKey})` re-subscribe (Convex reactive) → data fresh → `refreshing=false` setelah 600ms.
+2. User pull → `RefreshControl` trigger → `setRefreshKey+1` → visual spinner + stale clear + haptic; Convex reactive subscription delivers fresh data → `refreshing=false` setelah 600ms.
 3. User tap Retry pada banner → `setStale(false); setRefreshKey+1; show("Retrying…"); void hapticSuccess()`.
 
 ### Auth Flow
@@ -99,7 +99,7 @@ app/index.tsx (orchestrator ~120 baris)
 - **NetInfo unavailable (web/Expo Go):** `try { NetInfo } catch { return null }`, fallback ke heuristik `undefined >3s` lama.
 - **Convex handler:** tetap `ConvexError`, client pakai `getConvexErrorMessage`.
 - **Input eye toggle:** tombol 48px, `accessibilityLabel="Toggle password visibility"`, tidak break NativeWind (pakai `useState` + static style).
-- **OTP:** `textContentType="oneTimeCode"` hanya iOS, Android pakai `autoComplete="sms-otp"` — dua-duanya di-set.
+- **OTP:** `textContentType="oneTimeCode"` untuk autofill kode email (tanpa `autoComplete="sms-otp"` yang spesifik SMS).
 - **PTR:** jika offline, PTR tetap bisa di-pull tapi akan tetap show banner setelah retry (tidak hide spinner paksa).
 - **Auth:** toggling `mode` sign-in/up tetap clear password fields (behavior lama dipertahankan).
 

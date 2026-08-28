@@ -199,8 +199,19 @@ export default function Home() {
   const [stale, setStale] = useState(false);
   const isConnected = useConnectivity();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const { show } = useSnackbar();
   const C = useThemeColors();
+
+  const handleRetry = useCallback(() => {
+    if (isRetrying) return;
+    setIsRetrying(true);
+    setStale(false);
+    setRefreshKey((k) => k + 1);
+    show("Retrying…");
+    void hapticSuccess();
+    setTimeout(() => setIsRetrying(false), 600);
+  }, [isRetrying, show]);
 
   useEffect(() => {
     if (isConnected === false) {
@@ -247,8 +258,15 @@ export default function Home() {
 
   if (!synced || household === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        {(stale || isRetrying) && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale || isRetrying} onRetry={handleRetry} isRetrying={isRetrying} />
+          </View>
+        )}
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={C.primary} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -274,9 +292,9 @@ export default function Home() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      {stale && (
+      {(stale || isRetrying) && (
         <View className="pt-2">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
+          <ConnectivityBanner visible={stale || isRetrying} onRetry={handleRetry} isRetrying={isRetrying} />
         </View>
       )}
       <ScrollView

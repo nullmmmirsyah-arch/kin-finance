@@ -90,6 +90,8 @@ export function Input({
         {secureToggle ? (
           <Pressable
             onPress={() => setShowPassword((v) => !v)}
+            accessibilityRole="togglebutton"
+            accessibilityState={{ checked: showPassword }}
             accessibilityLabel={showPassword ? "Hide password" : "Show password"}
             style={{ width: 48, height: 48 }}
             className="absolute right-0 items-center justify-center"
