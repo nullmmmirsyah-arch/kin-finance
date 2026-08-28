@@ -172,7 +172,7 @@ export default function Index() {
         bottomOffset={16}
       >
         <View className="items-center gap-6">
-          <Image source={require("../assets/images/splash-icon.png")} style={{ width: 270, height: 270 }} resizeMode="contain" />
+          <Image source={require("../assets/images/splash-icon.png")} style={{ width: 200, height: 200 }} resizeMode="contain" />
           {successScreen ? (
             <View className="w-full gap-4">
               <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
