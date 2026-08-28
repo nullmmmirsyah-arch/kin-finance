@@ -71,7 +71,8 @@
     "react-dom": "19.1.0",
     "@clerk/clerk-js": {
       "react": "19.1.0"
-    }
+    },
+    "utf-8-validate": "5.0.10"
   },
   "private": true
 }
