@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-28
+> Last updated: 2026-08-29
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -187,6 +187,7 @@ profile on first load.
 - **Password visibility:** eye icon toggles secureTextEntry; accessible label.
 - **OTP autofill:** code inputs use textContentType='oneTimeCode' + autoComplete='sms-otp' + keyboardType='numeric' + maxLength 6 + autoFocus.
 - **Modular structure:** app/index.tsx orchestrator (~150 lines) + hooks/useAuthFlow, hooks/useResetFlow, components/Auth/* (EmailField, PasswordField, CodeField, GoogleButton, ResetFlow).
+- **Launch continuity (as of 2026-08-29):** login branding uses `splash-icon.png` at 200×200 (`resizeMode="contain"`), same size and center position as the native splash (`expo-splash-screen` `imageWidth: 200`) and the same background (`#FFFBF5` light / `#1C1917` dark) as `components/BrandedLoadingShell`, so the native splash fades seamlessly into the login screen without a size jump or color flash.
 
 ### 3.2 Household
 
@@ -362,17 +363,20 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
 ### 4.1 First Login (Onboarding)
 
 ```text
-App Open → Clerk Auth Gate → signed in → check households.getActive
+App Open → Native splash (splash-icon 200px, #FFFBF5 / #1C1917, fade 300ms) → BrandedLoadingShell (same bg + icon, optimistic progress 0→70 fast)
+  → Clerk Auth Gate (isLoaded) → signed in → check households.getActive (Convex)
   → null → Onboarding Screen
       → Create Household  (households.create → owner + reserved categories)
       → or Join with Invite Code (invitations.redeem → member)
-  → success → Home (dashboard)
+  → success → Home (dashboard) — SplashScreen.hideAsync() only after Onboarding/Home ready so no login flash.
 ```
 
 ### 4.2 Returning User
 
 ```text
-App Open → Clerk Auth Gate → signed in → households.getActive found → Home
+App Open → Native splash → BrandedLoadingShell (0→70 fast, 70→90 while Clerk + households.getActive resolve, pause at 90 with offline banner if isConnected===false)
+  → Clerk Auth Gate → signed in → households.getActive found → progress 90→100 + hide splash -> Home
+  (Signed-out branch: isLoaded && !isSignedIn → progress 90→100 -> Login with same 200px icon, seamless fade; no Home flash)
 ```
 
 ### 4.3 Owner Creates Account (with opening balance)
@@ -513,8 +517,8 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 
 | Component | Responsibility |
 |-----------|---------------|
-| `app/_layout.tsx` | ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, `<OtaUpdater />` (background OTA check), root Stack + auth gating |
-| `app/index.tsx` | Signed-out entry |
+| `app/_layout.tsx` | ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, `<OtaUpdater />` (background OTA check) + `BrandedLoadingShell` (same bg/icon as native splash, optimistic progress, offline banner), orchestrated auth gate (`preventAutoHideAsync`/`hideAsync`, `isLoaded`/`getActive` without login flash), root Stack |
+| `app/index.tsx` | Signed-out entry (splash-icon 200×200 aligned with native splash + shell for seamless fade) |
 | `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
 | `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
 | `app/(tabs)/transactions.tsx` | Transactions list (date + type/account/category filters, summary, day-grouped with net totals) |
@@ -523,7 +527,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
 | `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
-| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner) + non-UI controllers (OtaUpdater) |
+| `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner, BrandedLoadingShell, UpdateBanner) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
 | `hooks/useConnectivity.ts` | NetInfo wrapper: subscribes to `@react-native-community/netinfo`, exposes `isConnected` (boolean \| null) for instant offline detection |
 | `components/Auth/*` | Auth dumb components: `EmailField`, `PasswordField`, `CodeField`, `GoogleButton`, `ResetFlow` |
@@ -599,7 +603,9 @@ retype/delete; they never appear in user-facing category selection.
 
 Updates ship via **EAS Update** (`updates.url`, `runtimeVersion` policy
 `appVersion`) and the app binary via EAS Build APK (`eas.json` production:
-`buildType: "apk"`, internal distribution).
+`buildType: "apk"`, `distribution: internal`, `appVersionSource: remote`). No Play Store is required — internal distribution via `expo.dev` link is used for APK installs (Free tier: 15 Android builds/month, 1 000 MAU for updates).
+
+**Splash & launch polish (as of 2026-08-29):** native splash (`expo-splash-screen` `imageWidth: 200`, `backgroundColor: #FFFBF5` light / `#1C1917` dark to match `constants/theme.ts`) fades 300ms into `components/BrandedLoadingShell` (same bg + centered `splash-icon.png` 200×200, progress bar `0→70%` in 400ms fast, `70→90%` while `Clerk isLoaded` + `households.getActive` resolve, `90→100%` on `SplashScreen.hideAsync()`; `hapticSuccess` on complete). `app/_layout.tsx` calls `preventAutoHideAsync()` + `setOptions({duration: 300, fade: true})` and only hides after `isLoaded` and the `Login`/`Onboarding`/`Home` branch is ready — returning signed-in users never see a login flash, signed-out users fade seamlessly into `Login` with the same 200px icon. Offline during launch pauses progress at 90% with `ConnectivityBanner` ("You’re offline — showing cached data" + Retry) and honest copy (`Waiting for connection…` / `Can’t reach Kin Finance`) — never a false spinner. `app/index.tsx` icon is fixed at 200×200 to align with the native splash.
 
 **Startup policy (as of 2026-08-21):** `app.json` sets
 `updates.checkAutomatically: "ON_ERROR_RECOVERY"` with
@@ -616,15 +622,13 @@ new APK build to reach users.
 
 **Background check:** `components/OtaUpdater.tsx` (mounted in
 `app/_layout.tsx` inside `SnackbarProvider`) runs once per session, 5 s after
-launch: `checkForUpdateAsync()` → if available, silent `fetchUpdateAsync()` →
-Snackbar "A new update is ready" with a **Restart** action calling
-`reloadAsync()`; if dismissed, the update applies at the next cold start
-automatically. Skipped entirely when `__DEV__` or `!Updates.isEnabled`
-(Expo Go). Failures are swallowed silently.
+launch: `checkForUpdateAsync()` → if available, `fetchUpdateAsync()` with `UpdateBanner` states `downloading` (progress 0→100) → `ready` ("New update ready" + **Restart now** calling `reloadAsync()` + **Later** which auto-applies at next cold start). If `runtimeVersion` changed (native update required), a blocking dialog "New version available — Download" links to the EAS artifact instead of `reload`. Skipped entirely when `__DEV__` or `!Updates.isEnabled` (Expo Go). Failures are swallowed silently.
 
 **Release rule:** changes to native config (anything in `app.json` plugins,
 `updates`, dependencies with native code) require a new build + APK
 redistribution; JS-only changes can ship via `eas update --channel production`. NetInfo is native — changes require new EAS Build APK, not just `eas update`.
+
+**Environment variables (manual):** `expo.dev` > `kin-finance` > Environment Variables per environment (`production`/`preview`/`development`) must contain `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` (Sensitive, from `.env`) and `EXPO_PUBLIC_CONVEX_URL` (from `.env.local`; switch `production` to prod URL after `npx convex deploy --prod`). `CONVEX_DEPLOYMENT` is local-only; `CLERK_JWT_ISSUER_DOMAIN` is set in Convex Cloud, not EAS.
 
 ---
 
@@ -850,6 +854,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-29 | Polish | Launch polish B (EAS Update-First, no Play Store, Free tier): native splash sync to `#FFFBF5`/`#1C1917` (match `constants/theme.ts`) + `imageWidth 200` + fade 300ms, `BrandedLoadingShell` (same bg/icon, optimistic progress `0→70` fast 400ms / `70→90` while `Clerk isLoaded` + `households.getActive` / `90→100` on `hideAsync`) + orchestrated gate in `app/_layout.tsx` (`preventAutoHideAsync`/`hideAsync` only after `Login`/`Onboarding`/`Home` ready — no login flash for returning users, seamless 200px icon into `Login`), offline clarity (pause at 90% + `ConnectivityBanner` + honest copy), `UpdateBanner` (`downloading`/`ready` + `Restart now`/`Later`, blocking dialog for native `runtimeVersion` change), `app/index.tsx` icon fixed to 200×200, internal EAS link distribution without Play Store, manual `EXPO_PUBLIC_*` env per channel. Updates §3.1, §4.1, §4.2, §5.2, §5.7 |
 | 2026-08-28 | Polish | P0 Batch 3: PTR/Banner real (NetInfo + refreshKey re-query, instant offline, haptic) + Auth modular (5 Auth components + 2 hooks, Input eye toggle 48px, OTP autofill oneTimeCode/sms-otp). Updates §2.1, §3.1, §3.6, §3.8, §5.2, §5.4, §5.7 |
 | 2026-08-27 | Polish | P0 Batch 2: Pull-to-refresh + stale `ConnectivityBanner` on Home/Transactions/Accounts/Budgets (RefreshControl 600ms, banner after 3s `undefined`); note search (≥2 chars, 300ms debounce) on `transactions.list`/`summary` (post-index substring on `note`, bounded by SCAN_BUDGET, hydration-free for summary, hidden-aware, “No results for …” empty); `transactions.recent` unified bounded scan (owner/member, tie-aware cursor, truthful `hasMore`, cap 5 unchanged); safe `lib/haptics.ts` wrapper (`hapticSuccess`/`hapticWarning`/`hapticError`) wired to 5 forms (transaction/account/category/budget/members); role-aware Accounts empty for Members (“Only the Owner can add accounts…”). Updates §2.1, §3.6, §3.8, §5.2, §5.4, §8 |
 | 2026-08-26 | Feature | Transactions paging + server-side summary: `transactions.list` unified owner/member scan engine gains `cursor {date,id}` continuation and truthful `hasMore` (SCAN_BUDGET now also covers filtered owner scans, fixing potential under-fill); new `transactions.summary` computes uncapped range income/expense/net (transfers excluded, member hidden-category aware, hydration-free). Home's "net this month" and the Transactions summary card switched to `summary`; the Transactions list loads 30-row pages on scroll and shows day-net totals only for completed days (older group loaded or `hasMore=false`). Updates §2.1, §3.6, §3.8, §6 |
