@@ -107,7 +107,6 @@ export function ResetFlow({
             maxLength={6}
             returnKeyType="done"
             textContentType="oneTimeCode"
-            autoComplete="sms-otp"
             onSubmitEditing={onVerifyCode}
             error={error}
           />

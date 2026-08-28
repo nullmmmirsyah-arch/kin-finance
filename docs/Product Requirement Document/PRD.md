@@ -298,7 +298,7 @@ Clear filters action).
 
 **Recent unified engine (as of 2026-08-27):** `transactions.recent` uses a unified bounded scan (SCAN_BUDGET = limit × 10, `by_household_date` desc) for both roles with tie-aware cursor (extra-row detection) and truthful `hasMore`; Home caps at 5.
 
-**PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry bump a refreshKey to re-subscribe Convex queries (real re-query, 600ms spinner, haptic). Requires native rebuild for NetInfo.
+**PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry show a 600ms spinner, clear stale state, and trigger haptic, relying on Convex reactive subscription for fresh data (no manual cache invalidation). Requires native rebuild for NetInfo.
 
 ### 3.7 Budgets
 
@@ -335,7 +335,7 @@ visible (name + amount, no breakdown). For Members, the spending breakdown
   Transactions tab. Transaction icons map category names to relevant Feather
   icons (shopping-cart, coffee, car, home, briefcase, etc.) with semantic colors
   (green for income, red for expense).
-- **PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry bump a refreshKey to re-subscribe Convex queries (real re-query, 600ms spinner, haptic). Requires native rebuild for NetInfo.
+- **PTR & stale real (as of 2026-08-28):** 4 tabs use hooks/useConnectivity (NetInfo) — banner appears instantly when isConnected===false, fallback undefined >3s otherwise; RefreshControl and banner Retry show a 600ms spinner, clear stale state, and trigger haptic, relying on Convex reactive subscription for fresh data (no manual cache invalidation). Requires native rebuild for NetInfo.
 - Empty states include action CTAs (e.g., "Add Transaction" on empty transaction
   list, "Add Account" for Owners vs. Owner-hint for Members on empty accounts).
 - FAB uses reanimated spring animation (scale on press) for tactile feedback.

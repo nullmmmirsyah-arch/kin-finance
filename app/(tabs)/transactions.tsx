@@ -203,7 +203,7 @@ export default function Transactions() {
   isLoadingMoreRef.current = isLoadingMore;
   const pagesMapRef = useRef<Map<string, Tx[]>>(new Map());
 
-  const queryKey = useMemo(() => JSON.stringify({...queryArgs, refreshKey}), [queryArgs, refreshKey]);
+  const queryArgsKey = useMemo(() => JSON.stringify(queryArgs), [queryArgs]);
 
   useEffect(() => {
     setActiveCursor(undefined);
@@ -212,7 +212,7 @@ export default function Transactions() {
     setIsLoadingMore(false);
     setPagedTransactions(null);
     pagesMapRef.current.clear();
-  }, [queryKey]);
+  }, [queryArgsKey]);
 
   useEffect(() => {
     if (isConnected === false) {
@@ -341,6 +341,11 @@ export default function Transactions() {
             Transactions
           </Text>
         </View>
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey((k) => k + 1); showSnackbar("Retrying…"); void hapticSuccess(); }} />
+          </View>
+        )}
         <View className="mt-4 flex-row gap-2 px-5">
           {[0, 1].map((i) => (
             <Skeleton key={i} style={{ width: 120, height: 40, borderRadius: 999 }} />

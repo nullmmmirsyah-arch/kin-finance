@@ -247,8 +247,15 @@ export default function Home() {
 
   if (!synced || household === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey((k) => k + 1); show("Retrying…"); void hapticSuccess(); }} />
+          </View>
+        )}
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={C.primary} />
+        </View>
       </SafeAreaView>
     );
   }
