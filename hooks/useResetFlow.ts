@@ -12,6 +12,7 @@ export function useResetFlow(
   setEmailError: (s: string | null) => void,
   setPasswordError: (s: string | null) => void,
   setError: (s: string | null) => void,
+  opts?: { onResetSuccess?: () => void },
 ) {
   const { signIn } = useSignIn();
   const [resetStep, setResetStep] = useState<ResetStep>(null);
@@ -139,6 +140,7 @@ export function useResetFlow(
           return;
         }
         void setLastAuthMethod("email");
+        opts?.onResetSuccess?.();
       } else {
         setError("Password reset is not complete. Please try again.");
       }
@@ -147,6 +149,16 @@ export function useResetFlow(
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetState = () => {
+    setResetStep(null);
+    setCode("");
+    setResetPassword("");
+    setIsLoading(false);
+    try {
+      void signIn?.reset?.();
+    } catch {}
   };
 
   return {
@@ -162,5 +174,6 @@ export function useResetFlow(
     handleResendResetCode,
     handleVerifyResetCode,
     handleSubmitNewPassword,
+    resetState,
   };
 }

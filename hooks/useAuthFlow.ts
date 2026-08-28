@@ -6,7 +6,7 @@ import { setLastAuthMethod } from "@/lib/auth-preference";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_REGEX = /^\d{6}$/;
 
-export function useAuthFlow() {
+export function useAuthFlow(opts?: { onVerifySuccess?: () => void }) {
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
   const { startSSOFlow } = useSSO();
@@ -174,11 +174,30 @@ export function useAuthFlow() {
         return;
       }
       void setLastAuthMethod("email");
+      opts?.onVerifySuccess?.();
     } catch {
       setError("A network error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetAuth = () => {
+    setIsVerifying(false);
+    setIsMfaVerifying(false);
+    setSsoSignIn(null);
+    setSsoSetActive(null);
+    setCode("");
+    setError(null);
+    setEmailError(null);
+    setPasswordError(null);
+    setConfirmError(null);
+    try {
+      void signIn?.reset?.();
+    } catch {}
+    try {
+      void signUp?.reset?.();
+    } catch {}
   };
 
   const handleMfaVerify = async () => {
@@ -340,5 +359,6 @@ export function useAuthFlow() {
     handleVerify,
     handleMfaVerify,
     handleGoogle,
+    resetAuth,
   };
 }

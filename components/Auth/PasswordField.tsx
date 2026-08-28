@@ -1,11 +1,14 @@
 import { Input } from "@/components/Input";
+import type { Ref } from "react";
+import type { TextInput, TextInputProps } from "react-native";
 
-type Props = {
+type Props = Omit<TextInputProps, "value" | "onChange" | "onChangeText"> & {
   label?: string;
   value: string;
   onChange: (s: string) => void;
   error: string | null;
   placeholder?: string;
+  ref?: Ref<TextInput>;
 };
 
 export function PasswordField({
@@ -14,6 +17,13 @@ export function PasswordField({
   onChange,
   error,
   placeholder,
+  onSubmitEditing,
+  returnKeyType,
+  autoCapitalize = "none",
+  autoCorrect = false,
+  autoComplete,
+  textContentType,
+  ...rest
 }: Props) {
   return (
     <Input
@@ -23,9 +33,14 @@ export function PasswordField({
       secureTextEntry
       secureToggle
       onChangeText={onChange}
-      autoCapitalize="none"
-      autoCorrect={false}
+      autoCapitalize={autoCapitalize}
+      autoCorrect={autoCorrect}
+      autoComplete={autoComplete}
+      textContentType={textContentType}
+      returnKeyType={returnKeyType}
+      onSubmitEditing={onSubmitEditing}
       error={error}
+      {...rest}
     />
   );
 }
