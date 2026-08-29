@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-29
+> Last updated: 2026-08-30
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -95,7 +95,7 @@ visible) without exposing transaction detail.
 | Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
 | Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
-| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. Supports server-side substring search by note (≥2 chars) on `list` and `summary` (debounced 300ms, bounded scan); pull-to-refresh (RefreshControl) and stale-data banner (ConnectivityBanner + Retry) on Home/Transactions/Accounts/Budgets — refresh/retry re-queries via Convex reactive subscription (visual spinner + stale clear, no manual cache invalidation needed). |
+| Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. Supports server-side substring search by note (≥2 chars) on `list` and `summary` (debounced 300ms, bounded scan); pull-to-refresh (RefreshControl) and stale-data banner (ConnectivityBanner + Retry) on Home/Transactions/Accounts/Budgets — refresh/retry re-queries via Convex reactive subscription (visual spinner + stale clear, no manual cache invalidation needed). Amount input is whole-number only (`number-pad` + `formatAmountInput` strips decimals/non-digits, thousand-separator display); duplicate detection warns if same amount+account+category/type exists within 24h (confirmation Alert); "Repeat last" persists the last created transaction via SecureStore (`lib/last-transaction.ts`) and survives unmount/restart with contextual copy. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
 | Home | Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All"). |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -107,10 +107,10 @@ visible) without exposing transaction detail.
 | Household name | Required; 3–50 chars after trim |
 | Account name | Required; 2–30 chars; unique within household |
 | Account type | `cash` \| `bank` \| `ewallet` \| `credit_card` |
-| Opening balance | Optional whole number (sign determines income/expense type) |
+| Opening balance | Optional whole number (sign determines income/expense type); `number-pad` + `formatAmountInput` (integer-only, same as transaction amount) |
 | Category name | Required; 2–30 chars; unique within household **and type**; `"Initial Balance"` reserved |
 | Category type | `income` \| `expense` |
-| Transaction amount | Whole number; non-zero; positive for income, negative for expense, positive magnitude for transfer; \|amount\| ≥ 1 |
+| Transaction amount | Whole number; non-zero; positive for income, negative for expense, positive magnitude for transfer; \|amount\| ≥ 1; client enforces via `number-pad` + `formatAmountInput` (strips decimals/non-digits, thousand separators) so decimals never reach validation |
 | Transaction account | Required; visible for Member on create; reassignment requires visible account |
 | Transfer accounts | Both required, must differ, same household |
 | Transaction category | Required for income/expense; must match transaction type; visible for Member |
@@ -258,8 +258,8 @@ Core records of financial activity: income, expense, or transfer.
 - Members cannot create on hidden accounts/categories or reassign to them, but
   can edit existing transactions referencing hidden accounts.
 - **Form UX:** contextual subtitle/type icon, chip type selector, amount with
-  thousand-separator formatting, contextual sign-convention hint, "Repeat last"
-  shortcut, date hint, note character counter, discard guard on both header
+  integer-only thousand-separator formatting (`number-pad` + `formatAmountInput` strips decimals/non-digits), contextual sign-convention hint, "Repeat last"
+  shortcut (persisted via SecureStore `lib/last-transaction.ts`, survives unmount/restart; contextual copy shows `type + amount`; tap reuses type/amount/account/category), duplicate detection (same amount+account+category/type within 24h triggers confirmation Alert with `hapticWarning`), date hint, note character counter, discard guard on both header
   back button and Android hardware back button. See §4.4 for details.
 - **Day-grouped net totals:** the Transactions list shows a net total per day
   header (income − expense; transfers excluded because they move money between
@@ -410,12 +410,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
   money" / "Move money between accounts") and a dynamic type icon.
 - Type selector is a chip group; switching type clears mismatched selections
   and shows a snackbar when category is cleared.
-- Amount input uses `formatAmountInput` for automatic thousand-separator
-  display. Contextual hint below explains sign convention per type.
+- Amount input uses `formatAmountInput` for automatic integer-only thousand-separator
+  display (`number-pad` keyboard; decimals/non-digits stripped on type so `1.500` → `1,500`, no submit error). Contextual hint below explains sign convention per type.
 - "Repeat last" standalone row (below type chips, above amount) appears when
-  a transaction was created in the same session — pre-fills type, amount,
-  account, category (does not survive unmount). Includes icon, label, and
-  description for self-explanatory power-user shortcut.
+  a previous transaction exists — persisted via `lib/last-transaction.ts` (SecureStore, survives unmount and app restart; loaded on mount via `getLastTransaction`, saved via `setLastTransaction` on create) — pre-fills type, amount, account, category/toAccount; note is cleared, date reset to today. Row shows contextual copy (`Copies {type}, {amount} — tap to reuse`). Duplicate detection before create: if `transactions.recent` (20 latest) contains same `amount+type+account(+category/toAccount)` within 24h, a confirmation `Alert` ("Possible duplicate — Save anyway? / Cancel") with `hapticWarning` is shown; Cancel aborts, Save anyway proceeds.
 - Date field shows "Today's date is pre-filled — you can backdate
   transactions".
 - Note field has a character counter (`0/200`) with amber/red color feedback
@@ -519,14 +517,15 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 |-----------|---------------|
 | `app/_layout.tsx` | `SafeAreaProvider` + ThemeProvider, KeyboardProvider, ClerkProvider, ConvexProviderWithClerk, SnackbarProvider, `<OtaUpdater />` (background OTA `fetchUpdateAsync` only `ready` when `isNew`, `cancelled` guard) + `BrandedLoadingShell` (same bg/icon as native splash, optimistic progress, offline banner, `useSafeAreaInsets` not needed) — no `throw` on missing `EXPO_PUBLIC_*` (defensive `Configuration missing` screen, `hideAsync` after 500ms) + orchestrated auth gate (`preventAutoHideAsync`/`hideAsync` `setOptions fade 300`, `isLoaded`/`getActive` without login flash, fallback `hideAsync` after 3.5s when `isLoaded && isSignedIn && household===undefined`), `SafeAreaProvider` ensures `UpdateBanner` insets, root Stack |
 | `app/index.tsx` | Signed-out entry (splash-icon 200×200 aligned with native splash + shell for seamless fade) |
-| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills) |
-| `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete) |
-| `app/(tabs)/transactions.tsx` | Transactions list (date + type/account/category filters, summary, day-grouped with net totals) |
-| `app/(tabs)/budgets.tsx` | Budgets list (month selector, progress) |
+| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills); `BudgetPill` is `memo`, account `FlatList` has `removeClippedSubviews/windowSize/getItemLayout` for perf |
+| `app/(tabs)/accounts.tsx` | Accounts list (filters, FAB, owner edit/delete); `FlatList` perf props (`removeClippedSubviews/windowSize/initialNumToRender`) |
+| `app/(tabs)/transactions.tsx` | Transactions list (date + type/account/category filters, summary, day-grouped with net totals); `SectionList` perf props (`removeClippedSubviews/windowSize/initialNumToRender/maxToRenderPerBatch`) |
+| `app/(tabs)/budgets.tsx` | Budgets list (month selector, progress); `FlatList` perf props |
 | `app/(tabs)/settings.tsx` | Settings (Household, Appearance, Categories, Sign Out) |
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Members + rename + invite code generation/revoke |
-| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens |
+| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` now persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; amount inputs are integer-only |
+| `lib/last-transaction.ts` | Persisted "Repeat last" store: `getLastTransaction`/`setLastTransaction` via `expo-secure-store` (`last-transaction` key), type `LastTransaction {type, amount, accountId, toAccountId?, categoryId?}` |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner, BrandedLoadingShell, UpdateBanner (`useSafeAreaInsets.top` to avoid status-bar overlap with `edgeToEdgeEnabled: true`)) + non-UI controllers (OtaUpdater — `isNew` guard, `cancelled` guard) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in → `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
 | `hooks/useConnectivity.ts` | NetInfo wrapper: subscribes to `@react-native-community/netinfo`, exposes `isConnected` (boolean \| null) for instant offline detection |
@@ -536,6 +535,7 @@ Transactions tab → Date chip (default This Month) → Last Month / Custom Rang
 | `constants/theme.ts` | Theme tokens + `useThemeColors` / `useThemeGradients` |
 | `lib/haptics.ts` | Safe haptics wrapper (`hapticSuccess`/`hapticWarning`/`hapticError` via `expo-haptics`) |
 | `lib/errors.ts` | `getConvexErrorMessage` — user-friendly error extraction |
+| `utils/format.ts` | `formatNumber`, `formatAmountInput` (integer-only, strips decimals/non-digits, thousand separators), `sumNetExcludingTransfers` |
 | `convex/schema.ts` | Database schema (source of truth) |
 | `convex/helpers.ts` | Shared auth/scope helpers: `getUserAndMembership` (mutations, throws `ConvexError`), `findUserAndMembership` (queries, returns `{user, membership}` or `null`), `findUser` (user only, returns `null` when signed out), `requireOwner` (owner-gate check), `getScopedDoc` (fetch + household-scope guard that throws `"<Entity> not found."`) |
 | `convex/*.ts` | Query/mutation functions |
@@ -569,16 +569,16 @@ effects) — so create/update/delete balance math cannot drift apart.
   `getConvexErrorMessage(e, fallback)` in every `catch`.
 - Server-side `Server Error` console output for thrown errors is expected.
 - **Feedback standardization:** validation errors render inline next to the
-  field; operational errors (create/update/delete failures) surface via
-  `Snackbar`; destructive actions (delete, remove member, revoke invite,
+  field with `hapticWarning`; operational errors (create/update/delete failures) surface via
+  `Snackbar` with `hapticError` (never inline `setError`); destructive actions (delete, remove member, revoke invite,
   sign out) require an `Alert.alert` confirmation first. Delete transaction
-  shows a Snackbar with an **Undo** action that re-creates the transaction.
+  shows a Snackbar with an **Undo** action that re-creates the transaction. Duplicate-transaction warning uses `Alert` + `hapticWarning` ("Possible duplicate — Save anyway?").
 - **Stale/ offline:** NetInfo `isConnected===false` → instant `ConnectivityBanner` (“You’re offline — showing cached data” + Retry); fallback `undefined` >3s otherwise. Retry and pull-to-refresh (`RefreshControl`, 600ms, `primary` tint) on Home/Transactions/Accounts/Budgets bump a `refreshKey` to re-subscribe Convex queries (real re-query + haptic). Full-screen remains for non-member `null`.
 - **Offline:** NetInfo isConnected===false → instant ConnectivityBanner; fallback 3s for Convex undefined.
-- **Haptics:** `hapticSuccess` on create/update, `hapticWarning` on validation, `hapticError` on mutation failure (all via `lib/haptics.ts`, safely no-ops in Expo Go/web).
+- **Haptics:** `hapticSuccess` on create/update, `hapticWarning` on validation + duplicate detection, `hapticError` on mutation failure (all via `lib/haptics.ts`, safely no-ops in Expo Go/web).
 - Client and server share one validation module, `constants/validation.ts`
   (path alias `@/constants/validation`), eliminating drift (e.g. `isInteger`
-  vs `isSafeInteger`).
+  vs `isSafeInteger`). Amount inputs enforce whole numbers at the keyboard (`number-pad` + `formatAmountInput` stripping, `Input amount` prop) so decimals are blocked before validation.
 
 ### 5.5 Invitation Security Model
 
@@ -816,7 +816,7 @@ updatedAt: number
 | Animation | React Native Reanimated 4.1 |
 | Keyboard handling | `react-native-keyboard-controller` (`KeyboardProvider` global + `KeyboardAwareScrollView` on input screens) |
 | Language | TypeScript 5.9 |
-| Persistence (device) | `expo-secure-store` (theme preference) |
+| Persistence (device) | `expo-secure-store` (theme preference, last-transaction `last-transaction` key via `lib/last-transaction.ts`) |
 | OTA updates | `expo-updates` 29 (EAS Update, `checkAutomatically: ON_ERROR_RECOVERY` + background check via `components/OtaUpdater.tsx`) |
 | Date picker | `@react-native-community/datetimepicker` |
 | Device locale / timezone | `expo-localization` (`getCalendars()[0].timeZone`) |
@@ -855,6 +855,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-30 | Polish | P0-3 + P0-5 + P1-9: **P0-3 Transaction form** — `utils/format.ts:formatAmountInput` integer-only (strips decimals/non-digits, `1.500`→`1,500`), `lib/last-transaction.ts` SecureStore persistence for "Repeat last" (survives unmount/restart, contextual copy `Copies {type}, {amount}`), duplicate detection against `transactions.recent` (20 latest, same amount+type+account(+category/toAccount) within 24h → `Alert` "Possible duplicate" + `hapticWarning`); **P0-5 Performance** — `BudgetPill` memoized, `FlatList`/`SectionList` on Home/Transactions/Accounts/Budgets get `removeClippedSubviews/windowSize/initialNumToRender/maxToRenderPerBatch/getItemLayout`; **P1-9 Validation consistency** — `number-pad` on all `Input amount` (transaction/budget/account openingBalance), operational errors via `Snackbar` + `hapticError` (transaction create/update/delete, account create/update, budget create/update) with `hapticWarning` on inline validation. Updates §2.1, §2.2, §3.6, §4.4, §5.2, §5.4, §7 |
 | 2026-08-29 | Fix | Launch polish follow-ups: `eas.json` add `environment: production/preview/development` to all build profiles (required for EAS to inject `EXPO_PUBLIC_*` — `production` with `distribution: internal` previously missed, so `568a2577` still saw `Configuration missing`; `Plain` visibility required for `EXPO_PUBLIC_*`); `app/_layout.tsx` no longer `throw` on missing `EXPO_PUBLIC_*` — shows `Configuration missing` screen, wraps with `SafeAreaProvider`, `hideAsync` after 500ms, and fallback `hideAsync` after 3.5s when `isLoaded && isSignedIn && household===undefined` to avoid stuck black splash; `components/OtaUpdater.tsx` guards `fetchUpdateAsync` result `isNew` (only `progress 100` + `ready` + `reloadAsync` when truly new, avoids reload on no-op/rollback) and preserves `cancelled` guard; `components/UpdateBanner.tsx` respects `edgeToEdgeEnabled` via `useSafeAreaInsets().top` (`paddingTop: insets.top`) on all states to avoid overlapping clock/WiFi/battery, `blocking` Download now uses `Linking.openURL(downloadUrl)` + `accessibilityRole`; `.env.example` wording `per channel` → `per environment`. Updates §5.2, §5.7, §5.4, `eas.json`, `app.json` |
 | 2026-08-29 | Polish | Launch polish B (EAS Update-First, no Play Store, Free tier): native splash sync to `#FFFBF5`/`#1C1917` (match `constants/theme.ts`) + `imageWidth 200` + fade 300ms, `BrandedLoadingShell` (same bg/icon, optimistic progress `0→70` fast 400ms / `70→90` while `Clerk isLoaded` + `households.getActive` / `90→100` on `hideAsync`) + orchestrated gate in `app/_layout.tsx` (`preventAutoHideAsync`/`hideAsync` only after `Login`/`Onboarding`/`Home` ready — no login flash for returning users, seamless 200px icon into `Login`), offline clarity (pause at 90% + `ConnectivityBanner` + honest copy), `UpdateBanner` (`downloading`/`ready` + `Restart now`/`Later`, blocking dialog for native `runtimeVersion` change), `app/index.tsx` icon fixed to 200×200, internal EAS link distribution without Play Store, manual `EXPO_PUBLIC_*` env per channel. Updates §3.1, §4.1, §4.2, §5.2, §5.7 |
 | 2026-08-28 | Polish | P0 Batch 3: PTR/Banner real (NetInfo + refreshKey re-query, instant offline, haptic) + Auth modular (5 Auth components + 2 hooks, Input eye toggle 48px, OTP autofill oneTimeCode/sms-otp). Updates §2.1, §3.1, §3.6, §3.8, §5.2, §5.4, §5.7 |

@@ -19,7 +19,7 @@ import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatAmountInput } from "@/utils/format";
-import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { hapticSuccess, hapticError, hapticWarning } from "@/lib/haptics";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -101,10 +101,12 @@ export default function BudgetForm() {
     const err = validateBudgetAmount(parsedAmount);
     if (err) {
       setError(err);
+      void hapticWarning();
       return;
     }
     if (!isEdit && selectedCategoryId === null) {
       setCategoryError("Please select a category.");
+      void hapticWarning();
       return;
     }
 
@@ -132,7 +134,8 @@ export default function BudgetForm() {
         e,
         isEdit ? "Failed to update budget." : "Failed to create budget.",
       );
-      setError(message);
+      // P1-9: operational errors via Snackbar (e.g. duplicate budget)
+      show(message);
     } finally {
       setIsLoading(false);
     }
@@ -234,7 +237,7 @@ export default function BudgetForm() {
             placeholder="Budget limit"
             value={amount}
             onChangeText={setAmount}
-            keyboardType="numeric"
+            keyboardType="number-pad"
             amount
             error={error}
           />

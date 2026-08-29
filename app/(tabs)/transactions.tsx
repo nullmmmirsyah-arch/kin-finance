@@ -460,6 +460,10 @@ export default function Transactions() {
           contentContainerClassName="pb-28 px-5"
           sections={[]}
           keyExtractor={() => "empty"}
+          removeClippedSubviews
+          windowSize={7}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
           renderItem={() => null}
           ListEmptyComponent={
             <View
@@ -538,6 +542,11 @@ export default function Transactions() {
           stickySectionHeadersEnabled={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
+          removeClippedSubviews
+          windowSize={7}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
           ListFooterComponent={
             isLoadingMore ? (
               <View className="items-center py-4">

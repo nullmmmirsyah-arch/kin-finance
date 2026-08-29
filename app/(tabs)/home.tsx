@@ -2,7 +2,7 @@ import { useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -41,7 +41,7 @@ const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThe
 
 const RECENT_TRANSACTIONS_LIMIT = 5;
 
-function BudgetPill({
+const BudgetPill = memo(function BudgetPill({
   pill,
   onPress,
 }: {
@@ -91,7 +91,7 @@ function BudgetPill({
       )}
     </Pressable>
   );
-}
+});
 
 export default function Home() {
   const { user } = useUser();
@@ -431,6 +431,10 @@ export default function Home() {
                   }}
                 />
               )}
+              removeClippedSubviews
+              windowSize={5}
+              initialNumToRender={2}
+              maxToRenderPerBatch={2}
             />
           ) : accountData.accounts.length === 0 ? (
             <EmptyState
@@ -452,6 +456,16 @@ export default function Home() {
               contentContainerClassName="gap-3 pr-5"
               data={accountData.accounts}
               keyExtractor={(item) => item._id}
+              removeClippedSubviews
+              windowSize={5}
+              initialNumToRender={4}
+              maxToRenderPerBatch={4}
+              updateCellsBatchingPeriod={50}
+              getItemLayout={(_, index) => ({
+                length: 172,
+                offset: 172 * index,
+                index,
+              })}
               renderItem={({ item }) => {
                 const meta =
                   ACCOUNT_TYPES.find((t) => t.id === item.type) ??
