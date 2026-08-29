@@ -35,6 +35,7 @@ export default function AccountForm() {
   const [openingBalance, setOpeningBalance] = useState("");
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openingBalanceError, setOpeningBalanceError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const editingAccount = useMemo(() => {
@@ -80,6 +81,7 @@ export default function AccountForm() {
 
   const handleSubmit = async () => {
     setError(null);
+    setOpeningBalanceError(null);
     const err = validateAccountName(trimmedName);
     if (err) {
       setError(err);
@@ -103,7 +105,7 @@ export default function AccountForm() {
             : openingBalance.replace(/,/g, "");
         const parsedBalance = rawBalance === "" ? undefined : Number(rawBalance);
         if (parsedBalance !== undefined && !Number.isSafeInteger(parsedBalance)) {
-          setError("Opening balance must be a whole number.");
+          setOpeningBalanceError("Opening balance must be a whole number.");
           void hapticWarning();
           setIsLoading(false);
           return;
@@ -202,9 +204,13 @@ export default function AccountForm() {
               label="Opening balance (optional)"
               placeholder="0"
               value={openingBalance}
-              onChangeText={setOpeningBalance}
+              onChangeText={(t) => {
+                setOpeningBalance(t);
+                if (openingBalanceError) setOpeningBalanceError(null);
+              }}
               keyboardType="number-pad"
               amount
+              error={openingBalanceError}
             />
           ) : null}
 

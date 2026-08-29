@@ -73,8 +73,6 @@ export default function TransactionForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
-  const lastTransactionRef = useRef<LastTransaction | null>(null);
-  lastTransactionRef.current = lastTransaction;
   // Load persisted repeat-last (survives unmount / app restart) — P0-3
   useEffect(() => {
     if (isEdit) return;
@@ -83,10 +81,26 @@ export default function TransactionForm() {
     });
   }, [isEdit]);
 
-  // Also watch recent transactions for duplicate detection — P0-3 + P1-9
-  const recentForDupe = useQuery(
-    api.transactions.recent,
-    isEdit ? "skip" : { limit: 20 },
+  // Duplicate detection windowed query — P0-3 review: query within 24h window + matching fields, skip in edit
+  const dupeWindow = useMemo(() => {
+    const ts = date.getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+    return { startDate: ts - dayMs, endDate: ts + dayMs };
+  }, [date]);
+  const dupeCheck = useQuery(
+    api.transactions.list,
+    isEdit || accountId === null
+      ? "skip"
+      : {
+          startDate: dupeWindow.startDate,
+          endDate: dupeWindow.endDate,
+          limit: 10,
+          type,
+          accountIds: [accountId as Id<"accounts">],
+          ...(type !== "transfer" && categoryId
+            ? { categoryIds: [categoryId as Id<"categories">] }
+            : {}),
+        },
   );
 
   const editingTx = useMemo(
@@ -110,7 +124,7 @@ export default function TransactionForm() {
 
   const handleRepeatLast = () => {
     Keyboard.dismiss();
-    const last = lastTransactionRef.current;
+    const last = lastTransaction;
     if (!last) return;
     setType(last.type);
     setAmountText(formatNumber(last.amount));
@@ -381,15 +395,15 @@ export default function TransactionForm() {
       }
     };
 
-    if (!isEdit && recentForDupe?.transactions) {
+    if (!isEdit && dupeCheck?.transactions) {
       const dayMs = 24 * 60 * 60 * 1000;
-      const dupe = recentForDupe.transactions.find((tx) => {
+      const dupe = dupeCheck.transactions.find((tx) => {
         if (Math.abs(tx.amount) !== Math.abs(signedAmount)) return false;
         if (tx.type !== type) return false;
         if (tx.accountId !== accountId) return false;
         if (type === "transfer" && tx.toAccountId !== toAccountId) return false;
         if (type !== "transfer" && tx.categoryId !== categoryId) return false;
-        // within 24h
+        // within 24h (window query already limited, keep check as guard)
         return Math.abs(tx.date - date.getTime()) < dayMs;
       });
       if (dupe) {
