@@ -94,7 +94,7 @@ export default function TransactionForm() {
       : {
           startDate: dupeWindow.startDate,
           endDate: dupeWindow.endDate,
-          limit: 10,
+          limit: 1000,
           type,
           accountIds: [accountId as Id<"accounts">],
           ...(type !== "transfer" && categoryId
@@ -240,6 +240,7 @@ export default function TransactionForm() {
   const canSubmit =
     validateTransactionAmount(signedAmount, type) === null &&
     !isLoading &&
+    (isEdit || dupeCheck !== undefined || accountId === null) &&
     (type === "transfer"
       ? accountId !== null &&
         toAccountId !== null &&
@@ -343,7 +344,14 @@ export default function TransactionForm() {
       return;
     }
 
-    // Duplicate detection (P0-3): same amount+account(+category/toAccount) within 24h
+    // Block submit while duplicate query unresolved — preserve warning once resolves
+    if (!isEdit && accountId !== null && dupeCheck === undefined) {
+      void hapticWarning();
+      show("Checking for duplicates… please try again.");
+      return;
+    }
+
+    // Duplicate detection (P0-3): same amount+account(+category/toAccount) within 48h window (±24h)
     const doCreate = async () => {
       setIsLoading(true);
       try {
