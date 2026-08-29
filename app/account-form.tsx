@@ -1,13 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Platform,
-  Pressable,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, Switch, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
@@ -22,7 +16,7 @@ import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 export default function AccountForm() {
   const router = useRouter();
@@ -89,6 +83,7 @@ export default function AccountForm() {
     const err = validateAccountName(trimmedName);
     if (err) {
       setError(err);
+      void hapticWarning();
       return;
     }
 
@@ -106,13 +101,11 @@ export default function AccountForm() {
           openingBalance.trim() === ""
             ? ""
             : openingBalance.replace(/,/g, "");
-        if (rawBalance.includes(".")) {
-          setError("Opening balance must be a whole number.");
-          return;
-        }
         const parsedBalance = rawBalance === "" ? undefined : Number(rawBalance);
-        if (parsedBalance !== undefined && Number.isNaN(parsedBalance)) {
-          setError("Opening balance must be a valid number.");
+        if (parsedBalance !== undefined && !Number.isSafeInteger(parsedBalance)) {
+          setError("Opening balance must be a whole number.");
+          void hapticWarning();
+          setIsLoading(false);
           return;
         }
         await createAccount({
@@ -127,11 +120,13 @@ export default function AccountForm() {
       markIntentional();
       router.back();
     } catch (e) {
+      void hapticError();
       const message = getConvexErrorMessage(
         e,
         isEdit ? "Failed to update account." : "Failed to create account.",
       );
-      setError(message);
+      // P1-9: operational errors via Snackbar, not inline
+      show(message);
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +203,7 @@ export default function AccountForm() {
               placeholder="0"
               value={openingBalance}
               onChangeText={setOpeningBalance}
-              keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric"}
+              keyboardType="number-pad"
               amount
             />
           ) : null}

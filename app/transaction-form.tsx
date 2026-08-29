@@ -31,7 +31,12 @@ import { Skeleton } from "@/components/Skeleton";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatNumber } from "@/utils/format";
 import { getConvexErrorMessage } from "@/lib/errors";
-import { hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
+import {
+  getLastTransaction,
+  setLastTransaction,
+  type LastTransaction,
+} from "@/lib/last-transaction";
 
 export default function TransactionForm() {
   const router = useRouter();
@@ -67,13 +72,22 @@ export default function TransactionForm() {
   const [dateError, setDateError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const lastTransaction = useRef<{
-    type: TransactionType;
-    amount: number;
-    accountId: string;
-    toAccountId?: string;
-    categoryId?: string;
-  } | null>(null);
+  const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
+  const lastTransactionRef = useRef<LastTransaction | null>(null);
+  lastTransactionRef.current = lastTransaction;
+  // Load persisted repeat-last (survives unmount / app restart) — P0-3
+  useEffect(() => {
+    if (isEdit) return;
+    void getLastTransaction().then((v) => {
+      if (v) setLastTransactionState(v);
+    });
+  }, [isEdit]);
+
+  // Also watch recent transactions for duplicate detection — P0-3 + P1-9
+  const recentForDupe = useQuery(
+    api.transactions.recent,
+    isEdit ? "skip" : { limit: 20 },
+  );
 
   const editingTx = useMemo(
     () => (isEdit ? getResult?.transaction : undefined),
@@ -96,8 +110,8 @@ export default function TransactionForm() {
 
   const handleRepeatLast = () => {
     Keyboard.dismiss();
-    if (!lastTransaction.current) return;
-    const last = lastTransaction.current;
+    const last = lastTransactionRef.current;
+    if (!last) return;
     setType(last.type);
     setAmountText(formatNumber(last.amount));
     setAccountId(last.accountId);
@@ -315,50 +329,84 @@ export default function TransactionForm() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const base = {
-        amount: signedAmount,
-        type,
-        note: note.trim(),
-        date: date.getTime(),
-        accountId: accountId as Id<"accounts">,
-        categoryId:
-          type === "transfer"
-            ? undefined
-            : (categoryId as Id<"categories">),
-        toAccountId:
-          type === "transfer" ? (toAccountId as Id<"accounts">) : undefined,
-      };
-      if (isEdit && transactionId !== undefined) {
-        await updateTransaction({
-          transactionId: transactionId as Id<"transactions">,
-          ...base,
-        });
-      } else {
-        await createTransaction(base);
-        lastTransaction.current = {
+    // Duplicate detection (P0-3): same amount+account(+category/toAccount) within 24h
+    const doCreate = async () => {
+      setIsLoading(true);
+      try {
+        const base = {
+          amount: signedAmount,
           type,
-          amount: Math.abs(amountValue),
-          accountId,
-          toAccountId: toAccountId ?? undefined,
-          categoryId: categoryId ?? undefined,
+          note: note.trim(),
+          date: date.getTime(),
+          accountId: accountId as Id<"accounts">,
+          categoryId:
+            type === "transfer"
+              ? undefined
+              : (categoryId as Id<"categories">),
+          toAccountId:
+            type === "transfer" ? (toAccountId as Id<"accounts">) : undefined,
         };
+        if (isEdit && transactionId !== undefined) {
+          await updateTransaction({
+            transactionId: transactionId as Id<"transactions">,
+            ...base,
+          });
+        } else {
+          await createTransaction(base);
+          const persisted: LastTransaction = {
+            type,
+            amount: Math.abs(amountValue),
+            accountId,
+            toAccountId: toAccountId ?? undefined,
+            categoryId: categoryId ?? undefined,
+          };
+          setLastTransactionState(persisted);
+          void setLastTransaction(persisted);
+        }
+        show(isEdit ? "Transaction updated" : "Transaction added");
+        void hapticSuccess();
+        markIntentional();
+        router.back();
+      } catch (e) {
+        // P1-9: operational errors via Snackbar + hapticError, not inline error
+        void hapticError();
+        show(
+          getConvexErrorMessage(
+            e,
+            isEdit ? "Failed to update transaction." : "Failed to create transaction.",
+          ),
+        );
+      } finally {
+        setIsLoading(false);
       }
-      show(isEdit ? "Transaction updated" : "Transaction added");
-      void hapticSuccess();
-      markIntentional();
-      router.back();
-    } catch (e) {
-      setError(
-        getConvexErrorMessage(
-          e,
-          isEdit ? "Failed to update transaction." : "Failed to create transaction.",
-        ),
-      );
-    } finally {
-      setIsLoading(false);
+    };
+
+    if (!isEdit && recentForDupe?.transactions) {
+      const dayMs = 24 * 60 * 60 * 1000;
+      const dupe = recentForDupe.transactions.find((tx) => {
+        if (Math.abs(tx.amount) !== Math.abs(signedAmount)) return false;
+        if (tx.type !== type) return false;
+        if (tx.accountId !== accountId) return false;
+        if (type === "transfer" && tx.toAccountId !== toAccountId) return false;
+        if (type !== "transfer" && tx.categoryId !== categoryId) return false;
+        // within 24h
+        return Math.abs(tx.date - date.getTime()) < dayMs;
+      });
+      if (dupe) {
+        void hapticWarning();
+        Alert.alert(
+          "Possible duplicate",
+          `You already have a ${type} of ${formatNumber(Math.abs(signedAmount))} on this account within the last 24 hours. Save anyway?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Save anyway", onPress: () => void doCreate() },
+          ],
+        );
+        return;
+      }
     }
+
+    await doCreate();
   };
 
   const handleDelete = () => {
@@ -395,21 +443,22 @@ export default function TransactionForm() {
                   onPress: () => {
                     createTransaction(deletedPayload)
                       .then(() => {
+                        void hapticSuccess();
                         show("Transaction restored");
                       })
-                      .catch((e: unknown) =>
+                      .catch((e: unknown) => {
+                        void hapticError();
                         show(
                           getConvexErrorMessage(e, "Failed to restore transaction."),
-                        ),
-                      );
+                        );
+                      });
                   },
                 });
               })
-              .catch((e: unknown) =>
-                setError(
-                  getConvexErrorMessage(e, "Failed to delete transaction."),
-                ),
-              )
+              .catch((e: unknown) => {
+                void hapticError();
+                show(getConvexErrorMessage(e, "Failed to delete transaction."));
+              })
               .finally(() => setIsLoading(false));
           },
         },
@@ -524,7 +573,7 @@ export default function TransactionForm() {
                 </View>
               </View>
 
-              {!isEdit && lastTransaction.current ? (
+              {!isEdit && lastTransaction ? (
                 <Pressable
                   onPress={handleRepeatLast}
                   accessibilityRole="button"
@@ -537,7 +586,7 @@ export default function TransactionForm() {
                       Repeat last
                     </Text>
                     <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                      Copies type, amount, and account from your previous transaction
+                      {`Copies ${lastTransaction.type}, ${formatNumber(lastTransaction.amount)} — tap to reuse`}
                     </Text>
                   </View>
                 </Pressable>

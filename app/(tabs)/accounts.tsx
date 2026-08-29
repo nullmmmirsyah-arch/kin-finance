@@ -158,6 +158,10 @@ export default function Accounts() {
         <FlatList
           className="mt-6 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          removeClippedSubviews
+          windowSize={5}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -198,6 +202,11 @@ export default function Accounts() {
         <FlatList
           className="mt-4 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          removeClippedSubviews
+          windowSize={7}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          updateCellsBatchingPeriod={50}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
