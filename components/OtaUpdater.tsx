@@ -18,8 +18,12 @@ export function OtaUpdater() {
         if (!check.isAvailable || cancelled) return;
         setState("downloading");
         setProgress(30);
-        await Updates.fetchUpdateAsync();
+        const result = await Updates.fetchUpdateAsync();
         if (cancelled) return;
+        if (!result.isNew) {
+          setState("idle");
+          return;
+        }
         setProgress(100);
         setState("ready");
         void hapticSuccess();
