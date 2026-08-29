@@ -11,6 +11,7 @@ import { cssInterop } from "nativewind";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   KeyboardAwareScrollView,
   KeyboardProvider,
@@ -131,33 +132,37 @@ export default function RootLayout() {
 
   if (!publishableKey || !convexUrl) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark px-6 gap-4">
-          <Text className="text-center text-base font-semibold text-text-primary dark:text-text-primary-dark">
-            Configuration missing
-          </Text>
-          <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
-            {!publishableKey ? "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY" : "EXPO_PUBLIC_CONVEX_URL"} is not set in EAS Environment Variables. Set it per environment (production/preview/development) in expo.dev and rebuild.
-          </Text>
-        </View>
-      </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark px-6 gap-4">
+            <Text className="text-center text-base font-semibold text-text-primary dark:text-text-primary-dark">
+              Configuration missing
+            </Text>
+            <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+              {!publishableKey ? "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY" : "EXPO_PUBLIC_CONVEX_URL"} is not set in EAS Environment Variables. Set it per environment (production/preview/development) in expo.dev and rebuild.
+            </Text>
+          </View>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
-        <ThemeProvider>
-          <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
-            <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-              <SnackbarProvider>
-                <OtaUpdater />
-                <RootNavigator />
-              </SnackbarProvider>
-            </ConvexProviderWithClerk>
-          </ClerkProvider>
-        </ThemeProvider>
-      </KeyboardProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <KeyboardProvider>
+          <ThemeProvider>
+            <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
+              <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+                <SnackbarProvider>
+                  <OtaUpdater />
+                  <RootNavigator />
+                </SnackbarProvider>
+              </ConvexProviderWithClerk>
+            </ClerkProvider>
+          </ThemeProvider>
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
