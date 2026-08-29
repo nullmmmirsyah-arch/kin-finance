@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { Pressable, Text, View } from "react-native";
 import { useThemeColors } from "@/constants/theme";
 export function UpdateBanner({ state, progress=0, onRestart, onDismiss, downloadUrl }: { state: "downloading"|"ready"|"blocking"; progress?: number; onRestart?: ()=>void; onDismiss?: ()=>void; downloadUrl?: string }) {
@@ -7,7 +8,7 @@ export function UpdateBanner({ state, progress=0, onRestart, onDismiss, download
       <View className="w-full bg-surface dark:bg-surface-dark px-4 py-3 gap-2 border-b border-border dark:border-border-dark">
         <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Downloading update… {Math.round(progress)}%</Text>
         <View className="h-1 w-full rounded-full bg-border dark:bg-border-dark overflow-hidden">
-          <View style={{ width: `${progress}%`, backgroundColor: C.primary }} className="h-full" />
+          <View style={{ width: `${Math.min(100, Math.max(0, progress))}%`, backgroundColor: C.primary }} className="h-full" />
         </View>
       </View>
     );
@@ -16,7 +17,7 @@ export function UpdateBanner({ state, progress=0, onRestart, onDismiss, download
     return (
       <View className="w-full bg-surface dark:bg-surface-dark px-4 py-3 gap-2 border-b border-border dark:border-border-dark">
         <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">New version available — Download</Text>
-        <Pressable onPress={()=>{}} className="min-h-12 items-center justify-center rounded-lg" style={{ backgroundColor: C.primary }}>
+        <Pressable accessibilityRole="button" onPress={()=>{ if (downloadUrl) void Linking.openURL(downloadUrl); }} className="min-h-12 items-center justify-center rounded-lg" style={{ backgroundColor: C.primary }}>
           <Text className="text-sm font-semibold text-white">Download</Text>
         </Pressable>
       </View>

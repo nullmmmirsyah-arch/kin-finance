@@ -18,6 +18,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
 import { OtaUpdater } from "@/components/OtaUpdater";
 import { BrandedLoadingShell } from "@/components/BrandedLoadingShell";
+import { hapticSuccess } from "@/lib/haptics";
 import { api } from "@/convex/_generated/api";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -48,13 +49,20 @@ function RootNavigator() {
   const { isLoaded, isSignedIn } = useAuth();
   const household = useQuery(api.households.getActive);
   const [progress, setProgress] = useState(0);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!isLoaded || household === undefined) {
       const t1 = setTimeout(() => setProgress(70), 400);
       return () => clearTimeout(t1);
     }
-  }, [isLoaded, household]);
+  }, [isLoaded, household, retryKey]);
+
+  useEffect(() => {
+    if (retryKey > 0) {
+      setProgress(70);
+    }
+  }, [retryKey]);
 
   useEffect(() => {
     if (progress >= 70 && progress < 90 && isLoaded && household !== undefined) {
@@ -76,7 +84,16 @@ function RootNavigator() {
   }, [ready]);
 
   if (!isLoaded || (isSignedIn && household === undefined)) {
-    return <BrandedLoadingShell progress={progress} onRetry={() => {}} />;
+    return (
+      <BrandedLoadingShell
+        key={retryKey}
+        progress={progress}
+        onRetry={() => {
+          setRetryKey((k) => k + 1);
+          void hapticSuccess();
+        }}
+      />
+    );
   }
 
   return (
