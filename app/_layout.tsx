@@ -9,6 +9,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { cssInterop } from "nativewind";
 import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   KeyboardAwareScrollView,
@@ -30,20 +31,14 @@ cssInterop(KeyboardAwareScrollView, {
   contentContainerClassName: "contentContainerStyle",
 });
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
 
-if (!publishableKey) {
-  throw new Error("Add your Clerk Publishable Key to the .env file");
-}
-
-if (!convexUrl) {
-  throw new Error("Add your Convex URL to the .env.local file");
-}
-
-const convex = new ConvexReactClient(convexUrl, {
-  unsavedChangesWarning: false,
-});
+const convex = convexUrl
+  ? new ConvexReactClient(convexUrl, {
+      unsavedChangesWarning: false,
+    })
+  : (null as unknown as ConvexReactClient);
 
 function RootNavigator() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -83,6 +78,15 @@ function RootNavigator() {
     }
   }, [ready]);
 
+  useEffect(() => {
+    if (isLoaded && isSignedIn && household === undefined) {
+      const t = setTimeout(() => {
+        SplashScreen.hideAsync().catch(() => {});
+      }, 3500);
+      return () => clearTimeout(t);
+    }
+  }, [isLoaded, isSignedIn, household]);
+
   if (!isLoaded || (isSignedIn && household === undefined)) {
     return (
       <BrandedLoadingShell
@@ -116,11 +120,35 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (!publishableKey || !convexUrl) {
+      const t = setTimeout(() => {
+        SplashScreen.hideAsync().catch(() => {});
+      }, 500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  if (!publishableKey || !convexUrl) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View className="flex-1 items-center justify-center bg-background dark:bg-background-dark px-6 gap-4">
+          <Text className="text-center text-base font-semibold text-text-primary dark:text-text-primary-dark">
+            Configuration missing
+          </Text>
+          <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+            {!publishableKey ? "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY" : "EXPO_PUBLIC_CONVEX_URL"} is not set in EAS Environment Variables. Set it per environment (production/preview/development) in expo.dev and rebuild.
+          </Text>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <ThemeProvider>
-          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
             <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
               <SnackbarProvider>
                 <OtaUpdater />
