@@ -193,6 +193,10 @@ export default function Home() {
     }));
   }, [monthBudgets]);
 
+  const handleBudgetPillPress = useCallback(() => {
+    router.push("/budgets");
+  }, [router]);
+
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -385,7 +389,7 @@ export default function Home() {
             {budgetPills.length > 0 ? (
               <View className="mt-2 gap-3">
                 {budgetPills.map((pill) => (
-                  <BudgetPill key={pill.id} pill={pill} onPress={() => router.push("/budgets")} />
+                  <BudgetPill key={pill.id} pill={pill} onPress={handleBudgetPillPress} />
                 ))}
               </View>
             ) : (
@@ -462,7 +466,7 @@ export default function Home() {
               maxToRenderPerBatch={4}
               updateCellsBatchingPeriod={50}
               getItemLayout={(_, index) => ({
-                length: 172,
+                length: 160,
                 offset: 172 * index,
                 index,
               })}

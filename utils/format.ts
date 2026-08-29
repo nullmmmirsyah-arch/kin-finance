@@ -5,11 +5,12 @@ export function formatNumber(value: number): string {
 }
 
 export function formatAmountInput(value: string): string {
-  // Whole numbers only — strip sign, decimals, and non-digits; then add thousand separators.
-  // This keeps client display aligned with `validateTransactionAmount` which rejects non-integers.
-  const digits = value.replace(/[^0-9]/g, "");
+  // Whole numbers only — explicitly truncate decimals/signs, do not silently reinterpret.
+  // "1.500" -> "1" (truncate after "."), not "1,500"; "12.34" -> "12"; "-12" -> "12".
+  // Normal unsigned integers are formatted with thousand separators; validation surfaces errors.
+  const beforeDecimal = value.split(".")[0] ?? "";
+  const digits = beforeDecimal.replace(/[^0-9]/g, "");
   if (digits === "") return "";
-  // Remove leading zeros but keep single zero
   const normalized = digits.replace(/^0+(?=\d)/, "");
   return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
