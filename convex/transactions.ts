@@ -488,6 +488,198 @@ export const summary = query({
   },
 });
 
+// ---- Timezone-aware month helpers (server-side, copied from utils/date.ts) ----
+function zonedParts(ts: number, timeZone: string): Record<string, number> {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(ts));
+  const result: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      result[part.type] = Number(part.value);
+    }
+  }
+  return result;
+}
+
+function zonedOffsetMs(ts: number, timeZone: string): number {
+  const p = zonedParts(ts, timeZone);
+  const wallAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return wallAsUtc - ts;
+}
+
+function zonedWallToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  timeZone: string,
+): number {
+  const naive = Date.UTC(year, month - 1, day, hour, minute, second);
+  let ts = naive - zonedOffsetMs(naive, timeZone);
+  ts = naive - zonedOffsetMs(ts, timeZone);
+  return ts;
+}
+
+function getYearMonthTz(ts: number, timeZone: string): { year: number; month: number } {
+  const p = zonedParts(ts, timeZone);
+  return { year: p.year, month: p.month };
+}
+
+function zonedMonthStartTz(year: number, month: number, timeZone: string): number {
+  return zonedWallToUtc(year, month, 1, 0, 0, 0, timeZone);
+}
+
+function getMonthStartForDate(ts: number, timeZone: string): number {
+  const { year, month } = getYearMonthTz(ts, timeZone);
+  return zonedMonthStartTz(year, month, timeZone);
+}
+
+function getNextMonthStart(periodStart: number, timeZone: string): number {
+  const { year, month } = getYearMonthTz(periodStart, timeZone);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return zonedMonthStartTz(nextYear, nextMonth, timeZone);
+}
+
+function formatMonthLabelTz(timestamp: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "long",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
+
+export const cashflow = query({
+  args: { startDate: v.number(), endDate: v.number(), timezone: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) return null;
+    const { membership } = auth;
+    const household = await ctx.db.get(membership.householdId);
+    const storedTz = (household as { timezone?: string } | null)?.timezone;
+    const timezone = args.timezone ?? storedTz ?? "UTC";
+    if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
+    if (args.endDate - args.startDate > 200 * 86_400_000) throw new ConvexError("Window too large.");
+    const isOwner = membership.role === "owner";
+
+    // SINGLE SCAN
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
+      )
+      .collect();
+
+    // Build buckets for every month intersecting [startDate, endDate)
+    const buckets = new Map<number, { income: number; expense: number }>();
+    let cursor = getMonthStartForDate(args.startDate, timezone);
+    // Avoid infinite loop guard (max 12 months for 200 days)
+    let iterations = 0;
+    while (cursor < args.endDate && iterations < 24) {
+      buckets.set(cursor, { income: 0, expense: 0 });
+      cursor = getNextMonthStart(cursor, timezone);
+      iterations++;
+    }
+
+    const hiddenCache = new Map<Id<"categories">, boolean>();
+
+    for (const row of rows) {
+      if (row.type === "transfer") continue;
+      if (!isOwner && row.categoryId !== undefined) {
+        let hidden = hiddenCache.get(row.categoryId);
+        if (hidden === undefined) {
+          const cat = await ctx.db.get(row.categoryId);
+          hidden = cat?.hidden ?? false;
+          hiddenCache.set(row.categoryId, hidden);
+        }
+        if (hidden) continue;
+      }
+      const bucketKey = getMonthStartForDate(row.date, timezone);
+      const bucket = buckets.get(bucketKey);
+      if (bucket === undefined) continue;
+      if (row.type === "income") {
+        bucket.income += row.amount;
+      } else if (row.type === "expense") {
+        bucket.expense += Math.abs(row.amount);
+      }
+    }
+
+    const cashflow = Array.from(buckets.entries())
+      .map(([periodStart, v]) => ({
+        periodStart,
+        label: formatMonthLabelTz(periodStart, timezone),
+        income: v.income,
+        expense: v.expense,
+        net: v.income - v.expense,
+      }))
+      .sort((a, b) => a.periodStart - b.periodStart);
+
+    return { cashflow, isOwner };
+  },
+});
+
+export const spendingByCategory = query({
+  args: { startDate: v.number(), endDate: v.number() },
+  handler: async (ctx, args) => {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) return null;
+    const { membership } = auth;
+    const isOwner = membership.role === "owner";
+    if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
+    if (args.endDate - args.startDate > 32 * 86_400_000) throw new ConvexError("Period too large.");
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
+      )
+      .collect();
+
+    const hiddenCache = new Map<Id<"categories">, boolean>();
+    const nameCache = new Map<Id<"categories">, string>();
+    const agg = new Map<Id<"categories">, number>();
+
+    for (const row of rows) {
+      if (row.type !== "expense" || row.categoryId === undefined) continue;
+      if (!isOwner) {
+        let hidden = hiddenCache.get(row.categoryId);
+        if (hidden === undefined) {
+          const cat = await ctx.db.get(row.categoryId);
+          hidden = cat?.hidden ?? false;
+          hiddenCache.set(row.categoryId, hidden);
+          if (cat) nameCache.set(row.categoryId, cat.name);
+        }
+        if (hidden) continue;
+      } else if (!nameCache.has(row.categoryId)) {
+        const cat = await ctx.db.get(row.categoryId);
+        if (cat) nameCache.set(row.categoryId, cat.name);
+      }
+      agg.set(row.categoryId, (agg.get(row.categoryId) ?? 0) + Math.abs(row.amount));
+    }
+
+    const segments = Array.from(agg.entries())
+      .map(([categoryId, amount]) => ({
+        categoryId,
+        name: nameCache.get(categoryId) ?? "Unknown",
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+
+    const total = segments.reduce((s, x) => s + x.amount, 0);
+    return { segments, total, isOwner };
+  },
+});
+
 export const recent = query({
   args: {
     limit: v.optional(v.number()),
