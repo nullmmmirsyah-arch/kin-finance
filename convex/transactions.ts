@@ -560,13 +560,14 @@ function formatMonthLabelTz(timestamp: number, timeZone: string): string {
 }
 
 export const cashflow = query({
-  args: { startDate: v.number(), endDate: v.number() },
+  args: { startDate: v.number(), endDate: v.number(), timezone: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await findUserAndMembership(ctx);
     if (auth === null) return null;
     const { membership } = auth;
     const household = await ctx.db.get(membership.householdId);
-    const timezone = (household as { timezone?: string } | null)?.timezone ?? "UTC";
+    const storedTz = (household as { timezone?: string } | null)?.timezone;
+    const timezone = args.timezone ?? storedTz ?? "UTC";
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
     if (args.endDate - args.startDate > 200 * 86_400_000) throw new ConvexError("Window too large.");
     const isOwner = membership.role === "owner";

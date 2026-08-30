@@ -183,16 +183,22 @@ export default function Home() {
 
   const cashflowRes = useQuery(
     api.transactions.cashflow,
-    household ? { startDate: analyticsWindow.startDate, endDate: analyticsWindow.endDate } : "skip",
+    household ? { startDate: analyticsWindow.startDate, endDate: analyticsWindow.endDate, timezone } : "skip",
   );
   const spendingRes = useQuery(
     api.transactions.spendingByCategory,
     household ? { startDate: monthStart, endDate: monthEnd } : "skip",
   );
 
-  const currentNet = cashflowRes?.cashflow?.[5]?.net ?? monthSummary?.net ?? 0;
-  const prevNet = cashflowRes?.cashflow?.[4]?.net ?? 0;
   const prevMonthStart = useMemo(() => getMonthBounds(monthStart - 1, timezone).start, [monthStart, timezone]);
+  const currentNet = useMemo(
+    () => cashflowRes?.cashflow?.find((c) => c.periodStart === monthStart)?.net ?? monthSummary?.net ?? 0,
+    [cashflowRes, monthStart, monthSummary],
+  );
+  const prevNet = useMemo(
+    () => cashflowRes?.cashflow?.find((c) => c.periodStart === prevMonthStart)?.net ?? 0,
+    [cashflowRes, prevMonthStart],
+  );
 
   const budgetPills = useMemo(() => {
     const budgets = monthBudgets?.budgets;
