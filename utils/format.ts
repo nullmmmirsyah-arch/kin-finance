@@ -24,10 +24,12 @@ export function detectAmountTruncation(
   formatted: string,
 ): { truncated: boolean; reason: "decimal" | "nonDigit" | null } {
   if (raw.includes(".")) return { truncated: true, reason: "decimal" };
-  const rawDigits = raw.replace(/[^0-9]/g, "");
-  const formattedDigits = formatted.replace(/[^0-9]/g, "");
+  const rawDigits = raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+  const formattedDigits = formatted.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
   if (rawDigits !== formattedDigits) return { truncated: true, reason: "nonDigit" };
-  if (raw !== formatted && raw.length !== formatted.length && raw.replace(/,/g, "") !== formatted.replace(/,/g, "")) {
+  const rawNormalized = raw.replace(/,/g, "").replace(/^0+(?=\d)/, "");
+  const formattedNormalized = formatted.replace(/,/g, "").replace(/^0+(?=\d)/, "");
+  if (rawNormalized !== formattedNormalized) {
     return { truncated: true, reason: "nonDigit" };
   }
   return { truncated: false, reason: null };
