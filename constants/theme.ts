@@ -14,6 +14,12 @@ export const Colors = {
   accountBank: "#92400E",
   accountEwallet: "#1D4ED8",
   accountCreditCard: "#991B1B",
+  deltaPositiveBg: "#DCFCE7",
+  deltaPositiveBorder: "#86EFAC",
+  deltaNegativeBg: "#FEE2E2",
+  deltaNegativeBorder: "#FCA5A5",
+  chartAmber: "#D97706",
+  chartEmerald: "#059669",
 } as const;
 
 export const DarkColors = {
@@ -30,6 +36,12 @@ export const DarkColors = {
   accountBank: "#F59E0B",
   accountEwallet: "#60A5FA",
   accountCreditCard: "#F87171",
+  deltaPositiveBg: "rgba(52,211,153,0.15)",
+  deltaPositiveBorder: "rgba(52,211,153,0.25)",
+  deltaNegativeBg: "rgba(248,113,113,0.15)",
+  deltaNegativeBorder: "rgba(248,113,113,0.25)",
+  chartAmber: "#F59E0B",
+  chartEmerald: "#34D399",
 } as const;
 
 export function useThemeColors() {

@@ -20,9 +20,9 @@ export function SpendingDonut({ segments, total }: Props) {
   const C = useThemeColors();
   const [sel, setSel] = useState<string | null>(null);
 
-  const palette = useMemo(
-    () => [C.accountCash, C.accountBank, C.accountEwallet, C.accountCreditCard, C.primary, "#D97706", "#059669"],
-    [C.accountCash, C.accountBank, C.accountEwallet, C.accountCreditCard, C.primary],
+  const palette = useMemo<string[]>(
+    () => [C.accountCash, C.accountBank, C.accountEwallet, C.accountCreditCard, C.primary, C.chartAmber, C.chartEmerald],
+    [C.accountCash, C.accountBank, C.accountEwallet, C.accountCreditCard, C.primary, C.chartAmber, C.chartEmerald],
   );
 
   const visible = useMemo(() => segments.slice(0, 5), [segments]);

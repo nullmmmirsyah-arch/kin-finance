@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Expo SDK 54 docs (`https://docs.expo.dev/versions/v54.0.0/`); `npx expo install <pkg>` for native deps — but NO new native deps for this plan (pure Views).
+- Expo SDK 54 docs (`https://docs.expo.dev/versions/v54.0.0/`); `npx expo install react-native-svg` for SpendingDonut colored donut arcs (installed via `npx expo install react-native-svg@15.12.1`, included in Expo Go 54, OTA-eligible via `eas update`).
 - After `convex/*.ts` change: `npx convex codegen` then `npx tsc --noEmit`.
 - Verify with `npx tsc --noEmit`, `npm run lint`, `npm test` (vitest) when touching pure utils/Convex functions.
 - Run `npx convex dev` separately to push schema/functions.
