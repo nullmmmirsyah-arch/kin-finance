@@ -43,11 +43,31 @@ function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean
     if (!filters.categoryIds.includes(row.categoryId)) return false;
   }
   if (filters.type !== undefined && row.type !== filters.type) return false;
-  if (filters.search !== undefined) {
-    const hay = (row.note ?? "").toLowerCase();
-    if (!hay.includes(filters.search)) return false;
-  }
+  // search is handled separately after hydration (needs account/category names + amount)
+  // keep legacy note check for pre-hydration fast-path when no hydration available (summary without names)
+  // but extended search will be done via matchesSearchExtended — so we skip search here
   return true;
+}
+
+function matchesSearch(
+  row: Doc<"transactions">,
+  search: string,
+  hydrated?: { account?: Doc<"accounts">; toAccount?: Doc<"accounts">; category?: Doc<"categories"> },
+): boolean {
+  const hay = (row.note ?? "").toLowerCase();
+  if (hay.includes(search)) return true;
+  // amount string (absolute value without commas, and raw search digits stripped of commas)
+  const searchDigits = search.replace(/,/g, "");
+  if (searchDigits.length > 0) {
+    const absStr = String(Math.abs(row.amount));
+    if (absStr.includes(searchDigits)) return true;
+    // also allow matching full signed string
+    if (String(row.amount).includes(searchDigits)) return true;
+  }
+  if (hydrated?.account && hydrated.account.name.toLowerCase().includes(search)) return true;
+  if (hydrated?.toAccount && hydrated.toAccount.name.toLowerCase().includes(search)) return true;
+  if (hydrated?.category && hydrated.category.name.toLowerCase().includes(search)) return true;
+  return false;
 }
 
 async function hydrate(
@@ -363,6 +383,7 @@ export const list = query({
         if (!matchesFilters(row, filters)) continue;
         const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
         if (!isOwner && category !== undefined && category.hidden) continue;
+        if (filters.search !== undefined && !matchesSearch(row, filters.search, { category, account, toAccount })) continue;
         const enriched = { ...row, category, account, toAccount };
         collected.push(enriched);
         lastCollected = row;
@@ -426,6 +447,9 @@ export const summary = query({
     let income = 0;
     let expense = 0;
     const hiddenCategoryCache = new Map<Id<"categories">, boolean>();
+    const accountNameCache = new Map<string, Doc<"accounts"> | undefined>();
+    const categoryNameCache = new Map<string, Doc<"categories"> | undefined>();
+    const toAccountNameCache = new Map<string, Doc<"accounts"> | undefined>();
 
     let cursorDate: number | undefined;
     let cursorId: Id<"transactions"> | undefined;
@@ -465,10 +489,31 @@ export const summary = query({
             const category = await ctx.db.get(row.categoryId);
             hidden = category?.hidden ?? false;
             hiddenCategoryCache.set(row.categoryId, hidden);
+            if (category) categoryNameCache.set(row.categoryId, category as Doc<"categories">);
           }
           if (hidden) continue;
         }
         if (!matchesFilters(row, filters)) continue;
+        // extended search: note + amount + account/category names (hydration-light via caches)
+        if (filters.search !== undefined) {
+          let hydrated: { account?: Doc<"accounts">; toAccount?: Doc<"accounts">; category?: Doc<"categories"> } | undefined;
+          // lazy fetch only when search active
+          const getCached = async <T>(cache: Map<string, any>, id: string) => {
+            if (cache.has(id)) return cache.get(id) as T | undefined;
+            const doc = (await ctx.db.get(id as any)) as T | null;
+            const val = doc ?? undefined;
+            cache.set(id, val);
+            return val;
+          };
+          const account = await getCached<Doc<"accounts">>(accountNameCache, row.accountId);
+          const toAccount = row.toAccountId ? await getCached<Doc<"accounts">>(toAccountNameCache, row.toAccountId) : undefined;
+          let category: Doc<"categories"> | undefined;
+          if (row.categoryId) {
+            category = categoryNameCache.get(row.categoryId) ?? (await getCached<Doc<"categories">>(categoryNameCache, row.categoryId));
+          }
+          hydrated = { account, toAccount, category };
+          if (!matchesSearch(row, filters.search, hydrated)) continue;
+        }
         if (row.type === "income") {
           income += row.amount;
         } else if (row.type === "expense") {

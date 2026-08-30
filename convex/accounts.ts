@@ -208,3 +208,113 @@ export const remove = mutation({
     await ctx.db.delete(args.accountId);
   },
 });
+
+function computeExpectedBalances(
+  accounts: Doc<"accounts">[],
+  transactions: Doc<"transactions">[],
+): Map<string, number> {
+  const expected = new Map<string, number>();
+  for (const acc of accounts) expected.set(acc._id, 0);
+  for (const tx of transactions) {
+    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+      // transfer: from -amount, to +amount (amount is positive magnitude)
+      expected.set(tx.accountId, (expected.get(tx.accountId) ?? 0) - tx.amount);
+      expected.set(tx.toAccountId as string, (expected.get(tx.toAccountId as string) ?? 0) + tx.amount);
+    } else {
+      // income/expense: signed amount already
+      expected.set(tx.accountId, (expected.get(tx.accountId) ?? 0) + tx.amount);
+    }
+  }
+  return expected;
+}
+
+export const verify = query({
+  args: {},
+  handler: async (ctx) => {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) return null;
+    const { membership } = result;
+    const isOwner = membership.role === "owner";
+
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+
+    const visibleAccounts = isOwner ? accounts : accounts.filter((a) => !a.hidden);
+
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .take(10001);
+    if (transactions.length > 10000) {
+      throw new ConvexError("Too many transactions to verify. Please contact support.");
+    }
+
+    const expected = computeExpectedBalances(accounts, transactions as Doc<"transactions">[]);
+
+    const discrepancies: Array<{
+      accountId: string;
+      name: string;
+      stored: number;
+      expected: number;
+      delta: number;
+    }> = [];
+
+    let totalStored = 0;
+    let totalExpected = 0;
+    for (const acc of visibleAccounts) {
+      const exp = expected.get(acc._id) ?? 0;
+      totalStored += acc.balance;
+      totalExpected += exp;
+      if (acc.balance !== exp) {
+        discrepancies.push({
+          accountId: acc._id,
+          name: acc.name,
+          stored: acc.balance,
+          expected: exp,
+          delta: exp - acc.balance,
+        });
+      }
+    }
+
+    return { discrepancies, isOwner, totalStored, totalExpected };
+  },
+});
+
+export const reconcile = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .take(10001);
+    if (transactions.length > 10000) {
+      throw new ConvexError("Too many transactions to reconcile. Please contact support.");
+    }
+
+    const expected = computeExpectedBalances(accounts, transactions as Doc<"transactions">[]);
+    let fixed = 0;
+    const now = Date.now();
+    const discrepancies: Array<{ accountId: string; name: string; stored: number; expected: number }> = [];
+
+    for (const acc of accounts) {
+      const exp = expected.get(acc._id) ?? 0;
+      if (acc.balance !== exp) {
+        await ctx.db.patch(acc._id, { balance: exp, updatedAt: now });
+        fixed++;
+        discrepancies.push({ accountId: acc._id, name: acc.name, stored: acc.balance, expected: exp });
+      }
+    }
+
+    return { fixed, discrepancies };
+  },
+});

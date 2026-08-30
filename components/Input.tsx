@@ -2,7 +2,7 @@ import { useCallback, useState, type Ref } from "react";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { Text, TextInput, TextInputProps, View, Pressable } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
-import { formatAmountInput } from "@/utils/format";
+import { formatAmountInput, wasDecimalTruncated } from "@/utils/format";
 
 type Props = TextInputProps & {
   label?: string;
@@ -29,9 +29,19 @@ export function Input({
   const C = useThemeColors();
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [decimalWarning, setDecimalWarning] = useState<string | null>(null);
   const handleChangeText = useCallback(
     (text: string) => {
-      onChangeText?.(amount ? formatAmountInput(text) : text);
+      if (amount) {
+        if (wasDecimalTruncated(text)) {
+          setDecimalWarning("Decimals are ignored — amounts are whole numbers only.");
+        } else {
+          setDecimalWarning(null);
+        }
+        onChangeText?.(formatAmountInput(text));
+      } else {
+        onChangeText?.(text);
+      }
     },
     [amount, onChangeText],
   );
@@ -106,6 +116,11 @@ export function Input({
       </View>
       {error ? (
         <Text accessibilityLiveRegion="polite" className="text-sm text-error dark:text-error-dark">{error}</Text>
+      ) : null}
+      {amount && decimalWarning && !error ? (
+        <Text accessibilityLiveRegion="polite" className="text-xs" style={{ color: C.chartAmber }}>
+          {decimalWarning}
+        </Text>
       ) : null}
     </View>
   );

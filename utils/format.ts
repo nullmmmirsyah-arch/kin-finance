@@ -15,6 +15,26 @@ export function formatAmountInput(value: string): string {
   return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+export function wasDecimalTruncated(raw: string): boolean {
+  return raw.includes(".");
+}
+
+export function detectAmountTruncation(
+  raw: string,
+  formatted: string,
+): { truncated: boolean; reason: "decimal" | "nonDigit" | null } {
+  if (raw.includes(".")) return { truncated: true, reason: "decimal" };
+  const rawDigits = raw.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+  const formattedDigits = formatted.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+  if (rawDigits !== formattedDigits) return { truncated: true, reason: "nonDigit" };
+  const rawNormalized = raw.replace(/,/g, "").replace(/^0+(?=\d)/, "");
+  const formattedNormalized = formatted.replace(/,/g, "").replace(/^0+(?=\d)/, "");
+  if (rawNormalized !== formattedNormalized) {
+    return { truncated: true, reason: "nonDigit" };
+  }
+  return { truncated: false, reason: null };
+}
+
 export function sumNetExcludingTransfers(
   txs: { type: string; amount: number }[],
 ): number {

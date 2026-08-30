@@ -1,6 +1,7 @@
 import { ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   Pressable,
   RefreshControl,
@@ -123,10 +124,16 @@ export default function Transactions() {
 
   const timezone = resolveTimezone(household?.timezone);
 
-  useEffect(() => {
-    const t = setTimeout(() => setSearchCommitted(searchDraft.trim()), 300);
-    return () => clearTimeout(t);
+  const commitSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setSearchCommitted(searchDraft.trim());
+    void hapticSuccess();
   }, [searchDraft]);
+
+  const clearSearch = useCallback(() => {
+    setSearchDraft("");
+    setSearchCommitted("");
+  }, []);
 
   const invalidCustomRange =
     dateFilter === "custom" &&
@@ -330,8 +337,7 @@ export default function Transactions() {
     setTypeFilter("all");
     setAccountIds([]);
     setCategoryIds([]);
-    setSearchDraft("");
-    setSearchCommitted("");
+    clearSearch();
   };
 
   if (result !== undefined && result.transactions === null) {
@@ -383,28 +389,38 @@ export default function Transactions() {
       </View>
 
       <View className="mt-4 px-5">
-        <View className="flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
-          <Feather name="search" size={16} color={C.textSecondary} />
-          <TextInput
-            value={searchDraft}
-            onChangeText={setSearchDraft}
-            placeholder="Search notes…"
-            placeholderTextColor={C.textSecondary}
-            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
-            accessibilityLabel="Search notes"
-          />
-          {searchDraft.length > 0 && (
-            <Pressable
-              onPress={() => {
-                setSearchDraft("");
-                setSearchCommitted("");
-              }}
-              accessibilityLabel="Clear search"
-              className="h-10 w-10 items-center justify-center"
-            >
-              <Feather name="x" size={16} color={C.textSecondary} />
-            </Pressable>
-          )}
+        <View className="flex-row gap-2">
+          <View className="flex-1 flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
+            <Feather name="search" size={16} color={C.textSecondary} />
+            <TextInput
+              value={searchDraft}
+              onChangeText={setSearchDraft}
+              placeholder="Search notes, amounts, accounts, categories…"
+              placeholderTextColor={C.textSecondary}
+              className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
+              accessibilityLabel="Search notes, amounts, accounts and categories"
+              returnKeyType="search"
+              onSubmitEditing={commitSearch}
+            />
+            {searchDraft.length > 0 && (
+              <Pressable
+                onPress={clearSearch}
+                accessibilityLabel="Clear search"
+                className="h-10 w-10 items-center justify-center"
+              >
+                <Feather name="x" size={16} color={C.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            onPress={commitSearch}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            style={{ backgroundColor: C.primary, borderRadius: 999 }}
+            className="min-h-12 items-center justify-center px-5"
+          >
+            <Text className="text-sm font-semibold" style={{ color: C.background }}>Search</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -484,10 +500,7 @@ export default function Transactions() {
                   title={`No results for "${searchCommitted}"`}
                   description="Try a different keyword or clear search."
                   actionLabel="Clear search"
-                  onAction={() => {
-                    setSearchDraft("");
-                    setSearchCommitted("");
-                  }}
+                  onAction={clearSearch}
                 />
               ) : filtersActive ? (
                 <EmptyState
