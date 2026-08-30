@@ -114,10 +114,11 @@ describe("P0-1 invitations.create auto-revokes previous active invites", () => {
 
   it("expired or already-revoked invites are left untouched (idempotent)", async () => {
     const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
-    await t.run(async (ctx) => {
+    const { expiredId, expiredUpdatedAt, revokedId, revokedUpdatedAt } = await t.run(async (ctx) => {
       const base = await seedOwner(ctx);
+      const expiredCreatedAt = Date.now();
       // Expired invite
-      await ctx.db.insert("invitations", {
+      const expiredId = await ctx.db.insert("invitations", {
         householdId: base.householdId,
         codeHash: "seedhash-expired",
         createdBy: base.ownerId,
@@ -127,11 +128,12 @@ describe("P0-1 invitations.create auto-revokes previous active invites", () => {
         revoked: false,
         redemptionAttempts: 0,
         lastAttemptAt: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: expiredCreatedAt,
+        updatedAt: expiredCreatedAt,
       });
+      const revokedCreatedAt = Date.now();
       // Already revoked
-      await ctx.db.insert("invitations", {
+      const revokedId = await ctx.db.insert("invitations", {
         householdId: base.householdId,
         codeHash: "seedhash-revoked",
         createdBy: base.ownerId,
@@ -141,12 +143,28 @@ describe("P0-1 invitations.create auto-revokes previous active invites", () => {
         revoked: true,
         redemptionAttempts: 0,
         lastAttemptAt: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: revokedCreatedAt,
+        updatedAt: revokedCreatedAt,
       });
+      const expiredDoc = await ctx.db.get(expiredId);
+      const revokedDoc = await ctx.db.get(revokedId);
+      return {
+        expiredId,
+        expiredUpdatedAt: expiredDoc!.updatedAt,
+        revokedId,
+        revokedUpdatedAt: revokedDoc!.updatedAt,
+      };
     });
 
     await owner.mutation(api.invitations.create, {});
+
+    // Expired remains unrevoked and both retain original updatedAt
+    const expiredAfter = await t.run(async (ctx) => ctx.db.get(expiredId));
+    const revokedAfter = await t.run(async (ctx) => ctx.db.get(revokedId));
+    expect(expiredAfter!.revoked).toBe(false);
+    expect(expiredAfter!.updatedAt).toBe(expiredUpdatedAt);
+    expect(revokedAfter!.revoked).toBe(true);
+    expect(revokedAfter!.updatedAt).toBe(revokedUpdatedAt);
 
     // New invite created successfully — the expired/revoked ones remain as-is (no double-revoke error)
     const active = await t.run(async (ctx) => {

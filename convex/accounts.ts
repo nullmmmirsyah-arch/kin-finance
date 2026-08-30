@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateAccountName } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
@@ -67,7 +68,7 @@ export const create = mutation({
     }
 
     // P0-2: validate reserved category BEFORE inserting account to avoid orphan
-    let openingCategory: typeof args & { _id: any } | null = null;
+    let openingCategory: Doc<"categories"> | null = null;
     let txType: "income" | "expense" | null = null;
     if (openingBalance !== 0) {
       txType = openingBalance > 0 ? "income" : "expense";
@@ -87,7 +88,7 @@ export const create = mutation({
       if (category === null) {
         throw new ConvexError("Initial Balance category not found.");
       }
-      openingCategory = category as any;
+      openingCategory = category;
     }
 
     const now = Date.now();
