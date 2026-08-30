@@ -1,6 +1,5 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
 import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateAccountName } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
@@ -41,7 +40,7 @@ export const create = mutation({
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { user, membership } = await getUserAndMembership(ctx);
     requireOwner(membership);
 
     const err = validateAccountName(args.name);
@@ -67,19 +66,11 @@ export const create = mutation({
       throw new ConvexError("Opening balance must be a whole number.");
     }
 
-    const now = Date.now();
-    const accountId = await ctx.db.insert("accounts", {
-      householdId: membership.householdId,
-      name,
-      type: args.type,
-      balance: 0,
-      hidden: args.hidden ?? false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
+    // P0-2: validate reserved category BEFORE inserting account to avoid orphan
+    let openingCategory: typeof args & { _id: any } | null = null;
+    let txType: "income" | "expense" | null = null;
     if (openingBalance !== 0) {
-      const txType = openingBalance > 0 ? "income" : "expense";
+      txType = openingBalance > 0 ? "income" : "expense";
       const category = await ctx.db
         .query("categories")
         .withIndex("by_householdId", (q) =>
@@ -88,7 +79,7 @@ export const create = mutation({
         .filter((q) =>
           q.and(
             q.eq(q.field("name"), RESERVED_CATEGORY_NAME),
-            q.eq(q.field("type"), txType),
+            q.eq(q.field("type"), txType!),
           ),
         )
         .first();
@@ -96,14 +87,34 @@ export const create = mutation({
       if (category === null) {
         throw new ConvexError("Initial Balance category not found.");
       }
+      openingCategory = category as any;
+    }
 
-      await ctx.runMutation(api.transactions.create, {
+    const now = Date.now();
+    // P0-2: atomic — balance set to openingBalance directly, single timestamp
+    const accountId = await ctx.db.insert("accounts", {
+      householdId: membership.householdId,
+      name,
+      type: args.type,
+      balance: openingBalance,
+      hidden: args.hidden ?? false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (openingBalance !== 0 && openingCategory !== null && txType !== null) {
+      await ctx.db.insert("transactions", {
+        householdId: membership.householdId,
         accountId,
-        categoryId: category._id,
+        categoryId: openingCategory._id,
         amount: openingBalance,
         type: txType,
         note: "Initial balance",
         date: now,
+        createdBy: user._id,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
       });
     }
 

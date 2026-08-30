@@ -40,6 +40,17 @@ export const create = mutation({
     const now = Date.now();
     const expiresAt = now + SEVEN_DAYS_MS;
 
+    // P0-1: auto-revoke previous active invites so only one active code exists
+    const previousActive = await ctx.db
+      .query("invitations")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+    for (const inv of previousActive) {
+      if (!inv.revoked && inv.expiresAt > now && inv.useCount < inv.maxUses) {
+        await ctx.db.patch(inv._id, { revoked: true, updatedAt: now });
+      }
+    }
+
     let code: string;
     let codeHash: string;
     let attempts = 0;

@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-08-31 (P0-5: Delta no-chip — hapus pill bg/border)
+> Last updated: 2026-08-31 (P0-1: Invite auto-revoke atomic + P0-2: Atomic opening balance — single mutation)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -92,8 +92,8 @@ visible) without exposing transaction detail.
 |---------|--------------|
 | Authentication | Sign in, sign up (with confirm password), email verification, MFA email code, Google SSO, forgot-password reset (Clerk). Last-used method remembered per device (SecureStore) and leads the login CTA order. Auth gate in `app/_layout.tsx`. Password fields have visibility toggle (eye/eye-off, 48px); verification/MFA/reset codes use `oneTimeCode`/`sms-otp` autofill. |
 | Household | Create (first user becomes Owner), get active household, rename (Owner only), list members, remove member (Owner only; owner cannot be removed). |
-| Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code auto-revokes previous active codes. Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
-| Accounts | Create (optional opening balance → auto "Initial Balance" transaction), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
+| Invitations | Owner generates invite code (8 alphanumeric chars, HMAC-SHA-256 hash stored, 7-day expiry, single-use). Owner can revoke. Generating a new code atomically auto-revokes all previous active codes within the same mutation (`invitations.create` patches `revoked=true` before insert, so at most one active code exists). Member joins by redeeming a code. Rate limited: max 5 attempts/code/min. |
+| Accounts | Create (optional opening balance → auto "Initial Balance" transaction atomically in the same mutation: reserved category validated before `accounts.insert`, account `balance` set directly to `openingBalance`, transaction inserted with same `now` timestamp), edit (name/type/hidden), delete (guarded if referenced by transactions), list (visibility-filtered). Owner-only management. |
 | Categories | Create, edit (name/type/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
 | Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page (server cap, optional `limit`). `list` is cursor-paginated (`cursor`/`hasMore`); the Transactions page loads 30 rows per page. A `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category; a consolidated date filter (This Month / Last Month / Custom Range) sits behind one header chip. Supports server-side substring search by note (≥2 chars) on `list` and `summary` (debounced 300ms, bounded scan); pull-to-refresh (RefreshControl) and stale-data banner (ConnectivityBanner + Retry) on Home/Transactions/Accounts/Budgets — refresh/retry re-queries via Convex reactive subscription (visual spinner + stale clear, no manual cache invalidation needed). Amount input is whole-number only (`number-pad` + `formatAmountInput` strips decimals/non-digits, thousand-separator display); duplicate detection warns if same amount+account+category/type exists within 24h (confirmation Alert); "Repeat last" persists the last created transaction via SecureStore (`lib/last-transaction.ts`) and survives unmount/restart with contextual copy. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
@@ -219,7 +219,7 @@ without a recorded timezone also keep their stored boundaries).
   cryptographically random, 8 alphanumeric chars; only an HMAC-SHA-256 digest
   keyed by the server secret is stored (plaintext never persisted).
 - Codes expire after 7 days, are single-use, can be revoked, and generating a
-  new code invalidates previous active ones.
+  new code atomically invalidates all previous active ones **within the same mutation** (`convex/invitations.ts:40` — `invitations.create` collects `by_householdId` and patches `revoked=true` for every active invite before inserting the new one, so `listActive` never returns >1 row; verified by `tests/invitations.autoRevoke.test.ts:1`).
 - Member joins via Onboarding → "Join with Invite Code" → `invitations.redeem`
   (atomic: no existing membership → validate hash/expiry/revoked/useCount →
   insert membership + increment useCount).
@@ -232,7 +232,7 @@ Accounts are where money lives: `cash`, `bank`, `ewallet`, `credit_card`. Each
 has an auto-maintained balance. Owner creates accounts with an optional opening
 balance — the sign of the balance posts an initial transaction against a
 reserved "Initial Balance" category so the balance is applied exactly once
-through the standard path. Opening balances are whole numbers. Owner edits
+through the standard path **atomically in one mutation** (`convex/accounts.ts:43` — validates the reserved category **before** `accounts.insert`, inserts the account with `balance: openingBalance` and `createdAt/updatedAt: now`, then inserts the `Initial Balance` transaction with the same `now`/`createdBy`; no `ctx.runMutation` so no orphan account if the transaction would fail; verified by `tests/accounts.atomicOpeningBalance.test.ts:1`). Opening balances are whole numbers. Owner edits
 name/type and toggles visibility. Owner
 deletes accounts only when no transactions reference them.
 
@@ -389,15 +389,23 @@ App Open → Native splash → BrandedLoadingShell (0→70 fast, 70→90 while C
 ```text
 Accounts tab → "+" → fill name/type/opening balance
   → accounts.create({ name, type, openingBalance, hidden })
-  → account inserted with balance 0
-  → if openingBalance != 0, accounts.create posts the "Initial Balance"
-    transaction server-side within the same atomic mutation
+  → validate account name uniqueness + openingBalance isSafeInteger
+  → if openingBalance != 0, lookup reserved "Initial Balance" category by sign (income/expense)
+    → if missing, throw "Initial Balance category not found." (no account inserted — atomic)
+  → account inserted with balance = openingBalance, createdAt = updatedAt = now
+  → if openingBalance != 0, insert "Initial balance" transaction server-side with same now
+    (householdId, accountId, categoryId, amount=openingBalance, type by sign, createdBy)
+    within the SAME atomic mutation — no ctx.runMutation
   → account appears with opening balance reflected
 ```
 
 The opening-balance transaction is created internally by `accounts.create`
 (against the reserved "Initial Balance" category matching the balance sign),
-not by a separate client call. A zero opening balance skips that step entirely.
+not by a separate client call, and **atomically** in one `ctx.db` transaction
+with the account insert (same `now` timestamp for both rows). A zero opening
+balance skips the transaction entirely. Verified by
+`tests/accounts.atomicOpeningBalance.test.ts:1` (code invariant `no runMutation`,
+balance equality, shared timestamp, no orphan on missing category).
 
 ### 4.4 Create Transaction
 
@@ -457,8 +465,10 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 ```text
 Settings → Household Members → "Generate Invite" FAB
   → server: generate code, HMAC hash, store digest + 7-day expiry + single-use
-  → auto-revoke previous active invites
-  → show code once → copy/share
+  → atomically auto-revoke ALL previous active invites within same mutation
+    (collect by_householdId, patch revoked=true where !revoked && expiresAt > now && useCount < maxUses)
+  → insert new invitation
+  → show code once → copy/share — listActive now returns at most 1 row
 ```
 
 ### 4.6 Member Joins Household
@@ -561,12 +571,18 @@ transfer (amount = positive magnitude):
   on create:   from.balance -= amount; to.balance += amount
   on update:   reverse old, apply new (handles account changes)
   on delete:   from.balance += amount; to.balance -= amount
+
+opening balance (accounts.create, P0-2):
+  validated before insert; account.balance = openingBalance at insert,
+  transaction inserted with same now/createdBy in same mutation — no runMutation
 ```
 
 All operations within one mutation — atomic. The three code paths share two
 helpers in `convex/transactions.ts` — `applyBalanceDelta` (safe per-account
 patch, skips missing accounts) and `reverseBalances` (reverses a transaction's
 effects) — so create/update/delete balance math cannot drift apart.
+`accounts.create` opening balance follows the same atomicity guarantee
+(`convex/accounts.ts:43`, verified by `tests/accounts.atomicOpeningBalance.test.ts:1`).
 
 ### 5.4 Error Handling Convention
 
@@ -591,7 +607,7 @@ effects) — so create/update/delete balance math cannot drift apart.
 
 - 8-char random codes (~41 bits entropy), server-secret HMAC-SHA-256 digests
   only (no plaintext / unkeyed hashes persisted).
-- 7-day expiry, single-use, owner-revocable, auto-revoke on new code.
+- 7-day expiry, single-use, owner-revocable, **atomic auto-revoke on new code within the same mutation** (`convex/invitations.ts:40` — previous active invites patched `revoked=true` before new insert, so invariant "at most one active invite per household" holds without race; verified by `tests/invitations.autoRevoke.test.ts:1`).
 - Atomic redemption; per-code rate limit (5 attempts / 60s).
 
 ### 5.6 Initial Balance Category Contract
@@ -600,9 +616,12 @@ Each household gets two reserved "Initial Balance" categories (income and
 expense) at creation. The category name is the single shared constant
 `RESERVED_CATEGORY_NAME` in `constants/categories.ts` — never a bare literal.
 `accounts.create` with a non-zero opening balance posts a
-transaction against the matching one; it assumes the category exists (created
-with the household) and errors if it does not, rather than creating it on the
-fly. These categories are protected:
+transaction against the matching one **atomically**; it validates the category
+**before** inserting the account and errors if it does not exist (no orphan
+account), rather than creating it on the fly, and inserts both rows with the
+same `now` timestamp in one mutation (`convex/accounts.ts:43`, no
+`ctx.runMutation`; verified by `tests/accounts.atomicOpeningBalance.test.ts:1`).
+These categories are protected:
 `categories.create` cannot duplicate them; update/delete reject rename/hide/
 retype/delete; they never appear in user-facing category selection.
 
@@ -865,6 +884,8 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-08-31 | Fix | **P0-1 Invite auto-revoke atomic**: `convex/invitations.ts:40` `create` sebelumnya hanya `insert` tanpa revoke — bisa punya >1 active code, melanggar PRD "auto-revokes previous active codes". Fix: sebelum generate code, collect `by_householdId` dan patch `revoked=true` untuk semua `!revoked && expiresAt > now && useCount < maxUses` dalam **same mutation** sebelum insert baru, sehingga `listActive` max 1. Tests `tests/invitations.autoRevoke.test.ts:1` (3 cases: single revoke, multi revoke, expired/ revoked untouched). Updates §2.1, §3.3, §4.5, §5.5. |
+| 2026-08-31 | Fix | **P0-2 Atomic opening balance**: `convex/accounts.ts:43` sebelumnya `insert account balance:0` lalu `ctx.runMutation(api.transactions.create)` — tidak atomic (orphan account jika inner gagal, 2 timestamp, cross-mutation). Fix: validasi reserved category **sebelum** insert, insert account dengan `balance: openingBalance` dan `now` tunggal, lalu `ctx.db.insert("transactions")` langsung dengan same `now`/`createdBy` dalam **same mutation** (hapus `import {api}` + `runMutation`). Tests `tests/accounts.atomicOpeningBalance.test.ts:1` (5 cases: code invariant no runMutation, positive/negative balance atomic shared timestamp, no orphan on missing category, zero balance no tx) + existing `tests/accounts.create.test.ts:1` tetap 6/6. Updates §2.1, §3.4, §4.3, §5.3, §5.6. |
 | 2026-08-31 | Fix | **P0-5 Delta no-chip**: `components/charts/DeltaCard.tsx:31-68` badge was pill `Shadow.card` + `backgroundColor C.deltaPositiveBg/Border` (`#DCFCE7`/`#86EFAC` → wash `#065F4614`/`33`) + `Radius.md` + `borderWidth 1`. Dihapus — sekarang hanya `Feather trending-up/down/minus` + `Text label` dengan `color deltaColor (C.success/C.error/C.textSecondary)` dan `withSpring` scale, tanpa `bg/border/radius/shadow`. Lebih nyambung dengan `GradientCard` warm bg, tidak ada shape/chip. `constants/theme.ts:17-20` `delta*` tetap ada tapi tidak dipakai DeltaCard (reserved untuk chart lain). Verified `npx tsc --noEmit` (0), `expo lint` (0), `vitest` (102/102). Updates §3.8. |
 | 2026-08-31 | Fix | **P0-5 Hardcoded amber → theme token**: `app/(tabs)/home.tsx:88` `BudgetPill` progress bar third color was hardcoded `"#D97706"` (light amber only, wrong in dark mode where amber is `#F59E0B`). Replaced with `C.chartAmber` via `useThemeColors()` (`constants/theme.ts:21` `#D97706` / `DarkColors.chartAmber` `#F59E0B`). Now amber threshold `>0.8` is dark-mode-aware and consistent with `components/charts/SpendingDonut.tsx:25` palette (`C.chartAmber`/`C.chartEmerald`). Verified `npx tsc --noEmit` (0 errors), `expo lint` (0 errors), `vitest` (102/102). Updates §3.8, §3.9. |
 | 2026-08-30 | Fix | Analytics P0-1 follow-ups: (1) **SpendingDonut colored** — `react-native-svg 15.12.1` (`npx expo install`) — donut was `C.border` gray track only (legend had palette but ring was solid), now renders colored arcs via `Circle` `strokeDasharray` (`r 15.915`, `dash pct*100`, `offset 25-cumulative*100`, `strokeWidth 7→8.5` when selected, `opacity 0.35` dim, inner cutout 80px `Total`), "Others" aggregated grey, hook-order lint fix (`useMemo` before early return). (2) **Cashflow July "New this month"** — July had data but `DeltaCard` showed `New this month` (prev 0) due to `home.tsx` hardcoded `cashflow[5]/[4]` + timezone mismatch (server `UTC` for `household.timezone=null` vs client `Asia/Jakarta` → 7 buckets `Feb..Aug`); fix: `transactions.cashflow` now takes optional `timezone` (client `resolveTimezone`) and Home finds by `periodStart` (`find c.periodStart===monthStart/prevMonthStart`) with `useMemo`. (3) **DeltaCard contrast** in light mode (`+264.8%` badge was `C.surface` cream + `15` ~8% green tint on cream → gray): light `bg #DCFCE7`/`#FEE2E2` solid + border `#86EFAC`/`#FCA5A5`, dark `26`/`40` alpha, neutral `C.background` + `C.border`, `useColorScheme`-aware (`e1b1b49`, `b640606`, `091858d`). Updates §3.8, §5.2, §6, §7. |
