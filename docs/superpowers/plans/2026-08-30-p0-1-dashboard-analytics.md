@@ -492,11 +492,10 @@ git commit -m "feat(home): integrate analytics below Budgets with efficient 2-qu
 
 ---
 
-### Task 5: Verification & Docs
+### Task 5: Verification (no PRD)
 
 **Files:**
-- Modify: `docs/Product Requirement Document/PRD.md` §8 Change Log (add entry)
-- Modify: `README` if exists — add analytics note
+- No file change (verification only)
 
 - [ ] **Step 1: Run full verification**
 
@@ -507,15 +506,90 @@ Expected: All PASS
 
 Insert 200 dummy transactions via Convex dashboard, measure `cashflow` query time in Convex logs — confirm 1 scan not 6, total documentsRead ~200 not 6*10000.
 
-- [ ] **Step 3: Update PRD Change Log**
+- [ ] **Step 3: Manual UI check (Expo Go)**
 
-Append dated entry: `2026-08-30: P0-1 Dashboard analytics — cashflow 6-month, spending donut, delta card below Budgets, single-scan queries`.
+Run `npm run start` → open in Expo Go or emulator → verify Home shows analytics below Budgets (not above): DeltaCard springs, Cashflow bars stagger, tooltip tap works, Donut legend tap shows %, dark mode toggles correctly, offline banner still shows.
 
-- [ ] **Step 4: Commit**
+### Task 6: PRD Update (Living Document — §0 Workflow)
+
+**Files:**
+- Modify: `docs/Product Requirement Document/PRD.md`
+
+**Interfaces:**
+- Consumes: Spec `docs/superpowers/specs/2026-08-30-p0-1-dashboard-analytics-design.md` §2-§6, plan `docs/superpowers/plans/2026-08-30-p0-1-dashboard-analytics.md`, `convex/transactions.ts` new queries, `app/(tabs)/home.tsx` new Analytics section
+- Produces: PRD updated per **§0 Update workflow** — every major feature updates affected sections + Change Log dated entry
+
+- [ ] **Step 1: Update §1 Overview / §2.1 Functional Requirements (Home row)**
+
+In `PRD.md:100` table row `Home`, replace:
+```
+Dashboard: household card, My Accounts, Recent Transactions (paginated, grouped by day, "See All").
+```
+with:
+```
+Dashboard: household card, Total Balance, Budgets (3 pills), **Analytics (below Budgets): Net delta vs last month (GradientCard badge), Cashflow 6-month bar chart (income Success / expense Error), Spending by Category donut this month (legend + center total)** — all household-timezone-aware, Member hidden-category excluded (single-scan `transactions.cashflow` + `transactions.spendingByCategory`), pure-View + reanimated with Pressable tooltip; My Accounts, Recent Transactions (paginated, grouped by day, "See All"). PTR & stale banner still applies.
+```
+
+Add new row if needed:
+```
+| Analytics | Cashflow 6 months + Spending by Category (this month) + Delta vs last month on Home below Budgets. Two efficient single-scan queries (`cashflow`, `spendingByCategory`) — 1 `by_household_date` scan per query, hidden-category cache, window validation (cashflow ≤200d, spending ≤32d). |
+```
+
+- [ ] **Step 2: Update §3.8 Home Dashboard**
+
+After existing bullet `**Budgets** (when budgets exist): ...` (`PRD.md:325-328`), insert:
+
+```
+- **Analytics (below Budgets, as of 2026-08-30):**
+  - **Delta Card** (`components/charts/DeltaCard.tsx`): `GradientCard` showing `currentNet` (this month) vs `prevNet` (last month) with semantic badge (`trending-up` green / `trending-down` red / `minus` gray) and `%` via `calcDelta` (`utils/analytics.ts`); `prevNet===0` → "New this month" / "No change"; reanimated `withSpring` scale on change.
+  - **Cashflow 6-Month Bar Chart** (`components/charts/CashflowBarChart.tsx`): 6 month groups (household timezone, `buildSixMonthWindow`), paired bars (Income `success` / Expense `error`, max 100px, scale = max income/expense), reanimated `withTiming` staggered `60ms` per month, `Pressable` tooltip per month (`Income +X, Expense -Y, Net Z` + `hapticSuccess`, `Shadow.elevated`); empty → "No transactions in last 6 months".
+  - **Spending by Category Donut** (`components/charts/SpendingDonut.tsx`): This month expense only, top 5 + "Others", palette cycled from `Colors.account*`, track circle 140px + center cutout 80px showing `formatNumber(total)`, legend `FadeIn.delay(i*40)` + `Pressable` selectable row (`% • amount` when selected, else amount); empty → `EmptyState` "No spending this month".
+  - All cards use `Shadow.card`, `Radius.md`, `useThemeColors()` (dark variants), `Feather` icons, no new native deps. Loading: `Skeleton` 80/180/140. Hidden category excluded for Members (cached `hiddenCategoryCache`). Offline: shows cached Convex data + `ConnectivityBanner`.
+```
+
+- [ ] **Step 3: Update §5.2 Responsibilities table row `app/(tabs)/home.tsx`**
+
+From:
+```
+| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills); `BudgetPill` is `memo`, ... |
+```
+To:
+```
+| `app/(tabs)/home.tsx` | Dashboard (household, accounts, recent transactions, monthly net, budget pills + **Analytics below Budgets: DeltaCard + CashflowBarChart + SpendingDonut** via `transactions.cashflow`/`spendingByCategory` (2 queries, household TZ, hidden-aware), `buildSixMonthWindow`/`calcDelta`); `BudgetPill` is `memo`, ... |
+```
+
+Add row:
+```
+| `components/charts/*` | `DeltaCard`, `CashflowBarChart`, `SpendingDonut` (pure View + `react-native-reanimated`, `Pressable` tooltip, theme-uniform via `useThemeColors()`) |
+| `utils/analytics.ts` | `buildSixMonthWindow(now, timezone)`, `calcDelta(currentNet, prevNet)`, `maxBarValue(data)` |
+```
+
+- [ ] **Step 4: Update §6 Database Schema — Convex Functions table (append after `budgets` rows)**
+
+Append:
+```
+| `transactions` | `cashflow` | query | Single-scan `by_household_date` over 6-month window (≤200d), buckets by household timezone month start, aggregates income/expense/net per month, includes zero-months, Member hidden-category excluded via cached lookup |
+| `transactions` | `spendingByCategory` | query | Single-scan `by_household_date` over 1-month window (≤32d), filters `expense` only, aggregates by category (hidden excluded for Member), returns top 10 sorted desc + total |
+```
+
+If Functions table truncated in current PRD (ends at `categories.create`), ensure full table is restored/completed before appending.
+
+- [ ] **Step 5: Update §8 Change Log (dated entry per §0.1)**
+
+Append at bottom of Change Log (create if missing):
+```
+- **2026-08-30 — P0-1 Dashboard Analytics (below Budgets):** Added `transactions.cashflow` + `transactions.spendingByCategory` (single-scan, household TZ, hidden-aware, window capped) + `utils/analytics.ts` + `components/charts/{DeltaCard,CashflowBarChart,SpendingDonut}` (pure View, reanimated staggered/spring + Pressable tooltip, theme-uniform) — wired in `app/(tabs)/home.tsx` below Budgets with Skeleton/Empty/Offline handling. PRD §2.1, §3.8, §5.2, §6 updated.
+```
+
+- [ ] **Step 6: Verify doc links & run typecheck**
+
+Run: `npx tsc --noEmit` (should still pass — PRD is markdown, no code). Manually open PRD and search for `cashflow`, `SpendingDonut`, `2026-08-30` to confirm all 4 sections updated.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add docs/Product\ Requirement\ Document/PRD.md
-git commit -m "docs: changelog P0-1 analytics"
+git add "docs/Product Requirement Document/PRD.md"
+git commit -m "docs(PRD): P0-1 analytics below Budgets — §2.1, §3.8, §5.2, §6 + 2026-08-30 changelog"
 ```
 
 ---
