@@ -29,11 +29,12 @@ export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Prop
   }));
 
   const badgeBg =
-    deltaPct === null ? C.surface : deltaPct > 0 ? `${C.success}15` : deltaPct < 0 ? `${C.error}15` : C.surface;
+    deltaPct === null ? C.background : deltaPct > 0 ? `${C.success}20` : deltaPct < 0 ? `${C.error}20` : C.background;
   const badgeColor =
     deltaPct === null ? C.textSecondary : deltaPct > 0 ? C.success : deltaPct < 0 ? C.error : C.textSecondary;
   const iconName: keyof typeof Feather.glyphMap =
     deltaPct === null ? "minus" : deltaPct > 0 ? "trending-up" : deltaPct < 0 ? "trending-down" : "minus";
+  const badgeBorderColor = deltaPct === null ? C.border : "transparent";
 
   return (
     <GradientCard>
@@ -56,6 +57,8 @@ export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Prop
               borderRadius: Radius.md,
               paddingHorizontal: 12,
               paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: badgeBorderColor,
             },
           ]}
           className="flex-row items-center gap-1"
