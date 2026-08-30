@@ -1,5 +1,5 @@
 import { GradientCard } from "@/components/GradientCard";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { useThemeColors } from "@/constants/theme";
 import { calcDelta } from "@/utils/analytics";
 import { formatNumber } from "@/utils/format";
 import Feather from "@expo/vector-icons/Feather";
@@ -28,14 +28,10 @@ export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Prop
     transform: [{ scale: scale.value }],
   }));
 
-  const badgeBg =
-    deltaPct === null ? C.background : deltaPct > 0 ? C.deltaPositiveBg : deltaPct < 0 ? C.deltaNegativeBg : C.background;
-  const badgeColor =
+  const deltaColor =
     deltaPct === null ? C.textSecondary : deltaPct > 0 ? C.success : deltaPct < 0 ? C.error : C.textSecondary;
   const iconName: keyof typeof Feather.glyphMap =
     deltaPct === null ? "minus" : deltaPct > 0 ? "trending-up" : deltaPct < 0 ? "trending-down" : "minus";
-  const badgeBorderColor =
-    deltaPct === null ? C.border : deltaPct > 0 ? C.deltaPositiveBorder : deltaPct < 0 ? C.deltaNegativeBorder : C.border;
 
   return (
     <GradientCard>
@@ -49,23 +45,9 @@ export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Prop
             Prev {prevLabel}: {formatNumber(prevNet)}
           </Text>
         </View>
-        <Animated.View
-          style={[
-            aStyle,
-            Shadow.card,
-            {
-              backgroundColor: badgeBg,
-              borderRadius: Radius.md,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderWidth: 1,
-              borderColor: badgeBorderColor,
-            },
-          ]}
-          className="flex-row items-center gap-1"
-        >
-          <Feather name={iconName} size={14} color={badgeColor} />
-          <Text style={{ color: badgeColor, fontWeight: "600", fontSize: 12 }}>{label}</Text>
+        <Animated.View style={[aStyle]} className="flex-row items-center gap-1">
+          <Feather name={iconName} size={14} color={deltaColor} />
+          <Text style={{ color: deltaColor, fontWeight: "600", fontSize: 12 }}>{label}</Text>
         </Animated.View>
       </View>
     </GradientCard>

@@ -85,7 +85,7 @@ const BudgetPill = memo(function BudgetPill({
             style={{
               width: `${Math.min(pill.progress * 100, 100)}%`,
               backgroundColor:
-                pill.progress > 1 ? C.error : pill.progress > 0.8 ? "#D97706" : C.success,
+                pill.progress > 1 ? C.error : pill.progress > 0.8 ? C.chartAmber : C.success,
             }}
             className="h-full rounded-full"
           />
