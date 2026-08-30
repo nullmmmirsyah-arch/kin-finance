@@ -4,7 +4,7 @@ import { calcDelta } from "@/utils/analytics";
 import { formatNumber } from "@/utils/format";
 import Feather from "@expo/vector-icons/Feather";
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { Text, View, useColorScheme } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
 type Props = {
@@ -16,6 +16,8 @@ type Props = {
 
 export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Props) {
   const C = useThemeColors();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
   const { deltaPct, label } = calcDelta(currentNet, prevNet);
   const scale = useSharedValue(1);
 
@@ -28,13 +30,23 @@ export function DeltaCard({ currentNet, prevNet, currentLabel, prevLabel }: Prop
     transform: [{ scale: scale.value }],
   }));
 
-  const badgeBg =
-    deltaPct === null ? C.background : deltaPct > 0 ? `${C.success}20` : deltaPct < 0 ? `${C.error}20` : C.background;
+  // Light mode: solid tints for clear contrast on GradientCard cream; Dark mode: subtle alpha on dark surface
+  const badgeBg = (() => {
+    if (deltaPct === null) return C.background;
+    if (deltaPct > 0) return isDark ? `${C.success}26` : "#DCFCE7";
+    if (deltaPct < 0) return isDark ? `${C.error}26` : "#FEE2E2";
+    return C.background;
+  })();
   const badgeColor =
     deltaPct === null ? C.textSecondary : deltaPct > 0 ? C.success : deltaPct < 0 ? C.error : C.textSecondary;
   const iconName: keyof typeof Feather.glyphMap =
     deltaPct === null ? "minus" : deltaPct > 0 ? "trending-up" : deltaPct < 0 ? "trending-down" : "minus";
-  const badgeBorderColor = deltaPct === null ? C.border : "transparent";
+  const badgeBorderColor = (() => {
+    if (deltaPct === null) return C.border;
+    if (deltaPct > 0) return isDark ? `${C.success}40` : "#86EFAC";
+    if (deltaPct < 0) return isDark ? `${C.error}40` : "#FCA5A5";
+    return C.border;
+  })();
 
   return (
     <GradientCard>
