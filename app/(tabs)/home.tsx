@@ -168,8 +168,19 @@ export default function Home() {
   }, [isRetrying, show]);
 
   const timezone = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
-  const { start: monthStart, end: monthEnd } = useMemo(() => getMonthBounds(Date.now(), timezone), [timezone]);
-  const analyticsWindow = useMemo(() => buildSixMonthWindow(Date.now(), timezone), [timezone]);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const { start: monthStart, end: monthEnd } = useMemo(() => getMonthBounds(nowTick, timezone), [nowTick, timezone]);
+  const analyticsWindow = useMemo(() => buildSixMonthWindow(nowTick, timezone), [nowTick, timezone]);
+
+  useEffect(() => {
+    const delay = monthEnd - Date.now();
+    if (delay <= 0) {
+      setNowTick(Date.now());
+      return;
+    }
+    const t = setTimeout(() => setNowTick(Date.now()), delay + 1000);
+    return () => clearTimeout(t);
+  }, [monthEnd]);
 
   const monthSummary = useQuery(api.transactions.summary, {
     startDate: monthStart,
@@ -447,6 +458,7 @@ export default function Home() {
             <SpendingDonut
               segments={spendingRes.segments.map((s) => ({ name: s.name, amount: s.amount }))}
               total={spendingRes.total}
+              othersAmount={spendingRes.othersAmount}
             />
           </View>
         ) : null}

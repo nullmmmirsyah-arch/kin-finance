@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Expo SDK 54 docs (`https://docs.expo.dev/versions/v54.0.0/`); `npx expo install <pkg>` for native deps — but NO new native deps for this plan (pure Views).
+- Expo SDK 54 docs (`https://docs.expo.dev/versions/v54.0.0/`); `npx expo install react-native-svg@15.12.1` for SpendingDonut colored donut arcs (Expo Go 54 includes it, but `app.json` `runtimeVersion: { policy: "appVersion" }` requires a rebuilt, version-compatible EAS binary before publishing — not OTA via `eas update` alone).
 - After `convex/*.ts` change: `npx convex codegen` then `npx tsc --noEmit`.
 - Verify with `npx tsc --noEmit`, `npm run lint`, `npm test` (vitest) when touching pure utils/Convex functions.
 - Run `npx convex dev` separately to push schema/functions.

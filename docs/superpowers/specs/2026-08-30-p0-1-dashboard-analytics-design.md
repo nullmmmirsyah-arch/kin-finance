@@ -145,10 +145,10 @@ Props: `{ data: { periodStart: number, label: string, income: number, expense: n
 
 ### 4.2 `components/charts/SpendingDonut.tsx`
 Props: `{ segments: { name: string, amount: number, color: string }[], total: number }`
-- Donut: outer 140px ring via `View` with `borderWidth 20` trick? Alternative: segmented ring using `flex` row of `View`s with `borderRadius` — but true donut needs conic. Pure Views approach: **legend-driven donut** — render circle `View` 140px `borderRadius 70` with `backgroundColor: C.border` as track, inner cutout `View` 80px absolute centered `backgroundColor: C.background`. Segments rendered as small colored dots in legend, not arc (simplest pure View, still seragam). For more fidelity, implement segmented ring via 4 `View` quadrants with `overflow hidden` + rotation (complex). Decision: **legend + track circle + total in center** is sufficient for pure View without SVG, still interactive.
-- **Animation**: legend rows `FadeIn` via reanimated `FadeIn.delay(index*40)`. Total value `withTiming` count-up (optional, simple `Animated.Text` via reanimated? Keep View height animate).
-- **Tooltip/Interactive**: tap legend row → highlight row (`backgroundColor: C.surface`) + show `% = amount/total*100` via `Text` trailing. Tap again clears. Single selection state.
-- Empty: `EmptyState icon="pie-chart" title="No spending this month"` (no donut).
+- Donut: **SVG colored arcs via `react-native-svg 15.12.1`** (`npx expo install react-native-svg@15.12.1`; Expo Go 54 includes it, but `runtimeVersion: { policy: "appVersion" }` requires a rebuilt, version-compatible EAS binary before publishing — not OTA alone) — `Svg viewBox 0 0 42 42`, track `Circle r=15.915 stroke C.border w7`, arcs `Circle r=15.915 stroke segmentColor w7→8.5 when selected` with `strokeDasharray="dash gap"` (`dash=pct*100`, `gap=100-dash`, `offset=25-cumulative*100` start at top), `opacity 0.35` dim non-selected; outer 140×140, inner cutout `View 80 r40 C.background` showing `formatNumber(total)`; palette `C.chartAmber/C.chartEmerald` + `C.account*` (via `useThemeColors` tokens), "Others" aggregated when segments>5 plus `othersAmount` (categories >10) combined into overflow `C.textSecondary`.
+- **Animation**: legend rows `FadeIn.delay(index*40)`, arc highlight via `strokeWidth` change. Total static.
+- **Tooltip/Interactive**: tap legend row (or Others) → highlight row (`C.surface`) + dim other arcs + show `% • amount` trailing; tap again clears. Selection `useState`.
+- Empty: card "No spending this month" (no donut).
 
 ### 4.3 `components/charts/DeltaCard.tsx`
 Props: `{ currentNet: number, prevNet: number, currentLabel: string, prevLabel: string }`

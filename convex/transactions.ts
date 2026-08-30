@@ -4,6 +4,7 @@ import { Id, Doc } from "./_generated/dataModel";
 import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
 import {
   validateNote,
+  validateTimezone,
   validateTransactionAmount,
   validateTransactionDate,
 } from "../constants/validation";
@@ -562,23 +563,29 @@ function formatMonthLabelTz(timestamp: number, timeZone: string): string {
 export const cashflow = query({
   args: { startDate: v.number(), endDate: v.number(), timezone: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new ConvexError("Not authenticated.");
     const auth = await findUserAndMembership(ctx);
     if (auth === null) return null;
     const { membership } = auth;
     const household = await ctx.db.get(membership.householdId);
     const storedTz = (household as { timezone?: string } | null)?.timezone;
-    const timezone = args.timezone ?? storedTz ?? "UTC";
+    const rawTz = args.timezone ?? storedTz ?? "UTC";
+    const tzErr = validateTimezone(rawTz);
+    if (tzErr) throw new ConvexError(tzErr);
+    const timezone = rawTz;
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
     if (args.endDate - args.startDate > 200 * 86_400_000) throw new ConvexError("Window too large.");
     const isOwner = membership.role === "owner";
 
-    // SINGLE SCAN
+    // Bounded single scan — avoid unbounded collect, cap at 10k rows (6 months typical <2k)
     const rows = await ctx.db
       .query("transactions")
       .withIndex("by_household_date", (q) =>
         q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
       )
-      .collect();
+      .take(10001);
+    if (rows.length > 10000) throw new ConvexError("Too many transactions for this range. Please shorten the window.");
 
     // Build buckets for every month intersecting [startDate, endDate)
     const buckets = new Map<number, { income: number; expense: number }>();
@@ -631,18 +638,22 @@ export const cashflow = query({
 export const spendingByCategory = query({
   args: { startDate: v.number(), endDate: v.number() },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new ConvexError("Not authenticated.");
     const auth = await findUserAndMembership(ctx);
     if (auth === null) return null;
     const { membership } = auth;
     const isOwner = membership.role === "owner";
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
     if (args.endDate - args.startDate > 32 * 86_400_000) throw new ConvexError("Period too large.");
+    // Bounded scan — 1 month typical <1k rows, cap at 10k
     const rows = await ctx.db
       .query("transactions")
       .withIndex("by_household_date", (q) =>
         q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
       )
-      .collect();
+      .take(10001);
+    if (rows.length > 10000) throw new ConvexError("Too many transactions for this range. Please shorten the window.");
 
     const hiddenCache = new Map<Id<"categories">, boolean>();
     const nameCache = new Map<Id<"categories">, string>();
@@ -666,17 +677,17 @@ export const spendingByCategory = query({
       agg.set(row.categoryId, (agg.get(row.categoryId) ?? 0) + Math.abs(row.amount));
     }
 
-    const segments = Array.from(agg.entries())
+    const sorted = Array.from(agg.entries())
       .map(([categoryId, amount]) => ({
         categoryId,
         name: nameCache.get(categoryId) ?? "Unknown",
         amount,
       }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10);
-
-    const total = segments.reduce((s, x) => s + x.amount, 0);
-    return { segments, total, isOwner };
+      .sort((a, b) => b.amount - a.amount);
+    const total = sorted.reduce((s, x) => s + x.amount, 0);
+    const segments = sorted.slice(0, 10);
+    const othersAmount = sorted.length > 10 ? sorted.slice(10).reduce((s, x) => s + x.amount, 0) : 0;
+    return { segments, total, othersAmount, isOwner };
   },
 });
 
