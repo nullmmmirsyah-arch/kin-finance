@@ -565,14 +565,15 @@ export const cashflow = query({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) throw new ConvexError("Not authenticated.");
-    const tzErr = validateTimezone(args.timezone);
-    if (tzErr) throw new ConvexError(tzErr);
     const auth = await findUserAndMembership(ctx);
     if (auth === null) return null;
     const { membership } = auth;
     const household = await ctx.db.get(membership.householdId);
     const storedTz = (household as { timezone?: string } | null)?.timezone;
-    const timezone = args.timezone ?? storedTz ?? "UTC";
+    const rawTz = args.timezone ?? storedTz ?? "UTC";
+    const tzErr = validateTimezone(rawTz);
+    if (tzErr) throw new ConvexError(tzErr);
+    const timezone = rawTz;
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
     if (args.endDate - args.startDate > 200 * 86_400_000) throw new ConvexError("Window too large.");
     const isOwner = membership.role === "owner";

@@ -458,6 +458,7 @@ export default function Home() {
             <SpendingDonut
               segments={spendingRes.segments.map((s) => ({ name: s.name, amount: s.amount }))}
               total={spendingRes.total}
+              othersAmount={spendingRes.othersAmount}
             />
           </View>
         ) : null}

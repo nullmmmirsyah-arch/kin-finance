@@ -14,9 +14,10 @@ type Segment = {
 type Props = {
   segments: Segment[];
   total: number;
+  othersAmount?: number;
 };
 
-export function SpendingDonut({ segments, total }: Props) {
+export function SpendingDonut({ segments, total, othersAmount }: Props) {
   const C = useThemeColors();
   const [sel, setSel] = useState<string | null>(null);
 
@@ -26,11 +27,16 @@ export function SpendingDonut({ segments, total }: Props) {
   );
 
   const visible = useMemo(() => segments.slice(0, 5), [segments]);
-  const overflow = segments.length - 5;
-  const overflowAmount = useMemo(
-    () => (overflow > 0 ? segments.slice(5).reduce((s, x) => s + x.amount, 0) : 0),
-    [segments, overflow],
+  const overflowCount = Math.max(0, segments.length - 5);
+  const rank610Amount = useMemo(
+    () => (overflowCount > 0 ? segments.slice(5).reduce((s, x) => s + x.amount, 0) : 0),
+    [segments, overflowCount],
   );
+  const overflowAmount = useMemo(
+    () => rank610Amount + (othersAmount ?? 0),
+    [rank610Amount, othersAmount],
+  );
+  const hasOverflow = overflowAmount > 0;
 
   const chartSegments = useMemo(() => {
     const base = visible.map((s, i) => ({
@@ -38,7 +44,7 @@ export function SpendingDonut({ segments, total }: Props) {
       amount: s.amount,
       color: palette[i % palette.length] ?? C.primary,
     }));
-    if (overflow > 0) {
+    if (hasOverflow) {
       base.push({
         name: "Others",
         amount: overflowAmount,
@@ -46,7 +52,7 @@ export function SpendingDonut({ segments, total }: Props) {
       });
     }
     return base;
-  }, [visible, overflow, overflowAmount, palette, C.primary, C.textSecondary]);
+  }, [visible, hasOverflow, overflowAmount, palette, C.primary, C.textSecondary]);
 
   if (segments.length === 0) {
     return (
@@ -166,7 +172,7 @@ export function SpendingDonut({ segments, total }: Props) {
               </Animated.View>
             );
           })}
-          {overflow > 0 ? (
+          {hasOverflow ? (
             <Animated.View entering={FadeIn.delay(visible.length * 40)}>
               <Pressable
                 onPress={() => {
@@ -187,7 +193,7 @@ export function SpendingDonut({ segments, total }: Props) {
                 <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
                   {sel === "Others"
                     ? `${total > 0 ? ((overflowAmount / total) * 100).toFixed(1) : "0"}% • ${formatNumber(overflowAmount)}`
-                    : `+${overflow} more`}
+                    : `+${overflowCount}${othersAmount ? "+" : ""} more`}
                 </Text>
               </Pressable>
             </Animated.View>
