@@ -26,8 +26,10 @@ import { Skeleton } from "@/components/Skeleton";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
-import { formatDateHeaderTz, getMonthBounds } from "@/utils/date";
+import { formatDateHeaderTz, formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
+import { buildSixMonthWindow } from "@/utils/analytics";
+import { CashflowBarChart, DeltaCard, SpendingDonut } from "@/components/charts";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
@@ -145,58 +147,6 @@ export default function Home() {
     }
   }, [recent]);
 
-  const recentGroups = useMemo(() => {
-    const transactions = recentTransactions;
-    if (transactions === null) return null;
-    const timezone = resolveTimezone(household?.timezone);
-    const groups = new Map<string, typeof transactions>();
-    for (const tx of transactions) {
-      const key = formatDateHeaderTz(tx.date, timezone);
-      const list = groups.get(key);
-      if (list) {
-        list.push(tx);
-      } else {
-        groups.set(key, [tx]);
-      }
-    }
-    return Array.from(groups.entries()).map(([title, data]) => ({
-      title,
-      data,
-      total: sumNetExcludingTransfers(data),
-    }));
-  }, [recentTransactions, household]);
-
-  const { start: monthStart, end: monthEnd } = getMonthBounds(
-    Date.now(),
-    resolveTimezone(household?.timezone),
-  );
-
-  const monthSummary = useQuery(api.transactions.summary, {
-    startDate: monthStart,
-    endDate: monthEnd,
-  });
-
-  const monthBudgets = useQuery(api.budgets.list, {
-    periodStart: monthStart,
-    periodEnd: monthEnd,
-  });
-
-  const budgetPills = useMemo(() => {
-    const budgets = monthBudgets?.budgets;
-    if (!budgets || budgets.length === 0) return [];
-    return budgets.slice(0, 3).map((b) => ({
-      id: b._id,
-      name: b.category?.name ?? "Budget",
-      budgeted: b.amount,
-      spent: b.spent,
-      progress: b.progress,
-    }));
-  }, [monthBudgets]);
-
-  const handleBudgetPillPress = useCallback(() => {
-    router.push("/budgets");
-  }, [router]);
-
   const [synced, setSynced] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -217,19 +167,88 @@ export default function Home() {
     setTimeout(() => setIsRetrying(false), 600);
   }, [isRetrying, show]);
 
+  const timezone = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
+  const { start: monthStart, end: monthEnd } = useMemo(() => getMonthBounds(Date.now(), timezone), [timezone]);
+  const analyticsWindow = useMemo(() => buildSixMonthWindow(Date.now(), timezone), [timezone]);
+
+  const monthSummary = useQuery(api.transactions.summary, {
+    startDate: monthStart,
+    endDate: monthEnd,
+  });
+
+  const monthBudgets = useQuery(api.budgets.list, {
+    periodStart: monthStart,
+    periodEnd: monthEnd,
+  });
+
+  const cashflowRes = useQuery(
+    api.transactions.cashflow,
+    household ? { startDate: analyticsWindow.startDate, endDate: analyticsWindow.endDate } : "skip",
+  );
+  const spendingRes = useQuery(
+    api.transactions.spendingByCategory,
+    household ? { startDate: monthStart, endDate: monthEnd } : "skip",
+  );
+
+  const currentNet = cashflowRes?.cashflow?.[5]?.net ?? monthSummary?.net ?? 0;
+  const prevNet = cashflowRes?.cashflow?.[4]?.net ?? 0;
+  const prevMonthStart = useMemo(() => getMonthBounds(monthStart - 1, timezone).start, [monthStart, timezone]);
+
+  const budgetPills = useMemo(() => {
+    const budgets = monthBudgets?.budgets;
+    if (!budgets || budgets.length === 0) return [];
+    return budgets.slice(0, 3).map((b) => ({
+      id: b._id,
+      name: b.category?.name ?? "Budget",
+      budgeted: b.amount,
+      spent: b.spent,
+      progress: b.progress,
+    }));
+  }, [monthBudgets]);
+
+  const handleBudgetPillPress = useCallback(() => {
+    router.push("/budgets");
+  }, [router]);
+
+  const recentGroups = useMemo(() => {
+    const transactions = recentTransactions;
+    if (transactions === null) return null;
+    const groups = new Map<string, typeof transactions>();
+    for (const tx of transactions) {
+      const key = formatDateHeaderTz(tx.date, timezone);
+      const list = groups.get(key);
+      if (list) {
+        list.push(tx);
+      } else {
+        groups.set(key, [tx]);
+      }
+    }
+    return Array.from(groups.entries()).map(([title, data]) => ({
+      title,
+      data,
+      total: sumNetExcludingTransfers(data),
+    }));
+  }, [recentTransactions, timezone]);
+
   useEffect(() => {
     if (isConnected === false) {
       setStale(true);
       return;
     }
-    const isLoading = household === undefined || accountData === undefined || recent === undefined || monthSummary === undefined;
+    const isLoadingAnalytics = cashflowRes === undefined || spendingRes === undefined;
+    const isLoading =
+      household === undefined ||
+      accountData === undefined ||
+      recent === undefined ||
+      monthSummary === undefined ||
+      isLoadingAnalytics;
     if (!isLoading) {
       setStale(false);
       return;
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [household, accountData, recent, monthSummary, isConnected, refreshKey]);
+  }, [household, accountData, recent, monthSummary, cashflowRes, spendingRes, isConnected, refreshKey]);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -403,6 +422,28 @@ export default function Home() {
             )}
           </View>
         )}
+
+        {(cashflowRes === undefined || spendingRes === undefined) ? (
+          <View className="mt-6 gap-3">
+            <Skeleton style={{ height: 80, borderRadius: Radius.md }} />
+            <Skeleton style={{ height: 180, borderRadius: Radius.md }} />
+            <Skeleton style={{ height: 140, borderRadius: Radius.md }} />
+          </View>
+        ) : cashflowRes && spendingRes && cashflowRes.cashflow && spendingRes.segments ? (
+          <View className="mt-6 gap-3">
+            <DeltaCard
+              currentNet={currentNet}
+              prevNet={prevNet}
+              currentLabel={formatMonthLabel(monthStart, timezone)}
+              prevLabel={formatMonthLabel(prevMonthStart, timezone)}
+            />
+            <CashflowBarChart data={cashflowRes.cashflow} timezone={timezone} />
+            <SpendingDonut
+              segments={spendingRes.segments.map((s) => ({ name: s.name, amount: s.amount }))}
+              total={spendingRes.total}
+            />
+          </View>
+        ) : null}
 
         <View className="mt-8">
           <View className="flex-row items-center justify-between">
@@ -631,7 +672,7 @@ export default function Home() {
                         amount={tx.amount}
                         type={tx.type}
                         date={tx.date}
-                        timezone={resolveTimezone(household?.timezone)}
+                        timezone={timezone}
                         onPress={() =>
                           router.push({
                             pathname: "/transaction-form",
