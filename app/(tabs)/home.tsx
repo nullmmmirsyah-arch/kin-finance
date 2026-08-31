@@ -35,7 +35,7 @@ import {
   getNextPeriod,
 } from "@/utils/period";
 import { resolveTimezone } from "@/constants/timezones";
-import { CashflowBarChart, DeltaCard, SpendingDonut } from "@/components/charts";
+import { DeltaCard, SpendingDonut } from "@/components/charts";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
@@ -184,11 +184,6 @@ export default function Home() {
     return getPrevPeriod(selectedPeriodStart, timezone, periodType);
   }, [selectedPeriodStart, timezone, periodType]);
 
-  const analyticsWindow = useMemo(
-    () => buildPeriodWindow(nowTick, timezone, periodType, 6),
-    [nowTick, timezone, periodType],
-  );
-
   const pagerPeriods = useMemo(
     () => buildPeriodWindow(nowTick, timezone, periodType, 12).periods,
     [nowTick, timezone, periodType],
@@ -217,17 +212,6 @@ export default function Home() {
       : "skip",
   );
 
-  const cashflowRes = useQuery(
-    api.periodBalances.listWindow,
-    household
-      ? {
-          startDate: analyticsWindow.startDate,
-          endDate: analyticsWindow.endDate,
-          periodType,
-          timezone,
-        }
-      : "skip",
-  );
   const spendingRes = useQuery(
     api.transactions.spendingByCategory,
     household && selectedPeriodStart !== null && periodEnd !== undefined
@@ -303,20 +287,6 @@ export default function Home() {
     }));
   }, [recentTransactions, timezone]);
 
-  const cashflowData = useMemo(() => {
-    if (!cashflowRes || !cashflowRes.balances) return [];
-    return cashflowRes.balances
-      .slice()
-      .sort((a, b) => a.periodStart - b.periodStart)
-      .map((b) => ({
-        periodStart: b.periodStart,
-        label: formatPeriodLabel(b.periodStart, timezone, periodType),
-        income: b.income,
-        expense: b.expense,
-        net: b.income - b.expense,
-      }));
-  }, [cashflowRes, timezone, periodType]);
-
   const currentNet = useMemo(() => {
     if (balances) return balances.income - balances.expense;
     return 0;
@@ -348,7 +318,7 @@ export default function Home() {
       setStale(true);
       return;
     }
-    const isLoadingAnalytics = cashflowRes === undefined || spendingRes === undefined;
+    const isLoadingAnalytics = spendingRes === undefined;
     const isLoading =
       household === undefined ||
       accountData === undefined ||
@@ -362,7 +332,7 @@ export default function Home() {
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [household, accountData, balances, monthBudgets, recent, cashflowRes, spendingRes, isConnected, refreshKey]);
+  }, [household, accountData, balances, monthBudgets, recent, spendingRes, isConnected, refreshKey]);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -710,13 +680,12 @@ export default function Home() {
                 </View>
               )}
 
-              {cashflowRes === undefined || spendingRes === undefined ? (
+              {spendingRes === undefined ? (
                 <View className="mt-6 gap-3">
                   <Skeleton style={{ height: 80, borderRadius: Radius.md }} />
-                  <Skeleton style={{ height: 180, borderRadius: Radius.md }} />
                   <Skeleton style={{ height: 140, borderRadius: Radius.md }} />
                 </View>
-              ) : cashflowRes && spendingRes && (cashflowRes as { balances?: unknown }).balances !== undefined && spendingRes.segments ? (
+              ) : spendingRes && spendingRes.segments ? (
                 <View className="mt-6 gap-3">
                   <DeltaCard
                     currentClosing={currentClosing}
@@ -724,7 +693,6 @@ export default function Home() {
                     currentLabel={currentLabel}
                     prevLabel={prevLabel}
                   />
-                  <CashflowBarChart data={cashflowData} timezone={timezone} />
                   <SpendingDonut
                     segments={spendingRes.segments.map((s: { name: string; amount: number }) => ({
                       name: s.name,
