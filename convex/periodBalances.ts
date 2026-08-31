@@ -61,9 +61,15 @@ async function buildExpectedMap(
     grouped.set(pStart, cur);
   }
 
-  // Build ordered period starts from household creation to current period
-  const firstStart = getPeriodBounds(household.createdAt, timezone, periodType).start;
+  // Build ordered period starts — ensure previous periods (swipe) appear even before household creation.
+  // Previously we started from household.createdAt, so July (before Aug 7) was missing and Home swipe to July showed 0.
+  // Now we always include 12 periods back from current so every PagerView page has a snapshot (0 if before creation).
   const currentStart = getPeriodBounds(now, timezone, periodType).start;
+  let firstStart = currentStart;
+  for (let i = 1; i < 12; i++) firstStart = getPeriodBounds(firstStart - 1, timezone, periodType).start;
+  // If household is older than 12 months, extend back to its creation
+  const householdStart = getPeriodBounds(household.createdAt, timezone, periodType).start;
+  if (householdStart < firstStart) firstStart = householdStart;
   const ordered: number[] = [];
   let cur = firstStart;
   let guard = 0;
