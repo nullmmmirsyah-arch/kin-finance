@@ -95,6 +95,16 @@ async function buildExpectedMap(
     const agg = grouped.get(pStart) ?? { income: 0, expense: 0 };
     expected.set(pStart, { income: agg.income, expense: agg.expense, periodEnd: pEnd });
   }
+  // For carryOver, opening of first retained period must seed from all history before firstStart
+  // (including when earliestTx exceeds 2y bound and was not retained). Compute total net before window.
+  let totalBefore = 0;
+  if (balanceMode === "carryOver") {
+    for (const [pStart, agg] of grouped) {
+      if (pStart < firstStart) totalBefore += agg.income - agg.expense;
+    }
+  }
+  // Attach totalBefore for computeOpeningClosing via closure on expected map
+  (expected as any)._totalBefore = totalBefore;
   return expected;
 }
 
@@ -107,7 +117,8 @@ async function computeOpeningClosing(
     number,
     { income: number; expense: number; openingBalance: number; closingBalance: number; periodEnd: number }
   >();
-  let prevClosing = 0;
+  const totalBefore = (expected as any)._totalBefore ?? 0;
+  let prevClosing = balanceMode === "carryOver" ? totalBefore : 0;
   for (const [pStart, agg] of sorted) {
     const net = agg.income - agg.expense;
     let opening = 0;
