@@ -577,78 +577,95 @@ export default function Home() {
               }
             >
               <GradientCard>
-                <View className="gap-3 py-2">
+                <View className="gap-4 py-1">
                   <View className="items-center gap-1">
-                    <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-                      Balance
-                    </Text>
+                    <View
+                      style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
+                      className="px-3 py-1"
+                    >
+                      <Text className="text-center text-[11px] font-semibold tracking-widest text-primary dark:text-primary-dark">
+                        PERIOD BALANCE
+                      </Text>
+                    </View>
                     {balances === undefined ? (
                       <Skeleton style={{ width: 160, height: 32 }} />
-                    ) : balances === null ? (
-                      <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-                        0
-                      </Text>
                     ) : (
-                      <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-                        {formatNumber(currentClosing)}
+                      <Text className="text-center text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                        {formatNumber(balances === null ? 0 : currentClosing)}
                       </Text>
                     )}
                     <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
                       {currentLabel}
+                      {balances !== null && balances !== undefined
+                        ? ` • Opening ${formatNumber(balances.openingBalance)}`
+                        : ""}
                     </Text>
                   </View>
+
+                  <View style={{ height: 1, backgroundColor: `${C.border}66` }} />
+
                   {balances === undefined ? (
                     <View className="flex-row gap-3">
-                      <Skeleton style={{ flex: 1, height: 48, borderRadius: Radius.md }} />
-                      <Skeleton style={{ flex: 1, height: 48, borderRadius: Radius.md }} />
-                    </View>
-                  ) : balances === null ? (
-                    <View className="flex-row gap-2">
-                      <View
-                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
-                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
-                      >
-                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Income</Text>
-                        <Text className="text-sm font-semibold" style={{ color: C.success }}>
-                          +0
-                        </Text>
-                      </View>
-                      <View
-                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
-                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
-                      >
-                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Expense</Text>
-                        <Text className="text-sm font-semibold" style={{ color: C.error }}>
-                          -0
-                        </Text>
-                      </View>
+                      <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
+                      <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
                     </View>
                   ) : (
-                    <View className="flex-row gap-2">
-                      <View
-                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
-                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
-                      >
-                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Income</Text>
-                        <Text className="text-sm font-semibold" style={{ color: C.success }}>
-                          +{formatNumber(balances.income)}
-                        </Text>
+                    <View className="flex-row items-center">
+                      <View className="flex-1 flex-row items-center gap-3">
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 999,
+                            backgroundColor: `${C.success}14`,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Feather name="trending-up" size={16} color={C.success} />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                            INCOME
+                          </Text>
+                          <Text className="text-base font-semibold" style={{ color: C.success }}>
+                            +{formatNumber(balances === null ? 0 : balances.income)}
+                          </Text>
+                        </View>
                       </View>
+
                       <View
-                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
-                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
-                      >
-                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Expense</Text>
-                        <Text className="text-sm font-semibold" style={{ color: C.error }}>
-                          -{formatNumber(balances.expense)}
-                        </Text>
+                        style={{
+                          width: 1,
+                          height: 36,
+                          backgroundColor: C.border,
+                          opacity: 0.6,
+                        }}
+                      />
+
+                      <View className="flex-1 flex-row items-center gap-3 pl-4">
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 999,
+                            backgroundColor: `${C.error}14`,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Feather name="trending-down" size={16} color={C.error} />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                            EXPENSE
+                          </Text>
+                          <Text className="text-base font-semibold" style={{ color: C.error }}>
+                            -{formatNumber(balances === null ? 0 : balances.expense)}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                  )}
-                  {balances !== undefined && balances !== null && (
-                    <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
-                      Opening {formatNumber(balances.openingBalance)}
-                    </Text>
                   )}
                 </View>
               </GradientCard>

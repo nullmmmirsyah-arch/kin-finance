@@ -202,7 +202,28 @@ export const get = query({
         q.eq("householdId", membership.householdId).eq("periodType", effectiveType).eq("periodStart", args.periodStart),
       )
       .unique();
-    return snap;
+    if (snap !== null) return snap;
+    // Fallback: compute on-the-fly when snapshot not yet materialized (e.g., before backfill)
+    // so Home shows actual data immediately instead of 0
+    const { balanceMode, timezone } = resolveHouseholdConfig(household);
+    const expected = await buildExpectedMap(ctx, household, effectiveType, timezone, balanceMode, Date.now());
+    const withBalances = await computeOpeningClosing(expected, balanceMode);
+    const computed = withBalances.get(args.periodStart);
+    if (!computed) return null;
+    return {
+      _id: `virtual:${args.periodStart}` as unknown as Id<"periodBalances">,
+      _creationTime: Date.now(),
+      householdId: household._id,
+      periodType: effectiveType,
+      periodStart: args.periodStart,
+      periodEnd: computed.periodEnd,
+      income: computed.income,
+      expense: computed.expense,
+      openingBalance: computed.openingBalance,
+      closingBalance: computed.closingBalance,
+      createdAt: household.createdAt,
+      updatedAt: Date.now(),
+    } as unknown as Doc<"periodBalances">;
   },
 });
 
@@ -232,9 +253,33 @@ export const listWindow = query({
       )
       .collect();
 
-    const filtered = all
+    let filtered = all
       .filter((b) => b.periodStart >= args.startDate && b.periodStart < args.endDate)
       .sort((a, b) => a.periodStart - b.periodStart);
+
+    // Fallback to on-the-fly when no snapshots yet (before backfill)
+    if (filtered.length === 0) {
+      const { balanceMode, timezone } = resolveHouseholdConfig(household);
+      const expected = await buildExpectedMap(ctx, household, effectiveType, timezone, balanceMode, Date.now());
+      const withBalances = await computeOpeningClosing(expected, balanceMode);
+      filtered = Array.from(withBalances.entries())
+        .filter(([pStart]) => pStart >= args.startDate && pStart < args.endDate)
+        .map(([pStart, data]) => ({
+          _id: `virtual:${pStart}` as unknown as Id<"periodBalances">,
+          _creationTime: Date.now(),
+          householdId: household._id,
+          periodType: effectiveType,
+          periodStart: pStart,
+          periodEnd: data.periodEnd,
+          income: data.income,
+          expense: data.expense,
+          openingBalance: data.openingBalance,
+          closingBalance: data.closingBalance,
+          createdAt: household.createdAt,
+          updatedAt: Date.now(),
+        } as unknown as Doc<"periodBalances">))
+        .sort((a, b) => a.periodStart - b.periodStart);
+    }
 
     return { balances: filtered, isOwner: membership.role === "owner" };
   },
