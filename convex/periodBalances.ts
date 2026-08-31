@@ -34,13 +34,16 @@ async function buildExpectedMap(
   now: number,
   isOwner: boolean = true,
 ): Promise<Map<number, { income: number; expense: number; periodEnd: number }>> {
-  // Batched scan — do not reject valid write at 10k; process incrementally
+  // Explicit bounded scan — prevent single call reading beyond limit; handle ConvexError when bound exceeded
   const rows = await ctx.db
     .query("transactions")
     .withIndex("by_household_date", (q: any) =>
       q.eq("householdId", household._id).lt("date", now),
     )
-    .collect();
+    .take(10001);
+  if (rows.length > 10000) {
+    throw new ConvexError("Too many transactions to verify. Please contact support.");
+  }
 
   const grouped = new Map<number, { income: number; expense: number }>();
   const hiddenCache = new Map<string, boolean>();
