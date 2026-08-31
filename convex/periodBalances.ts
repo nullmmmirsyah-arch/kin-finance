@@ -258,6 +258,7 @@ export const get = query({
             updatedAt: snap.updatedAt,
           } as unknown as Doc<"periodBalances">;
         }
+        return null;
       }
       return snap;
     }
