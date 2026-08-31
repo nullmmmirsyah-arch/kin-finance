@@ -203,11 +203,11 @@ export default function Home() {
 
   const balances = useQuery(
     api.periodBalances.get,
-    selectedPeriodStart !== null ? { periodStart: selectedPeriodStart, periodType } : "skip",
+    selectedPeriodStart !== null ? { periodStart: selectedPeriodStart, periodType, timezone } : "skip",
   );
   const prevBalances = useQuery(
     api.periodBalances.get,
-    prevPeriodStart !== undefined ? { periodStart: prevPeriodStart, periodType } : "skip",
+    prevPeriodStart !== undefined ? { periodStart: prevPeriodStart, periodType, timezone } : "skip",
   );
 
   const monthBudgets = useQuery(
@@ -224,6 +224,7 @@ export default function Home() {
           startDate: analyticsWindow.startDate,
           endDate: analyticsWindow.endDate,
           periodType,
+          timezone,
         }
       : "skip",
   );

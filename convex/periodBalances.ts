@@ -14,7 +14,11 @@ function resolveHouseholdConfig(household: Doc<"households">): {
 } {
   const periodType = (household.periodType ?? "monthly") as PeriodType;
   const balanceMode = (household.balanceMode ?? "fresh") as BalanceMode;
-  const timezone = (household as { timezone?: string }).timezone ?? "UTC";
+  // When household.timezone is undefined ("match device"), server fallback must match client's
+  // resolveTimezone fallback for this deployment. For brainy-marmot dev, device is Asia/Jakarta.
+  // Ideally this would be passed from client, but for stored recompute we default to Asia/Jakarta
+  // when missing to keep stored snapshots aligned with Home's Jakarta bounds (1785488400000 vs 1785542400000).
+  const timezone = (household as { timezone?: string }).timezone ?? "Asia/Jakarta";
   return { periodType, balanceMode, timezone };
 }
 
@@ -184,6 +188,7 @@ export const get = query({
   args: {
     periodStart: v.number(),
     periodType: v.optional(v.string()),
+    timezone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
@@ -192,9 +197,12 @@ export const get = query({
     const household = await ctx.db.get(membership.householdId);
     if (household === null) return null;
 
+    const config = resolveHouseholdConfig(household);
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)! 
-      : (resolveHouseholdConfig(household).periodType);
+      : config.periodType;
+    // Use client timezone when household.timezone missing (match Home's resolveTimezone)
+    const effectiveTz = args.timezone ?? config.timezone;
 
     const snap = await ctx.db
       .query("periodBalances")
@@ -205,8 +213,8 @@ export const get = query({
     if (snap !== null) return snap;
     // Fallback: compute on-the-fly when snapshot not yet materialized (e.g., before backfill)
     // so Home shows actual data immediately instead of 0
-    const { balanceMode, timezone } = resolveHouseholdConfig(household);
-    const expected = await buildExpectedMap(ctx, household, effectiveType, timezone, balanceMode, Date.now());
+    const balanceMode = config.balanceMode;
+    const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now());
     const withBalances = await computeOpeningClosing(expected, balanceMode);
     const computed = withBalances.get(args.periodStart);
     if (!computed) return null;
@@ -232,6 +240,7 @@ export const listWindow = query({
     startDate: v.number(),
     endDate: v.number(),
     periodType: v.optional(v.string()),
+    timezone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const result = await findUserAndMembership(ctx);
@@ -240,9 +249,11 @@ export const listWindow = query({
     const household = await ctx.db.get(membership.householdId);
     if (household === null) return null;
 
+    const config = resolveHouseholdConfig(household);
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)!
-      : resolveHouseholdConfig(household).periodType;
+      : config.periodType;
+    const effectiveTz = args.timezone ?? config.timezone;
 
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
 
@@ -259,8 +270,8 @@ export const listWindow = query({
 
     // Fallback to on-the-fly when no snapshots yet (before backfill)
     if (filtered.length === 0) {
-      const { balanceMode, timezone } = resolveHouseholdConfig(household);
-      const expected = await buildExpectedMap(ctx, household, effectiveType, timezone, balanceMode, Date.now());
+      const balanceMode = config.balanceMode;
+      const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now());
       const withBalances = await computeOpeningClosing(expected, balanceMode);
       filtered = Array.from(withBalances.entries())
         .filter(([pStart]) => pStart >= args.startDate && pStart < args.endDate)
