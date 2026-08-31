@@ -38,10 +38,12 @@ async function buildExpectedMap(
   now: number,
 ): Promise<Map<number, { income: number; expense: number; periodEnd: number }>> {
   // single scan cap like accounts.verify
+  // User boleh input history sebelum household dibuat (mis Aug buat akun tapi input Juli untuk analisa),
+  // jadi jangan filter gte household.createdAt — scan semua transaksi household sampai now.
   const rows = await ctx.db
     .query("transactions")
     .withIndex("by_household_date", (q: any) =>
-      q.eq("householdId", household._id).gte("date", household.createdAt).lt("date", now),
+      q.eq("householdId", household._id).lt("date", now),
     )
     .take(10001);
   if (rows.length > 10000) {
@@ -61,15 +63,19 @@ async function buildExpectedMap(
     grouped.set(pStart, cur);
   }
 
-  // Build ordered period starts — ensure previous periods (swipe) appear even before household creation.
-  // Previously we started from household.createdAt, so July (before Aug 7) was missing and Home swipe to July showed 0.
-  // Now we always include 12 periods back from current so every PagerView page has a snapshot (0 if before creation).
+  // Build ordered period starts — include history before household creation (user may input July even though household Aug 7)
+  // and ensure swipe PagerView (12 pages) always has snapshot.
   const currentStart = getPeriodBounds(now, timezone, periodType).start;
   let firstStart = currentStart;
   for (let i = 1; i < 12; i++) firstStart = getPeriodBounds(firstStart - 1, timezone, periodType).start;
   // If household is older than 12 months, extend back to its creation
   const householdStart = getPeriodBounds(household.createdAt, timezone, periodType).start;
   if (householdStart < firstStart) firstStart = householdStart;
+  // If earliest transaction is even older (history import), extend to that
+  if (grouped.size > 0) {
+    const earliestTxStart = Math.min(...grouped.keys());
+    if (earliestTxStart < firstStart) firstStart = earliestTxStart;
+  }
   const ordered: number[] = [];
   let cur = firstStart;
   let guard = 0;
