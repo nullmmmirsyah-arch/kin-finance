@@ -8,6 +8,7 @@ import {
   validateTransactionAmount,
   validateTransactionDate,
 } from "../constants/validation";
+import { recomputeAllForHousehold } from "./periodBalances";
 
 const transactionType = v.union(
   v.literal("income"),
@@ -229,6 +230,11 @@ export const create = mutation({
       );
     } else {
       await applyBalanceDelta(ctx, args.accountId, args.amount, now);
+    }
+
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
     }
 
     return transactionId;
@@ -1062,6 +1068,11 @@ export const update = mutation({
       updatedAt: now,
     });
 
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
+    }
+
     return await ctx.db.get(args.transactionId);
   },
 });
@@ -1085,5 +1096,10 @@ export const remove = mutation({
     const now = Date.now();
     await reverseBalances(ctx, tx, now);
     await ctx.db.delete(args.transactionId);
+
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
+    }
   },
 });
