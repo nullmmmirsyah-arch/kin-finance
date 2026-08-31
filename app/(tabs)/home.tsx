@@ -451,9 +451,6 @@ export default function Home() {
   const memberCount = members?.members.length ?? 1;
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
-  const totalBalance =
-    accountData?.accounts?.reduce((sum, account) => sum + account.balance, 0) ?? undefined;
-
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       {(stale || isRetrying) && (
@@ -580,34 +577,77 @@ export default function Home() {
               }
             >
               <GradientCard>
-                <View className="items-center gap-1 py-2">
-                  <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-                    Total Balance
-                  </Text>
-                  {totalBalance === undefined ? (
-                    <View className="w-full items-center py-1">
+                <View className="gap-3 py-2">
+                  <View className="items-center gap-1">
+                    <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+                      Balance
+                    </Text>
+                    {balances === undefined ? (
                       <Skeleton style={{ width: 160, height: 32 }} />
+                    ) : balances === null ? (
+                      <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+                        0
+                      </Text>
+                    ) : (
+                      <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+                        {formatNumber(currentClosing)}
+                      </Text>
+                    )}
+                    <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
+                      {currentLabel}
+                    </Text>
+                  </View>
+                  {balances === undefined ? (
+                    <View className="flex-row gap-3">
+                      <Skeleton style={{ flex: 1, height: 48, borderRadius: Radius.md }} />
+                      <Skeleton style={{ flex: 1, height: 48, borderRadius: Radius.md }} />
+                    </View>
+                  ) : balances === null ? (
+                    <View className="flex-row gap-2">
+                      <View
+                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
+                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
+                      >
+                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Income</Text>
+                        <Text className="text-sm font-semibold" style={{ color: C.success }}>
+                          +0
+                        </Text>
+                      </View>
+                      <View
+                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
+                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
+                      >
+                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Expense</Text>
+                        <Text className="text-sm font-semibold" style={{ color: C.error }}>
+                          -0
+                        </Text>
+                      </View>
                     </View>
                   ) : (
-                    <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-                      {formatNumber(totalBalance)}
-                    </Text>
+                    <View className="flex-row gap-2">
+                      <View
+                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
+                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
+                      >
+                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Income</Text>
+                        <Text className="text-sm font-semibold" style={{ color: C.success }}>
+                          +{formatNumber(balances.income)}
+                        </Text>
+                      </View>
+                      <View
+                        style={{ backgroundColor: C.background, borderRadius: Radius.sm }}
+                        className="flex-1 items-center gap-1 border border-border px-3 py-3 dark:border-border-dark"
+                      >
+                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Expense</Text>
+                        <Text className="text-sm font-semibold" style={{ color: C.error }}>
+                          -{formatNumber(balances.expense)}
+                        </Text>
+                      </View>
+                    </View>
                   )}
-                  {balances === undefined ? (
-                    <Skeleton style={{ width: 120, height: 14 }} />
-                  ) : balances === null ? (
-                    <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-                      No data for this period
-                    </Text>
-                  ) : (
-                    <Text
-                      className="text-center text-sm font-medium"
-                      style={{
-                        color: currentNet >= 0 ? C.success : C.error,
-                      }}
-                    >
-                      {currentNet >= 0 ? "+" : ""}
-                      {formatNumber(currentNet)} {currentLabel}
+                  {balances !== undefined && balances !== null && (
+                    <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
+                      Opening {formatNumber(balances.openingBalance)}
                     </Text>
                   )}
                 </View>
