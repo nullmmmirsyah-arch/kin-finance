@@ -324,6 +324,14 @@ export default function Home() {
     if (prevBalances) return prevBalances.income - prevBalances.expense;
     return 0;
   }, [prevBalances]);
+  const currentClosing = useMemo(() => {
+    if (balances && typeof balances.closingBalance === "number") return balances.closingBalance;
+    return currentNet;
+  }, [balances, currentNet]);
+  const prevClosing = useMemo(() => {
+    if (prevBalances && typeof prevBalances.closingBalance === "number") return prevBalances.closingBalance;
+    return prevNet;
+  }, [prevBalances, prevNet]);
 
   const currentLabel = useMemo(() => {
     if (selectedPeriodStart === null) return "";
@@ -653,8 +661,8 @@ export default function Home() {
               ) : cashflowRes && spendingRes && (cashflowRes as { balances?: unknown }).balances !== undefined && spendingRes.segments ? (
                 <View className="mt-6 gap-3">
                   <DeltaCard
-                    currentNet={currentNet}
-                    prevNet={prevNet}
+                    currentClosing={currentClosing}
+                    prevClosing={prevClosing}
                     currentLabel={currentLabel}
                     prevLabel={prevLabel}
                   />
@@ -909,3 +917,4 @@ export default function Home() {
     </SafeAreaView>
   );
 }
+

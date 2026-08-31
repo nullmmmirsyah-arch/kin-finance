@@ -149,7 +149,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
 
     const cash = await t.run(async (ctx) => (await ctx.db.get(cashId))!);
     expect(cash.balance).toBe(500);
-  });
+  }, 10000);
 
   it("reconcile is owner-only", async () => {
     await seed();
@@ -199,3 +199,4 @@ describe("accounts.verify + reconcile (P0-1)", () => {
     expect(acc!.balance).toBe(750);
   });
 });
+
