@@ -105,3 +105,18 @@ export function validateTimezone(timezone: string | undefined): string | null {
   }
   return null;
 }
+
+export const PERIOD_TYPES = ["monthly", "weekly", "yearly"] as const;
+export type PeriodType = (typeof PERIOD_TYPES)[number];
+export const BALANCE_MODES = ["fresh", "carryOver"] as const;
+export type BalanceMode = (typeof BALANCE_MODES)[number];
+export function validatePeriodType(v: string | undefined): string | null {
+  if (v === undefined) return null;
+  if (!PERIOD_TYPES.includes(v as PeriodType)) return "Period type must be monthly, weekly, or yearly.";
+  return null;
+}
+export function validateBalanceMode(v: string | undefined): string | null {
+  if (v === undefined) return null;
+  if (!BALANCE_MODES.includes(v as BalanceMode)) return "Balance mode must be fresh or carryOver.";
+  return null;
+}
