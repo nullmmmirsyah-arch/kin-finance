@@ -4,6 +4,7 @@ import { Doc } from "./_generated/dataModel";
 import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateAccountName } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
+import { recomputeAllForHousehold } from "./periodBalances";
 
 const accountType = v.union(
   v.literal("cash"),
@@ -117,6 +118,10 @@ export const create = mutation({
         createdAt: now,
         updatedAt: now,
       });
+      const householdForRecompute = await ctx.db.get(membership.householdId);
+      if (householdForRecompute) {
+        await recomputeAllForHousehold(ctx, householdForRecompute, now + 1);
+      }
     }
 
     return await ctx.db.get(accountId);

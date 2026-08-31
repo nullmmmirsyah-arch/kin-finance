@@ -1,8 +1,8 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
-import { useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
@@ -10,6 +10,8 @@ import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/Button";
 import { useSnackbar } from "@/components/Snackbar";
+import { hapticSuccess } from "@/lib/haptics";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 const THEME_OPTIONS: {
   id: ThemePreference;
@@ -19,6 +21,11 @@ const THEME_OPTIONS: {
   { id: "system", label: "System", icon: "smartphone" },
   { id: "light", label: "Light", icon: "sun" },
   { id: "dark", label: "Dark", icon: "moon" },
+];
+
+const BALANCE_MODE_OPTIONS: { id: "fresh" | "carryOver"; label: string }[] = [
+  { id: "fresh", label: "Fresh" },
+  { id: "carryOver", label: "Carry Over" },
 ];
 
 export default function Settings() {
@@ -31,12 +38,44 @@ export default function Settings() {
     api.households.listMembers,
     household?._id ? { householdId: household._id } : "skip",
   );
+  const me = useQuery(api.users.getMe);
+  const updateBalanceMode = useMutation(api.households.updateBalanceMode);
 
   const memberCount = members?.members.length ?? 1;
 
   const { signOut } = useAuth();
   const { show } = useSnackbar();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
+
+  const isOwner = (() => {
+    if (me === undefined || members === undefined) return undefined;
+    if (me === null || members === null) return false;
+    const found = members.members.find((m) => m.userId === me._id);
+    return found?.role === "owner";
+  })();
+
+  const balanceMode = ((household as unknown as { balanceMode?: "fresh" | "carryOver" })?.balanceMode ?? "fresh") as
+    | "fresh"
+    | "carryOver";
+  const balanceModeLabel = balanceMode === "fresh" ? "Fresh" : "Carry Over";
+
+  const handleBalanceModeChange = useCallback(
+    async (mode: "fresh" | "carryOver") => {
+      if (!household?._id || mode === balanceMode || isUpdatingBalanceMode) return;
+      setIsUpdatingBalanceMode(true);
+      try {
+        await updateBalanceMode({ householdId: household._id, balanceMode: mode });
+        void hapticSuccess();
+        show(`Balance mode: ${mode === "fresh" ? "Fresh" : "Carry Over"}`);
+      } catch (e: unknown) {
+        show(getConvexErrorMessage(e, "Failed to update balance mode."));
+      } finally {
+        setIsUpdatingBalanceMode(false);
+      }
+    },
+    [household?._id, balanceMode, isUpdatingBalanceMode, updateBalanceMode, show],
+  );
 
   const handleSignOut = () => {
     Alert.alert(
@@ -125,6 +164,104 @@ export default function Settings() {
           </View>
           <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
+
+        <View className="mt-3">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+              Balance Mode
+            </Text>
+            {isOwner === false ? (
+              <View className="flex-row items-center gap-1">
+                <Feather name="info" size={12} color={C.textSecondary} />
+                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Owner only</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {isOwner === undefined ? (
+            <View className="mt-2 items-center justify-center py-3">
+              <ActivityIndicator size="small" color={C.primary} />
+            </View>
+          ) : isOwner ? (
+            <View className="mt-2 flex-row overflow-hidden rounded-[12px] border border-border dark:border-border-dark">
+              {BALANCE_MODE_OPTIONS.map((option) => {
+                const selected = balanceMode === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => void handleBalanceModeChange(option.id)}
+                    disabled={isUpdatingBalanceMode}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Balance mode ${option.label}`}
+                    style={{
+                      backgroundColor: selected ? C.primary : "transparent",
+                      opacity: isUpdatingBalanceMode && !selected ? 0.6 : 1,
+                    }}
+                    className="flex-1 items-center justify-center py-3"
+                  >
+                    <Text
+                      className={`text-sm font-medium ${
+                        selected
+                          ? "text-background dark:text-background-dark"
+                          : "text-text-secondary dark:text-text-secondary-dark"
+                      }`}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <View
+              style={{
+                borderRadius: Radius.md,
+                backgroundColor: C.background,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}
+              className="mt-2 flex-row items-center justify-between px-4 py-3"
+            >
+              <View className="flex-row items-center gap-2">
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: Radius.sm,
+                    backgroundColor: C.surface,
+                  }}
+                  className="items-center justify-center"
+                >
+                  <Feather name="info" size={16} color={C.primary} />
+                </View>
+                <View>
+                  <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                    {balanceModeLabel}
+                  </Text>
+                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                    Balance per period
+                  </Text>
+                </View>
+              </View>
+              <View
+                style={{ backgroundColor: C.surface, borderRadius: 999 }}
+                className="px-2.5 py-1"
+              >
+                <Text className="text-xs font-medium" style={{ color: C.textSecondary }}>
+                  Read only
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View className="mt-1.5 flex-row items-center gap-1">
+            <Feather name="info" size={12} color={C.textSecondary} />
+            <Text className="flex-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+              {balanceMode === "fresh" ? "Each period starts fresh" : "Closing balance carries to next period"}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View className="mt-6 px-5">

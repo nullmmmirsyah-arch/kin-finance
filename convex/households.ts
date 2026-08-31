@@ -1,9 +1,15 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { validateHouseholdName, validateTimezone } from "../constants/validation";
+import {
+  validateBalanceMode,
+  validateHouseholdName,
+  validatePeriodType,
+  validateTimezone,
+} from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
-import { findUserAndMembership } from "./helpers";
+import { findUserAndMembership, getUserAndMembership, requireOwner } from "./helpers";
 import { getYearMonth, zonedMonthStart } from "../utils/date";
+import { recomputeAllForHousehold } from "./periodBalances";
 
 export const create = mutation({
   args: {
@@ -214,6 +220,67 @@ export const updateTimezone = mutation({
     });
 
     return await ctx.db.get(args.householdId);
+  },
+});
+
+export const updateBalanceMode = mutation({
+  args: {
+    householdId: v.id("households"),
+    balanceMode: v.union(v.literal("fresh"), v.literal("carryOver")),
+  },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+    if (membership.householdId !== args.householdId) {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+    const err = validateBalanceMode(args.balanceMode);
+    if (err) throw new ConvexError(err);
+    const household = await ctx.db.get(args.householdId);
+    if (household === null) {
+      throw new ConvexError("Household not found.");
+    }
+    await ctx.db.patch(args.householdId, {
+      balanceMode: args.balanceMode,
+      updatedAt: Date.now(),
+    });
+    const updated = await ctx.db.get(args.householdId);
+    if (updated !== null) {
+      await recomputeAllForHousehold(ctx, updated);
+    }
+    return updated;
+  },
+});
+
+export const updatePeriodType = mutation({
+  args: {
+    householdId: v.id("households"),
+    periodType: v.union(v.literal("monthly"), v.literal("weekly"), v.literal("yearly")),
+  },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+    if (membership.householdId !== args.householdId) {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+    if (args.periodType !== "monthly") {
+      throw new ConvexError("Weekly/yearly coming soon");
+    }
+    const err = validatePeriodType(args.periodType);
+    if (err) throw new ConvexError(err);
+    const household = await ctx.db.get(args.householdId);
+    if (household === null) {
+      throw new ConvexError("Household not found.");
+    }
+    await ctx.db.patch(args.householdId, {
+      periodType: args.periodType,
+      updatedAt: Date.now(),
+    });
+    const updated = await ctx.db.get(args.householdId);
+    if (updated !== null) {
+      await recomputeAllForHousehold(ctx, updated);
+    }
+    return updated;
   },
 });
 

@@ -13,9 +13,26 @@ export default defineSchema({
   households: defineTable({
     name: v.string(),
     timezone: v.optional(v.string()),
+    periodType: v.optional(v.union(v.literal("monthly"), v.literal("weekly"), v.literal("yearly"))),
+    balanceMode: v.optional(v.union(v.literal("fresh"), v.literal("carryOver"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),
+
+  periodBalances: defineTable({
+    householdId: v.id("households"),
+    periodType: v.union(v.literal("monthly"), v.literal("weekly"), v.literal("yearly")),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    income: v.number(),
+    expense: v.number(),
+    openingBalance: v.number(),
+    closingBalance: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_household_period", ["householdId", "periodType", "periodStart"])
+    .index("by_household_type", ["householdId", "periodType"]),
 
   householdMemberships: defineTable({
     householdId: v.id("households"),
