@@ -38,7 +38,7 @@ households: defineTable({
   name: v.string(),
   timezone: v.optional(v.string()),
   periodType: v.optional(v.union(v.literal("monthly"), v.literal("weekly"), v.literal("yearly"))), // default "monthly"
-  balanceMode: v.optional(v.union(v.literal("fresh"), v.literal("carryOver"))), // default "carryOver" (konsisten dengan accounts.balance kumulatif sekarang)
+  balanceMode: v.optional(v.union(v.literal("fresh"), v.literal("carryOver"))), // default "fresh" (isolated per period, matches PRD & periodBalances fallback)
   createdAt: v.number(),
   updatedAt: v.number(),
 }),

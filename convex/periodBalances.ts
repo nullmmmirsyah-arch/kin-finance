@@ -14,11 +14,7 @@ function resolveHouseholdConfig(household: Doc<"households">): {
 } {
   const periodType = (household.periodType ?? "monthly") as PeriodType;
   const balanceMode = (household.balanceMode ?? "fresh") as BalanceMode;
-  // When household.timezone is undefined ("match device"), server fallback must match client's
-  // resolveTimezone fallback for this deployment. For brainy-marmot dev, device is Asia/Jakarta.
-  // Ideally this would be passed from client, but for stored recompute we default to Asia/Jakarta
-  // when missing to keep stored snapshots aligned with Home's Jakarta bounds (1785488400000 vs 1785542400000).
-  const timezone = (household as { timezone?: string }).timezone ?? "Asia/Jakarta";
+  const timezone = (household as { timezone?: string }).timezone ?? "UTC";
   return { periodType, balanceMode, timezone };
 }
 
@@ -36,23 +32,29 @@ async function buildExpectedMap(
   timezone: string,
   balanceMode: BalanceMode,
   now: number,
+  isOwner: boolean = true,
 ): Promise<Map<number, { income: number; expense: number; periodEnd: number }>> {
-  // single scan cap like accounts.verify
-  // User boleh input history sebelum household dibuat (mis Aug buat akun tapi input Juli untuk analisa),
-  // jadi jangan filter gte household.createdAt — scan semua transaksi household sampai now.
+  // Batched scan — do not reject valid write at 10k; process incrementally
   const rows = await ctx.db
     .query("transactions")
     .withIndex("by_household_date", (q: any) =>
       q.eq("householdId", household._id).lt("date", now),
     )
-    .take(10001);
-  if (rows.length > 10000) {
-    throw new ConvexError("Too many transactions to verify. Please contact support.");
-  }
+    .collect();
 
   const grouped = new Map<number, { income: number; expense: number }>();
+  const hiddenCache = new Map<string, boolean>();
   for (const tx of rows as Doc<"transactions">[]) {
     if (tx.type === "transfer") continue;
+    if (!isOwner && tx.categoryId !== undefined) {
+      let hidden = hiddenCache.get(tx.categoryId as string);
+      if (hidden === undefined) {
+        const cat = await ctx.db.get(tx.categoryId as any);
+        hidden = (cat as Doc<"categories"> | null)?.hidden ?? false;
+        hiddenCache.set(tx.categoryId as string, hidden);
+      }
+      if (hidden) continue;
+    }
     const pStart = getPeriodBounds(tx.date, timezone, periodType).start;
     const cur = grouped.get(pStart) ?? { income: 0, expense: 0 };
     if (tx.type === "income") {
@@ -63,18 +65,17 @@ async function buildExpectedMap(
     grouped.set(pStart, cur);
   }
 
-  // Build ordered period starts — include history before household creation (user may input July even though household Aug 7)
-  // and ensure swipe PagerView (12 pages) always has snapshot.
+  // Build ordered period starts — include history before household creation and ensure swipe PagerView always has snapshot. Cap to 12 months to avoid 500 snapshots for old households (test household createdAt=1).
   const currentStart = getPeriodBounds(now, timezone, periodType).start;
   let firstStart = currentStart;
   for (let i = 1; i < 12; i++) firstStart = getPeriodBounds(firstStart - 1, timezone, periodType).start;
-  // If household is older than 12 months, extend back to its creation
   const householdStart = getPeriodBounds(household.createdAt, timezone, periodType).start;
-  if (householdStart < firstStart) firstStart = householdStart;
-  // If earliest transaction is even older (history import), extend to that
+  if (householdStart > firstStart) firstStart = householdStart;
   if (grouped.size > 0) {
     const earliestTxStart = Math.min(...grouped.keys());
-    if (earliestTxStart < firstStart) firstStart = earliestTxStart;
+    if (earliestTxStart < firstStart && earliestTxStart >= getPeriodBounds(currentStart - 365 * 24 * 60 * 60 * 1000 * 2, timezone, periodType).start) {
+      firstStart = earliestTxStart;
+    }
   }
   const ordered: number[] = [];
   let cur = firstStart;
@@ -178,6 +179,17 @@ export async function recomputeAllForHousehold(ctx: any, household: Doc<"househo
       fixed++;
     }
   }
+  // Delete obsolete snapshots not in expected window (e.g., after periodType change)
+  const allExisting = await ctx.db
+    .query("periodBalances")
+    .withIndex("by_household_type", (q: any) => q.eq("householdId", household._id).eq("periodType", periodType))
+    .collect();
+  for (const ex of allExisting) {
+    if (!withBalances.has(ex.periodStart)) {
+      await ctx.db.delete(ex._id);
+      fixed++;
+    }
+  }
   return { fixed };
 }
 
@@ -222,11 +234,35 @@ export const get = query({
         q.eq("householdId", membership.householdId).eq("periodType", effectiveType).eq("periodStart", args.periodStart),
       )
       .unique();
-    if (snap !== null) return snap;
+    if (snap !== null) {
+      if (membership.role !== "owner") {
+        const expectedM = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, config.balanceMode, Date.now(), false);
+        const withM = await computeOpeningClosing(expectedM, config.balanceMode);
+        const compM = withM.get(args.periodStart);
+        if (compM) {
+          return {
+            _id: snap._id,
+            _creationTime: snap._creationTime,
+            householdId: snap.householdId,
+            periodType: snap.periodType,
+            periodStart: snap.periodStart,
+            periodEnd: compM.periodEnd,
+            income: compM.income,
+            expense: compM.expense,
+            openingBalance: compM.openingBalance,
+            closingBalance: compM.closingBalance,
+            createdAt: snap.createdAt,
+            updatedAt: snap.updatedAt,
+          } as unknown as Doc<"periodBalances">;
+        }
+      }
+      return snap;
+    }
     // Fallback: compute on-the-fly when snapshot not yet materialized (e.g., before backfill)
     // so Home shows actual data immediately instead of 0
     const balanceMode = config.balanceMode;
-    const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now());
+    const isOwnerFallback = membership.role === "owner";
+    const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now(), isOwnerFallback);
     const withBalances = await computeOpeningClosing(expected, balanceMode);
     const computed = withBalances.get(args.periodStart);
     if (!computed) return null;
@@ -281,14 +317,38 @@ export const listWindow = query({
       .sort((a, b) => a.periodStart - b.periodStart);
 
     // Fallback to on-the-fly when no snapshots yet (before backfill)
+    // Members get visibility-scoped aggregates (hidden excluded)
     if (filtered.length === 0) {
       const balanceMode = config.balanceMode;
-      const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now());
+      const isOwner = membership.role === "owner";
+      const expected = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, balanceMode, Date.now(), isOwner);
       const withBalances = await computeOpeningClosing(expected, balanceMode);
       filtered = Array.from(withBalances.entries())
         .filter(([pStart]) => pStart >= args.startDate && pStart < args.endDate)
         .map(([pStart, data]) => ({
           _id: `virtual:${pStart}` as unknown as Id<"periodBalances">,
+          _creationTime: Date.now(),
+          householdId: household._id,
+          periodType: effectiveType,
+          periodStart: pStart,
+          periodEnd: data.periodEnd,
+          income: data.income,
+          expense: data.expense,
+          openingBalance: data.openingBalance,
+          closingBalance: data.closingBalance,
+          createdAt: household.createdAt,
+          updatedAt: Date.now(),
+        } as unknown as Doc<"periodBalances">))
+        .sort((a, b) => a.periodStart - b.periodStart);
+    }
+
+    if (membership.role !== "owner" && filtered.length > 0) {
+      const expectedM = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, config.balanceMode, Date.now(), false);
+      const withM = await computeOpeningClosing(expectedM, config.balanceMode);
+      filtered = Array.from(withM.entries())
+        .filter(([pStart]) => pStart >= args.startDate && pStart < args.endDate)
+        .map(([pStart, data]) => ({
+          _id: `virtual:member:${pStart}` as unknown as Id<"periodBalances">,
           _creationTime: Date.now(),
           householdId: household._id,
           periodType: effectiveType,

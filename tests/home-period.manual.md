@@ -13,11 +13,10 @@ Task 5 — swipeable Home via PagerView
 - [ ] Initial period is current monthly period (formatPeriodLabel matches `getPeriodBounds(Date.now(), tz, monthly)`)
 - [ ] Swipe left/right changes period label and dot active state with haptic
 - [ ] Tap `<` / `>` buttons navigates period, updates PagerView page, triggers haptic, disables `>` when future beyond current period
-- [ ] Total Balance card: live sum `accountData.accounts[].balance` visible, period net (`balances.income - expense`) colored success/error under it; skeleton when loading
-- [ ] Period net text shows `+` prefix for positive, matches snapshot closing net for that period
-- [ ] Budgets section binds to `selectedPeriodStart` / `periodEnd` (`buds.list` per period): shows 3 pills with spent/budgeted, changes when period changes, skeleton while loading, empty state when none
-- [ ] Analytics DeltaCard: `currentNet` = period income-expense, `prevNet` = previous period income-expense, labels via `formatPeriodLabel`; skeleton while loading
-- [ ] Analytics CashflowBarChart: data from `periodBalances.listWindow` (6 periods window) mapped to `income/expense/net`, label via `formatPeriodLabel`; skeleton while loading
+- [ ] PERIOD BALANCE card: shows `currentClosing` (closingBalance) 28 bold + `currentLabel • Opening` caption, plus `Income +`/`Expense -` tinted circles (`trending-up`/`trending-down` with `${C.success}14`/`error14`); skeleton when `balances === undefined`, `0` when `null`
+- [ ] Period net text shows `+` prefix for positive, matches snapshot `closingBalance` for that period (`fresh` closing=net, `carryOver` cumulative)
+- [ ] Budgets section binds to `selectedPeriodStart` / `periodEnd` (`budgets.list` per period): shows 3 pills with spent/budgeted, changes when period changes, skeleton while loading, empty state when none
+- [ ] Analytics DeltaCard: `currentClosing`/`prevClosing` = `periodBalances.get` closingBalance (period-appropriate `New this week/month/year` and `vs last week/month/year` via `periodType`), labels via `formatPeriodLabel`; skeleton while loading
 - [ ] Analytics SpendingDonut: data from `transactions.spendingByCategory` filtered by `selectedPeriodStart`/`periodEnd`; skeleton while loading; hidden categories excluded for Member
 - [ ] Recent Transactions: query `transactions.list` filtered by `startDate=selectedPeriodStart`, `endDate=periodEnd`, `limit=5`; grouped by `formatDateHeaderTz` with per-day net; skeleton 5 rows while loading; empty state when none; not global recent
 - [ ] My Accounts: horizontal list keeps live balances (`account.balance` sum), not snapshot filtered; shows `Add Account` for Owner; skeleton while loading

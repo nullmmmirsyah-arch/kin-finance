@@ -21,10 +21,11 @@ export function buildSixMonthWindow(
 export function calcDelta(
   currentNet: number,
   prevNet: number,
+  periodNoun: string = "month",
 ): { deltaPct: number | null; label: string } {
-  if (prevNet === 0) return { deltaPct: null, label: currentNet === 0 ? "No change" : "New this month" };
+  if (prevNet === 0) return { deltaPct: null, label: currentNet === 0 ? "No change" : `New this ${periodNoun}` };
   const deltaPct = ((currentNet - prevNet) / Math.abs(prevNet)) * 100;
-  return { deltaPct, label: `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}% vs last month` };
+  return { deltaPct, label: `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}% vs last ${periodNoun}` };
 }
 
 export function maxBarValue(data: Array<{ income: number; expense: number }>): number {
