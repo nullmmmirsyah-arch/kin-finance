@@ -111,7 +111,7 @@ async function computeOpeningClosing(
   return result;
 }
 
-async function recomputeAllForHousehold(ctx: any, household: Doc<"households">, now = Date.now()) {
+export async function recomputeAllForHousehold(ctx: any, household: Doc<"households">, now = Date.now()) {
   const { periodType, balanceMode, timezone } = resolveHouseholdConfig(household);
   const err = validatePeriodType(periodType);
   if (err) throw new ConvexError(err);
@@ -165,7 +165,7 @@ async function recomputeAllForHousehold(ctx: any, household: Doc<"households">, 
   return { fixed };
 }
 
-async function recomputeFromForHousehold(
+export async function recomputeFromForHousehold(
   ctx: any,
   household: Doc<"households">,
   fromDate: number,

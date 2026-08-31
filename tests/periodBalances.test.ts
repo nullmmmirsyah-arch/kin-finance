@@ -352,4 +352,22 @@ describe("periodBalances", () => {
     expect(febSnap!.expense).toBe(200);
     expect(febSnap!.closingBalance).toBe(-200);
   });
+
+  it("member cannot update balanceMode", async () => {
+    const ids = await seedHousehold("fresh", "monthly");
+    const member = t.withIdentity({ tokenIdentifier: MEMBER_TOKEN, subject: "member" });
+    await expect(
+      member.mutation(api.households.updateBalanceMode, {
+        householdId: ids.householdId,
+        balanceMode: "carryOver",
+      }),
+    ).rejects.toThrow();
+    // owner can update and triggers recompute
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const updated = await owner.mutation(api.households.updateBalanceMode, {
+      householdId: ids.householdId,
+      balanceMode: "carryOver",
+    });
+    expect((updated as any).balanceMode).toBe("carryOver");
+  });
 });
