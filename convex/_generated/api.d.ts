@@ -14,6 +14,7 @@ import type * as categories from "../categories.js";
 import type * as helpers from "../helpers.js";
 import type * as households from "../households.js";
 import type * as invitations from "../invitations.js";
+import type * as periodBalances from "../periodBalances.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
   households: typeof households;
   invitations: typeof invitations;
+  periodBalances: typeof periodBalances;
   transactions: typeof transactions;
   users: typeof users;
 }>;

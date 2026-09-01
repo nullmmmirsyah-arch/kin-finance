@@ -154,7 +154,7 @@ export default function Home() {
     const capped = Math.min(delay + 1000, MAX_TIMEOUT);
     const t = setTimeout(() => setNowTick(Date.now()), capped);
     return () => clearTimeout(t);
-  }, [currentPeriodBounds.end]);
+  }, [currentPeriodBounds.end, nowTick]);
 
   const [selectedPeriodStart, setSelectedPeriodStart] = useState<number | null>(null);
 
@@ -360,14 +360,21 @@ export default function Home() {
     }
   }, [synced, household, router]);
 
+  const isPrevDisabled = useMemo(() => {
+    if (selectedPeriodStart === null) return true;
+    if (pagerPeriods.length === 0) return true;
+    return selectedPeriodStart <= pagerPeriods[0].periodStart;
+  }, [selectedPeriodStart, pagerPeriods]);
+
   const handlePrev = useCallback(() => {
     if (selectedPeriodStart === null) return;
+    if (isPrevDisabled) return;
     const prev = getPrevPeriod(selectedPeriodStart, timezone, periodType);
     setSelectedPeriodStart(prev);
     void hapticSuccess();
     const idx = pagerPeriods.findIndex((p) => p.periodStart === prev);
     if (idx >= 0) pagerRef.current?.setPage(idx);
-  }, [selectedPeriodStart, timezone, periodType, pagerPeriods]);
+  }, [selectedPeriodStart, timezone, periodType, pagerPeriods, isPrevDisabled]);
 
   const handleNext = useCallback(() => {
     if (selectedPeriodStart === null) return;
@@ -464,6 +471,7 @@ export default function Home() {
             onPress={handlePrev}
             onPressIn={() => setPrevPressed(true)}
             onPressOut={() => setPrevPressed(false)}
+            disabled={isPrevDisabled}
             accessibilityRole="button"
             accessibilityLabel="Previous period"
             style={{
@@ -475,6 +483,7 @@ export default function Home() {
               borderColor: C.border,
               alignItems: "center",
               justifyContent: "center",
+              opacity: isPrevDisabled ? 0.4 : 1,
             }}
           >
             <Feather name="chevron-left" size={20} color={C.textPrimary} />

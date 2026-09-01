@@ -126,7 +126,7 @@ export function buildPeriodWindow(now:number, tz:string, type:PeriodType, count:
 ### State
 ```ts
 const periodType = household?.periodType ?? "monthly"
-const balanceMode = household?.balanceMode ?? "carryOver"
+const balanceMode = household?.balanceMode ?? "fresh"
 const tz = resolveTimezone(household?.timezone)
 const [selectedPeriodStart, setSelectedPeriodStart] = useState(() => getPeriodBounds(Date.now(), tz, periodType).start)
 useEffect(() => { // sync when tz/periodType changes
