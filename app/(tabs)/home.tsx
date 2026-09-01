@@ -150,7 +150,9 @@ export default function Home() {
       setNowTick(Date.now());
       return;
     }
-    const t = setTimeout(() => setNowTick(Date.now()), delay + 1000);
+    const MAX_TIMEOUT = 2147483647 - 1000;
+    const capped = Math.min(delay + 1000, MAX_TIMEOUT);
+    const t = setTimeout(() => setNowTick(Date.now()), capped);
     return () => clearTimeout(t);
   }, [currentPeriodBounds.end]);
 
@@ -195,6 +197,10 @@ export default function Home() {
     const idx = pagerPeriods.findIndex((p) => p.periodStart === selectedPeriodStart);
     return idx >= 0 ? idx : pagerPeriods.length - 1;
   }, [pagerPeriods, selectedPeriodStart]);
+
+  useEffect(() => {
+    pagerRef.current?.setPageWithoutAnimation(selectedIndex);
+  }, [selectedIndex, pagerPeriods]);
 
   const balances = useQuery(
     api.periodBalances.get,
@@ -521,6 +527,7 @@ export default function Home() {
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={selectedIndex}
+        offscreenPageLimit={1}
         onPageSelected={(e) => {
           const pos = e.nativeEvent.position;
           const p = pagerPeriods[pos];
@@ -530,8 +537,11 @@ export default function Home() {
           }
         }}
       >
-        {pagerPeriods.map((p) => (
-          <View key={String(p.periodStart)}>
+        {pagerPeriods.map((p) => {
+          const isSelected = p.periodStart === selectedPeriodStart;
+          return (
+            <View key={String(p.periodStart)} collapsable={false}>
+              {isSelected ? (
             <ScrollView
               contentContainerClassName="px-5 pb-10 pt-4"
               refreshControl={
@@ -692,6 +702,7 @@ export default function Home() {
                     prevClosing={prevClosing}
                     currentLabel={currentLabel}
                     prevLabel={prevLabel}
+                    periodType={periodType}
                   />
                   <SpendingDonut
                     segments={spendingRes.segments.map((s: { name: string; amount: number }) => ({
@@ -932,8 +943,12 @@ export default function Home() {
                 </View>
               </View>
             </ScrollView>
-          </View>
-        ))}
+              ) : (
+                <View style={{ flex: 1, backgroundColor: C.background }} />
+              )}
+            </View>
+          );
+        })}
       </PagerView>
       <Fab
         label="Add Transaction"

@@ -195,7 +195,7 @@ export default function Settings() {
                     accessibilityState={{ selected }}
                     accessibilityLabel={`Balance mode ${option.label}`}
                     style={{
-                      backgroundColor: selected ? C.primary : "transparent",
+                      backgroundColor: selected ? C.primary : C.background,
                       opacity: isUpdatingBalanceMode && !selected ? 0.6 : 1,
                     }}
                     className="flex-1 items-center justify-center py-3"

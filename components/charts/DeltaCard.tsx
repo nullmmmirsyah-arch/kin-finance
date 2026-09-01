@@ -15,13 +15,15 @@ type Props = {
   // compat aliases (before periodBalances, callers used net)
   currentNet?: number;
   prevNet?: number;
+  periodType?: "monthly" | "weekly" | "yearly";
 };
 
-export function DeltaCard({ currentClosing, prevClosing, currentNet, prevNet, currentLabel, prevLabel }: Props) {
+export function DeltaCard({ currentClosing, prevClosing, currentNet, prevNet, currentLabel, prevLabel, periodType = "monthly" }: Props) {
   const C = useThemeColors();
   const effectiveCurrent = currentClosing ?? currentNet ?? 0;
   const effectivePrev = prevClosing ?? prevNet ?? 0;
-  const { deltaPct, label } = calcDelta(effectiveCurrent, effectivePrev);
+  const periodNoun = periodType === "weekly" ? "week" : periodType === "yearly" ? "year" : "month";
+  const { deltaPct, label } = calcDelta(effectiveCurrent, effectivePrev, periodNoun);
   const scale = useSharedValue(1);
 
   useEffect(() => {
