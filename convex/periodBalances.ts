@@ -239,8 +239,7 @@ export const get = query({
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)! 
       : config.periodType;
-    // Use client timezone when household.timezone missing (match Home's resolveTimezone)
-    const effectiveTz = args.timezone ?? config.timezone;
+    const effectiveTz = config.timezone;
 
     const snap = await ctx.db
       .query("periodBalances")
@@ -316,7 +315,7 @@ export const listWindow = query({
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)!
       : config.periodType;
-    const effectiveTz = args.timezone ?? config.timezone;
+    const effectiveTz = config.timezone;
 
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
 
@@ -331,6 +330,7 @@ export const listWindow = query({
       .filter((b) => b.periodStart >= args.startDate && b.periodStart < args.endDate)
       .sort((a, b) => a.periodStart - b.periodStart);
 
+    let fromFallback = false;
     // Fallback to on-the-fly when no snapshots yet (before backfill)
     // Members get visibility-scoped aggregates (hidden excluded)
     if (filtered.length === 0) {
@@ -355,9 +355,10 @@ export const listWindow = query({
           updatedAt: Date.now(),
         } as unknown as Doc<"periodBalances">))
         .sort((a, b) => a.periodStart - b.periodStart);
+      fromFallback = true;
     }
 
-    if (membership.role !== "owner" && filtered.length > 0) {
+    if (membership.role !== "owner" && filtered.length > 0 && !fromFallback) {
       const expectedM = await buildExpectedMap(ctx, household, effectiveType, effectiveTz, config.balanceMode, Date.now(), false);
       const withM = await computeOpeningClosing(expectedM, config.balanceMode);
       filtered = Array.from(withM.entries())
