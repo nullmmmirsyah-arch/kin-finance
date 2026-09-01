@@ -88,9 +88,8 @@ jobs:
           set -euo pipefail
 
           echo "Generating current fingerprint (android, profile development)..."
-          # eas fingerprint:generate uses --environment or --build-profile (not --profile). Use --build-profile development to respect eas.json env APP_VARIANT.
-          # Keep stderr visible for debugging; tee to /tmp/fp.json
-          npx eas fingerprint:generate --platform android --environment development --json --non-interactive 2>&1 | tee /tmp/fp.json | jq -r '.hash // empty' > /tmp/hash.txt || true
+          # Use `eas` (from expo-github-action), not `npx eas` — npx fails on runner (no local eas dep)
+          eas fingerprint:generate --platform android --environment development --json --non-interactive 2>&1 | tee /tmp/fp.json | jq -r '.hash // empty' > /tmp/hash.txt || true
           CURRENT_HASH=$(cat /tmp/hash.txt | tr -d '\r\n' | xargs || true)
           if [ -z "$CURRENT_HASH" ]; then
             echo "::error::Gagal generate fingerprint current — raw output:"
@@ -101,7 +100,7 @@ jobs:
           echo "current_hash=$CURRENT_HASH" >> "$GITHUB_OUTPUT"
 
           echo "Fetching last finished development build..."
-          LAST_JSON=$(npx eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2>/dev/null || echo "[]")
+          LAST_JSON=$(eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2>/dev/null || echo "[]")
           LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty')
           LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty')
           echo "Last build id: ${LAST_ID:-<none>}"
@@ -112,7 +111,7 @@ jobs:
           # Optional deep compare (untuk log diff). Tidak menggagalkan job.
           if [ -n "$LAST_ID" ]; then
             echo "Running eas fingerprint:compare for debug..."
-            npx eas fingerprint:compare --build-id "$LAST_ID" --json --non-interactive 2>/dev/null | jq '.' || true
+            eas fingerprint:compare --build-id "$LAST_ID" --json --non-interactive 2>/dev/null | jq '.' || true
           fi
 
           NEED_BUILD="false"
