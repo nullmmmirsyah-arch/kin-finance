@@ -88,12 +88,14 @@ jobs:
           set -euo pipefail
 
           echo "Generating current fingerprint (android, profile development)..."
-          # Use `eas` (from expo-github-action), not `npx eas` — npx fails on runner (no local eas dep)
-          eas fingerprint:generate --platform android --environment development --json --non-interactive 2>&1 | tee /tmp/fp.json | jq -r '.hash // empty' > /tmp/hash.txt || true
-          CURRENT_HASH=$(cat /tmp/hash.txt | tr -d '\r\n' | xargs || true)
+          # eas prints logs before JSON even with --json (environment loaded, computing...), so extract JSON part
+          eas fingerprint:generate --platform android --environment development --json --non-interactive > /tmp/full.txt 2>&1 || true
+          cat /tmp/full.txt
+          awk '/^\{/ {f=1} f' /tmp/full.txt > /tmp/fp.json || true
+          CURRENT_HASH=$(jq -r '.hash // empty' /tmp/fp.json 2>/dev/null | tr -d '\r\n' | xargs || true)
           if [ -z "$CURRENT_HASH" ]; then
-            echo "::error::Gagal generate fingerprint current — raw output:"
-            cat /tmp/fp.json || true
+            echo "::error::Gagal generate fingerprint current — extracted JSON:"
+            cat /tmp/fp.json 2>/dev/null || cat /tmp/full.txt || true
             exit 1
           fi
           echo "Current hash: $CURRENT_HASH"
