@@ -88,10 +88,13 @@ jobs:
           set -euo pipefail
 
           echo "Generating current fingerprint (android, profile development)..."
-          # eas fingerprint:generate respects eas.json + app.config.js (APP_VARIANT=development via eas.json env)
-          CURRENT_HASH=$(npx eas fingerprint:generate --platform android --profile development --json --non-interactive 2>/dev/null | jq -r '.hash // empty')
+          # eas fingerprint:generate uses --environment or --build-profile (not --profile). Use --build-profile development to respect eas.json env APP_VARIANT.
+          # Keep stderr visible for debugging; tee to /tmp/fp.json
+          npx eas fingerprint:generate --platform android --environment development --json --non-interactive 2>&1 | tee /tmp/fp.json | jq -r '.hash // empty' > /tmp/hash.txt || true
+          CURRENT_HASH=$(cat /tmp/hash.txt | tr -d '\r\n' | xargs || true)
           if [ -z "$CURRENT_HASH" ]; then
-            echo "::error::Gagal generate fingerprint current"
+            echo "::error::Gagal generate fingerprint current — raw output:"
+            cat /tmp/fp.json || true
             exit 1
           fi
           echo "Current hash: $CURRENT_HASH"
