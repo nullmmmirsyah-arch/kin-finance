@@ -32,8 +32,15 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 - Backend invariants (see `docs/Product Requirement Document/PRD.md`): amounts are signed (+income, −expense, +transfer magnitude); owner vs member permission matrix; hidden account/category visibility rules. Every `convex/*.ts` handler requires sign-in via `ctx.auth.getUserIdentity()` and throws `ConvexError`.
 - NativeWind wiring: `babel.config.js`, `metro.config.js`, `global.css`, `tailwind.config.js`; `cssInterop(LinearGradient, { className: "style" })` is required in `app/_layout.tsx`.
 
+# Workflow & CI/CD
+
+- Branches: `review` → `development` (`eas.json:development` `channel:development`, `APP_VARIANT=development`), `main` → `production` (`release.yml`). `feat/*` short-lived.
+- CI: `.github/workflows/development.yml` on `pull_request: [review]` + `push: [review]` (paths: `app/**,components/**,convex/**,constants/**,hooks/**,lib/**,utils/**,assets/**,app.config.js,eas.json,package.json`) + `workflow_dispatch`. Jobs: `check` (`tsc`/`lint`) → `fingerprint` (`eas fingerprint:generate --profile development` vs `eas build:list --status finished` + `fingerprint:compare` via `jq`, `need_build`) → `build` (native change) or `update` (`eas update --channel development`).
+- Dev preview: `expo-dev-client` Extensions / `kinfinance://expo-development-client/?url=https://u.expo.dev/<projectId>?channel-name=development` / QR `https://qr.expo.dev/development-client`.
+- See PRD §5.8 for full flow: `PR feat→review → fingerprint guard → update/build → manual test → merge`.
+
 # Documentation
 
-- PRD / Product Specification: `docs/Product Requirement Document/PRD.md`
+- PRD / Product Specification: `docs/Product Requirement Document/PRD.md` (see §5.8 CI/CD)
 - Colors, typography, spacing: `constants/theme.ts`
 - Feature plans & specs: `docs/superpowers/plans/`, `docs/superpowers/specs/` (they record the verification workflow above)

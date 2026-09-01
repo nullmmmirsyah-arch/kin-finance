@@ -1,0 +1,184 @@
+name: Development (review)
+
+# Flow: PR feat/* → review → fingerprint guard → update/build → manual test (dev-client) → merge
+# - PR feat→review & push review keduanya trigger; fingerprint sama → OTA, beda → build baru
+# Docs: https://docs.expo.dev/build/eas-json/ , https://docs.expo.dev/eas-update/how-it-works/ , https://docs.expo.dev/develop/development-builds/development-workflows/
+on:
+  pull_request:
+    branches: [review]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "convex/**"
+      - "constants/**"
+      - "hooks/**"
+      - "lib/**"
+      - "utils/**"
+      - "assets/**"
+      - "app.config.js"
+      - "eas.json"
+      - "package.json"
+  push:
+    branches: [review]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "convex/**"
+      - "constants/**"
+      - "hooks/**"
+      - "lib/**"
+      - "utils/**"
+      - "assets/**"
+      - "app.config.js"
+      - "eas.json"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Jangan cancel build yang sedang jalan; queue saja.
+concurrency:
+  group: development-review
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  fingerprint:
+    name: Check fingerprint
+    needs: check
+    runs-on: ubuntu-latest
+    outputs:
+      need_build: ${{ steps.compare.outputs.need_build }}
+      current_hash: ${{ steps.compare.outputs.current_hash }}
+      last_hash: ${{ steps.compare.outputs.last_hash }}
+      last_build_id: ${{ steps.compare.outputs.last_build_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Compare fingerprint vs last development build
+        id: compare
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "Generating current fingerprint (android, profile development)..."
+          # eas fingerprint:generate respects eas.json + app.config.js (APP_VARIANT=development via eas.json env)
+          CURRENT_HASH=$(npx eas fingerprint:generate --platform android --profile development --json --non-interactive 2>/dev/null | jq -r '.hash // empty')
+          if [ -z "$CURRENT_HASH" ]; then
+            echo "::error::Gagal generate fingerprint current"
+            exit 1
+          fi
+          echo "Current hash: $CURRENT_HASH"
+          echo "current_hash=$CURRENT_HASH" >> "$GITHUB_OUTPUT"
+
+          echo "Fetching last finished development build..."
+          LAST_JSON=$(npx eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2>/dev/null || echo "[]")
+          LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty')
+          LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty')
+          echo "Last build id: ${LAST_ID:-<none>}"
+          echo "Last hash: ${LAST_HASH:-<none>}"
+          echo "last_hash=$LAST_HASH" >> "$GITHUB_OUTPUT"
+          echo "last_build_id=$LAST_ID" >> "$GITHUB_OUTPUT"
+
+          # Optional deep compare (untuk log diff). Tidak menggagalkan job.
+          if [ -n "$LAST_ID" ]; then
+            echo "Running eas fingerprint:compare for debug..."
+            npx eas fingerprint:compare --build-id "$LAST_ID" --json --non-interactive 2>/dev/null | jq '.' || true
+          fi
+
+          NEED_BUILD="false"
+          if [ -z "$LAST_HASH" ]; then
+            echo "No previous finished build → need_build=true"
+            NEED_BUILD="true"
+          elif [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
+            echo "Fingerprint berbeda (native/config berubah) → need_build=true"
+            NEED_BUILD="true"
+          else
+            echo "Fingerprint sama (hanya JS) → need_build=false (cukup EAS Update)"
+            NEED_BUILD="false"
+          fi
+          echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
+          echo "::notice::need_build=$NEED_BUILD current=$CURRENT_HASH last=${LAST_HASH:-none}"
+
+  build:
+    name: Build development (Android)
+    needs: fingerprint
+    if: needs.fingerprint.outputs.need_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build APK development (fingerprint changed)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
+          EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }} (${{ needs.fingerprint.outputs.last_build_id }})"
+          eas build --platform android --profile development --non-interactive --no-wait
+
+  update:
+    name: Publish EAS Update (development)
+    needs: fingerprint
+    if: needs.fingerprint.outputs.need_build == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Publish OTA update to channel development
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
+          EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          echo "Fingerprint sama — publish update saja"
+          echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }}"
+          eas update --channel development --message "dev review ${{ github.sha }}" --auto --non-interactive

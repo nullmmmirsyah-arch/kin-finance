@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-01 (Period handling — swipeable Home + refined Period Balance + history/timezone & CodeRabbit review batch fixes 2026-09-01)
+> Last updated: 2026-09-01 (CI/CD development workflow — PR feat→review → fingerprint guard → update/build → manual test → merge; + Period handling, CodeRabbit batch)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -676,6 +676,20 @@ redistribution; JS-only changes can ship via `eas update --channel production`. 
 
 **Environment variables (manual):** `expo.dev` > `kin-finance` > Environment Variables **per environment** (`production`/`preview`/`development`) must contain `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and `EXPO_PUBLIC_CONVEX_URL` (both **Plain** visibility — `Sensitive` is not inlined to JS for `EXPO_PUBLIC_*`; from `.env` / `.env.local`; switch `production` to prod URL after `npx convex deploy --prod`); `eas.json` must have `environment: production/preview/development` on each build profile or vars are not injected. `CONVEX_DEPLOYMENT` is local-only; `CLERK_JWT_ISSUER_DOMAIN` / `CLERK_FRONTEND_API_URL` are set in Convex Cloud, not EAS. `.env.example` wording is `per environment`.
 
+### 5.8 CI/CD & Development Workflow
+
+**Branches & channels:** `review` → `development` (internal APK, `eas.json:development` `developmentClient:true`, `channel:development`, `APP_VARIANT=development`), `main` → `production` (APK internal via `release.yml`). Feature branches `feat/*` are short-lived.
+
+**Flow (PR feat→review → manual test → merge):**
+1. Push `feat/*` → open PR `feat/* → review` triggers `.github/workflows/development.yml` `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`).
+2. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
+3. `fingerprint` job: `eas fingerprint:generate --platform android --profile development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id`; `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)`.
+4. `need_build==false` (JS only) → `eas update --channel development --auto`; `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`.
+5. Preview on dev build via `expo-dev-client` Extensions panel / deep link `kinfinance://expo-development-client/?url=https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b?channel-name=development` / QR `https://qr.expo.dev/development-client?appScheme=kinfinance&url=...` (see `develop/development-builds/development-workflows`).
+6. Merge PR → `push: review` reruns same fingerprint guard as final gate (quota-safe via `concurrency: development-review` + `paths` filter `app/**,convex/**,app.config.js,eas.json`); `runtimeVersion: appVersion` (`app.config.js`) so guard prevents publishing native-breaking OTA.
+
+Source of truth for CI is `.github/workflows/development.yml` (GitHub Actions — chosen over EAS Workflows for `check` visibility, `jq` fingerprint diff, and reuse of `secrets.EXPO_TOKEN`; EAS Workflows would duplicate quota with less log control). `release.yml` remains for `main` production.
+
 ---
 
 ## 6. Database Schema
@@ -933,6 +947,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-01 | Feature | **CI/CD development workflow**: add `.github/workflows/development.yml` — `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`), `check` (`tsc`/`lint`), `fingerprint` (`eas fingerprint:generate --profile development` vs `eas build:list --status finished` + `fingerprint:compare`, `need_build` via `jq`), `build` (`eas build --profile development`) when native changed else `update` (`eas update --channel development`); GitHub Actions chosen over EAS Workflows (log diff, reuse `secrets.EXPO_TOKEN`). Document in §5.8 (PR feat→review → fingerprint guard → update/build → manual test via dev-client Extensions/QR → merge) + §8. |
 | 2026-09-01 | Fix | **CodeRabbit review batch (4 major + 2 minor)**: `convex/periodBalances.ts:48` add `hiddenAccountCache` alongside `hiddenCategoryCache` — member `buildExpectedMap` now skips `account.hidden` before `category.hidden` (prevents member leak on hidden accounts, review major 52-60); `periodBalances.ts:10-35` introduce `validateTimezone` + `resolveEffectiveTimezone(household.timezone, args.timezone)` in `get`/`listWindow` and persist concrete IANA at `households.create` (`getCalendars()[0].timeZone ?? "UTC"`) so stored `periodStart` keys (`getPeriodBounds`) match requested keys (review major timezone 17); `app/(tabs)/home.tsx:147` period timer now deps `[currentPeriodBounds.end, nowTick]` re-arms capped `MAX_TIMEOUT` via `nowTick` updates until actual boundary (review major 153-155); `home.tsx:363` add `isPrevDisabled` (`selectedPeriodStart <= pagerPeriods[0].periodStart`) + guard `handlePrev` and `disabled`/`opacity 0.4` on Previous chevron (review major 541 — prevents selecting outside 12-period `buildPeriodWindow` window); `docs/superpowers/specs/2026-08-31-period-handling-design.md:129` `balanceMode ?? "carryOver"` → `?? "fresh"` to match `households.balanceMode` default + `periodBalances` fallback; `tests/home-period.manual.md:17` relax `+` prefix requirement for period net text while retaining closingBalance match. Updates §3.8, §3.10, verification `npx tsc --noEmit` + `npm run lint` + `npm test` + `coderabbit review --agent` clean. |
 | 2026-08-31 | Fix | **CarryOver opening from predating history (beyond 2y bound)**: `convex/periodBalances.ts:76-77` `buildExpectedMap` now computes `totalBefore = sum net where pStart < firstStart` for `carryOver` and `computeOpeningClosing` seeds `prevClosing = totalBefore`, so transactions predating 12-month/2y window still seed opening balance while snapshots remain bounded to retained window; preserves prior history. Updates §3.10. |
 | 2026-08-31 | Fix | **Review batch — bounded scan + member leak + pager/timer/DeltaCard**: `convex/periodBalances.ts:43` explicit bounded `take(10001)` with `ConvexError` when `>10000` (replaces unbounded `collect`); `periodBalances.ts:259` non-owner absent `compM` → `null` not `snap` (prevents owner unfiltered leak, preserves owner snap + member-scoped when present); `app/(tabs)/home.tsx:153` rollover timer capped `MAX_TIMEOUT 2147483647-1000` re-armed, `523` `setPageWithoutAnimation` sync, `533` `offscreenPageLimit={1}` + per-page `isSelected` placeholder (`collapsable={false}`); `app/(tabs)/settings.tsx:198` inactive tab `transparent` → `C.background`; `components/charts/DeltaCard.tsx:24` + `utils/analytics.ts:21` `calcDelta` now `periodNoun` (`week`/`month`/`year`) via `periodType`; `convex/periodBalances.ts:21` hardcoded `Asia/Jakarta` → `UTC` canonical + `timezone` param, `140` delete obsolete snapshots, `225` member visibility-scoped via `hiddenCache`. Verified `tcs 0`, `131/131`. |
