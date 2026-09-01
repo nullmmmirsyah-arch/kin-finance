@@ -14,7 +14,7 @@ Task 5 — swipeable Home via PagerView
 - [ ] Swipe left/right changes period label and dot active state with haptic
 - [ ] Tap `<` / `>` buttons navigates period, updates PagerView page, triggers haptic, disables `>` when future beyond current period
 - [ ] PERIOD BALANCE card: shows `currentClosing` (closingBalance) 28 bold + `currentLabel • Opening` caption, plus `Income +`/`Expense -` tinted circles (`trending-up`/`trending-down` with `${C.success}14`/`error14`); skeleton when `balances === undefined`, `0` when `null`
-- [ ] Period net text shows `+` prefix for positive, matches snapshot `closingBalance` for that period (`fresh` closing=net, `carryOver` cumulative)
+- [ ] Period net text matches snapshot `closingBalance` for that period (`fresh` closing=net, `carryOver` cumulative) without requiring `+` prefix for positive values
 - [ ] Budgets section binds to `selectedPeriodStart` / `periodEnd` (`budgets.list` per period): shows 3 pills with spent/budgeted, changes when period changes, skeleton while loading, empty state when none
 - [ ] Analytics DeltaCard: `currentClosing`/`prevClosing` = `periodBalances.get` closingBalance (period-appropriate `New this week/month/year` and `vs last week/month/year` via `periodType`), labels via `formatPeriodLabel`; skeleton while loading
 - [ ] Analytics SpendingDonut: data from `transactions.spendingByCategory` filtered by `selectedPeriodStart`/`periodEnd`; skeleton while loading; hidden categories excluded for Member

@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { findUserAndMembership, getUserAndMembership, requireOwner } from "./helpers";
 import { getPeriodBounds, getNextPeriod, validatePeriodType } from "../utils/period";
+import { validateTimezone } from "../constants/validation";
 import { Doc, Id } from "./_generated/dataModel";
 
 type PeriodType = "monthly" | "weekly" | "yearly";
@@ -14,8 +15,39 @@ function resolveHouseholdConfig(household: Doc<"households">): {
 } {
   const periodType = (household.periodType ?? "monthly") as PeriodType;
   const balanceMode = (household.balanceMode ?? "fresh") as BalanceMode;
-  const timezone = (household as { timezone?: string }).timezone ?? "UTC";
+  // Canonical household timezone: persisted at creation via device IANA (onboarding passes
+  // getCalendars()[0].timeZone ?? "UTC"). Legacy households with undefined fallback to UTC
+  // as validated canonical, ensuring stored snapshot keys are deterministic.
+  const rawTz = (household as { timezone?: string }).timezone;
+  const tzErr = validateTimezone(rawTz);
+  if (tzErr) throw new ConvexError(tzErr);
+  const timezone = rawTz ?? "UTC";
+  // Validate resolved concrete timezone (throws RangeError for invalid IANA)
+  validateTimezone(timezone);
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: timezone });
+  } catch {
+    throw new ConvexError("Household timezone must be a valid IANA timezone.");
+  }
   return { periodType, balanceMode, timezone };
+}
+
+function resolveEffectiveTimezone(householdTz: string | undefined, argTz: string | undefined): string {
+  // Prefer persisted household timezone (canonical for stored snapshots); when legacy
+  // household has no timezone, use client-provided argTz (device tz via resolveTimezone)
+  // so requested snapshot keys match stored keys after backfill recomputes with concrete tz.
+  const candidate = householdTz ?? argTz;
+  if (candidate !== undefined) {
+    const err = validateTimezone(candidate);
+    if (err) throw new ConvexError(err);
+    try {
+      Intl.DateTimeFormat("en-US", { timeZone: candidate });
+    } catch {
+      throw new ConvexError("Timezone must be a valid IANA timezone.");
+    }
+    return candidate;
+  }
+  return "UTC";
 }
 
 function validateEffectivePeriodType(raw: string | undefined): PeriodType | undefined {
@@ -46,17 +78,27 @@ async function buildExpectedMap(
   }
 
   const grouped = new Map<number, { income: number; expense: number }>();
-  const hiddenCache = new Map<string, boolean>();
+  const hiddenCategoryCache = new Map<string, boolean>();
+  const hiddenAccountCache = new Map<string, boolean>();
   for (const tx of rows as Doc<"transactions">[]) {
     if (tx.type === "transfer") continue;
-    if (!isOwner && tx.categoryId !== undefined) {
-      let hidden = hiddenCache.get(tx.categoryId as string);
-      if (hidden === undefined) {
-        const cat = await ctx.db.get(tx.categoryId as any);
-        hidden = (cat as Doc<"categories"> | null)?.hidden ?? false;
-        hiddenCache.set(tx.categoryId as string, hidden);
+    if (!isOwner) {
+      let accountHidden = hiddenAccountCache.get(tx.accountId as string);
+      if (accountHidden === undefined) {
+        const acc = await ctx.db.get(tx.accountId as any);
+        accountHidden = (acc as Doc<"accounts"> | null)?.hidden ?? false;
+        hiddenAccountCache.set(tx.accountId as string, accountHidden);
       }
-      if (hidden) continue;
+      if (accountHidden) continue;
+      if (tx.categoryId !== undefined) {
+        let hidden = hiddenCategoryCache.get(tx.categoryId as string);
+        if (hidden === undefined) {
+          const cat = await ctx.db.get(tx.categoryId as any);
+          hidden = (cat as Doc<"categories"> | null)?.hidden ?? false;
+          hiddenCategoryCache.set(tx.categoryId as string, hidden);
+        }
+        if (hidden) continue;
+      }
     }
     const pStart = getPeriodBounds(tx.date, timezone, periodType).start;
     const cur = grouped.get(pStart) ?? { income: 0, expense: 0 };
@@ -239,7 +281,10 @@ export const get = query({
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)! 
       : config.periodType;
-    const effectiveTz = config.timezone;
+    const effectiveTz = resolveEffectiveTimezone(
+      (household as { timezone?: string }).timezone,
+      args.timezone,
+    );
 
     const snap = await ctx.db
       .query("periodBalances")
@@ -315,7 +360,10 @@ export const listWindow = query({
     const effectiveType = args.periodType
       ? validateEffectivePeriodType(args.periodType)!
       : config.periodType;
-    const effectiveTz = config.timezone;
+    const effectiveTz = resolveEffectiveTimezone(
+      (household as { timezone?: string }).timezone,
+      args.timezone,
+    );
 
     if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
 
