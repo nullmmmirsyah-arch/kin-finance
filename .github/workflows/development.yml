@@ -79,6 +79,11 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+      - name: Restore fingerprint cache (fallback saat EAS 503)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/fp-cache
+          key: fp-development-last-hash
       - run: npm ci
       - name: Compare fingerprint vs last development build
         id: compare
@@ -106,14 +111,33 @@ jobs:
           echo "Current hash: $CURRENT_HASH"
           echo "current_hash=$CURRENT_HASH" >> "$GITHUB_OUTPUT"
 
-          echo "Fetching last finished development build..."
-          LAST_JSON=$(eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2>/dev/null || echo "[]")
-          LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty')
-          LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty')
+          echo "Fetching last finished development build (retry 3x)..."
+          LAST_HASH=""
+          LAST_ID=""
+          LAST_JSON="[]"
+          for i in 1 2 3; do
+            LAST_JSON=$(eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2> /tmp/list.log || echo "[]")
+            LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty' 2>/dev/null || echo "")
+            LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty' 2>/dev/null || echo "")
+            if [ -n "$LAST_HASH" ]; then break; fi
+            echo "Attempt $i: build:list gagal / empty, log:"; cat /tmp/list.log || true; echo "LAST_JSON: $LAST_JSON"; sleep 3
+          done
+          # Fallback ke cache GitHub jika EAS 503/400 (Our services aren't available)
+          if [ -z "$LAST_HASH" ] && [ -f /tmp/fp-cache/last_hash.txt ]; then
+            LAST_HASH=$(cat /tmp/fp-cache/last_hash.txt | tr -d '\r\n' | xargs || true)
+            LAST_ID=$(cat /tmp/fp-cache/last_id.txt 2>/dev/null | tr -d '\r\n' | xargs || true)
+            echo "Fallback cache: LAST_HASH=$LAST_HASH LAST_ID=$LAST_ID"
+          fi
           echo "Last build id: ${LAST_ID:-<none>}"
           echo "Last hash: ${LAST_HASH:-<none>}"
           echo "last_hash=$LAST_HASH" >> "$GITHUB_OUTPUT"
           echo "last_build_id=$LAST_ID" >> "$GITHUB_OUTPUT"
+          # Simpan untuk cache next run (actions/cache akan persist /tmp/fp-cache)
+          mkdir -p /tmp/fp-cache
+          [ -n "$LAST_HASH" ] && echo "$LAST_HASH" > /tmp/fp-cache/last_hash.txt
+          [ -n "$LAST_ID" ] && echo "$LAST_ID" > /tmp/fp-cache/last_id.txt
+          # Juga simpan current untuk next run jika build baru
+          echo "$CURRENT_HASH" > /tmp/fp-cache/current_hash.txt
 
           # Optional deep compare (untuk log diff). Tidak menggagalkan job.
           if [ -n "$LAST_ID" ]; then
@@ -123,7 +147,7 @@ jobs:
 
           NEED_BUILD="false"
           if [ -z "$LAST_HASH" ]; then
-            echo "No previous finished build → need_build=true"
+            echo "No previous finished build (EAS + cache kosong) → need_build=true (safe)"
             NEED_BUILD="true"
           elif [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
             echo "Fingerprint berbeda (native/config berubah) → need_build=true"
