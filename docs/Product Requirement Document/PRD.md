@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-01 (Home household card — name + Household, remove member count; + CI/CD workflow)
+> Last updated: 2026-09-01 (Accounts FAB label Add Account; Home household card)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -681,12 +681,12 @@ redistribution; JS-only changes can ship via `eas update --channel production`. 
 **Branches & channels:** `review` → `development` (internal APK, `eas.json:development` `developmentClient:true`, `channel:development`, `APP_VARIANT=development`), `main` → `production` (APK internal via `release.yml`). Feature branches `feat/*` are short-lived.
 
 **Flow (PR feat→review → manual test → merge):**
-1. Push `feat/*` → open PR `feat/* → review` triggers `.github/workflows/development.yml` `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`).
-2. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
-3. `fingerprint` job: `eas fingerprint:generate --platform android --profile development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id`; `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)`.
-4. `need_build==false` (JS only) → `eas update --channel development --auto`; `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`.
-5. Preview on dev build via `expo-dev-client` Extensions panel / deep link `kinfinance://expo-development-client/?url=https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b?channel-name=development` / QR `https://qr.expo.dev/development-client?appScheme=kinfinance&url=...` (see `develop/development-builds/development-workflows`).
-6. Merge PR → `push: review` reruns same fingerprint guard as final gate (quota-safe via `concurrency: development-review` + `paths` filter `app/**,convex/**,app.config.js,eas.json`); `runtimeVersion: appVersion` (`app.config.js`) so guard prevents publishing native-breaking OTA.
+1. Push `feat/*` → open PR `feat/* → review` (manual test via `expo start`, no CI trigger).
+2. Merge PR → `push: review` triggers `.github/workflows/development.yml` `on.push.branches:[review]` (+ `workflow_dispatch`, `paths` filter `app/**,convex/**,app.config.js,eas.json`).
+3. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
+4. `fingerprint` job: `eas fingerprint:generate --platform android --environment development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id` (retry 3x + cache fallback; fail if fetch gagal); `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)` (fail if EAS 503, jangan fallback build).
+4. `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`; `need_build==false` (JS only, `FAB`/`home`) → skip (expo start cukup untuk solo, tidak `eas update` branch development, hemat MAU).
+5. Preview native via dev build `com.kinfinance.app.dev` + `expo start`; `branch development` optional (hanya jika butuh share tanpa laptop). Solo pakai `expo start` saja.
 
 Source of truth for CI is `.github/workflows/development.yml` (GitHub Actions — chosen over EAS Workflows for `check` visibility, `jq` fingerprint diff, and reuse of `secrets.EXPO_TOKEN`; EAS Workflows would duplicate quota with less log control). `release.yml` remains for `main` production.
 
@@ -947,6 +947,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-01 | Polish | **Accounts FAB label**: `app/(tabs)/accounts.tsx:319` add `label="Add Account"` to `Fab` (pill with plus + text, `components/Fab.tsx:34` labeled variant) to match `transactions` `Fab label="Add Transaction"`; owner-only. PRD §3.4. |
 | 2026-09-01 | Polish | **Home household card — name + Household, remove member count**: `app/(tabs)/home.tsx:453` change `{household.name}` → `{household.name} Household` and remove `members` query + badge (`Feather users` + `memberLabel` "N members", `C.surface` pill); household card now centered name + " Household" only. PRD §3.8, §5.2. |
 | 2026-09-01 | Feature | **CI/CD development workflow**: add `.github/workflows/development.yml` — `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`), `check` (`tsc`/`lint`), `fingerprint` (`eas fingerprint:generate --environment development` vs `eas build:list --status finished` + `fingerprint:compare`, `need_build` via `jq` + `awk` JSON extract for stdout prefix), `build` (`eas build --profile development`) when native changed else `update` (`eas update --channel development`); GitHub Actions chosen over EAS Workflows (log diff, reuse `secrets.EXPO_TOKEN`). Document in §5.8 (PR feat→review → fingerprint guard → update/build → manual test via dev-client Extensions/QR → merge) + §8. |
 | 2026-09-01 | Fix | **CodeRabbit review batch (4 major + 2 minor)**: `convex/periodBalances.ts:48` add `hiddenAccountCache` alongside `hiddenCategoryCache` — member `buildExpectedMap` now skips `account.hidden` before `category.hidden` (prevents member leak on hidden accounts, review major 52-60); `periodBalances.ts:10-35` introduce `validateTimezone` + `resolveEffectiveTimezone(household.timezone, args.timezone)` in `get`/`listWindow` and persist concrete IANA at `households.create` (`getCalendars()[0].timeZone ?? "UTC"`) so stored `periodStart` keys (`getPeriodBounds`) match requested keys (review major timezone 17); `app/(tabs)/home.tsx:147` period timer now deps `[currentPeriodBounds.end, nowTick]` re-arms capped `MAX_TIMEOUT` via `nowTick` updates until actual boundary (review major 153-155); `home.tsx:363` add `isPrevDisabled` (`selectedPeriodStart <= pagerPeriods[0].periodStart`) + guard `handlePrev` and `disabled`/`opacity 0.4` on Previous chevron (review major 541 — prevents selecting outside 12-period `buildPeriodWindow` window); `docs/superpowers/specs/2026-08-31-period-handling-design.md:129` `balanceMode ?? "carryOver"` → `?? "fresh"` to match `households.balanceMode` default + `periodBalances` fallback; `tests/home-period.manual.md:17` relax `+` prefix requirement for period net text while retaining closingBalance match. Updates §3.8, §3.10, verification `npx tsc --noEmit` + `npm run lint` + `npm test` + `coderabbit review --agent` clean. |

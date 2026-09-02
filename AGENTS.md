@@ -35,9 +35,9 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 # Workflow & CI/CD
 
 - Branches: `review` → `development` (`eas.json:development` `channel:development`, `APP_VARIANT=development`), `main` → `production` (`release.yml`). `feat/*` short-lived.
-- CI: `.github/workflows/development.yml` on `pull_request: [review]` + `push: [review]` (paths: `app/**,components/**,convex/**,constants/**,hooks/**,lib/**,utils/**,assets/**,app.config.js,eas.json,package.json`) + `workflow_dispatch`. Jobs: `check` (`tsc`/`lint`) → `fingerprint` (`eas fingerprint:generate --profile development` vs `eas build:list --status finished` + `fingerprint:compare` via `jq`, `need_build`) → `build` (native change) or `update` (`eas update --channel development`).
-- Dev preview: `expo-dev-client` Extensions / `kinfinance://expo-development-client/?url=https://u.expo.dev/<projectId>?channel-name=development` / QR `https://qr.expo.dev/development-client`.
-- See PRD §5.8 for full flow: `PR feat→review → fingerprint guard → update/build → manual test → merge`.
+- CI: `.github/workflows/development.yml` on `push: [review]` only (paths: `app/**,components/**,convex/**,constants/**,hooks/**,lib/**,utils/**,assets/**,app.config.js,eas.json,package.json`) + `workflow_dispatch` — `PR feat→review` no CI, manual test via `expo start`. Jobs: `check` (`tsc`/`lint`) → `fingerprint` (`eas fingerprint:generate --environment development` vs `eas build:list --status finished` + `fingerprint:compare` via `jq`+`awk`, retry+cache, fail if 503) → `build` only if native changed (JS-only → skip, expo start cukup).
+- Dev preview: `expo-dev-client` Extensions / `kinfinance://expo-development-client/?url=https://u.expo.dev/<projectId>?channel-name=development` / QR `https://qr.expo.dev/development-client`. Solo pakai `expo start` saja, `branch development` optional.
+- See PRD §5.8 for full flow: `PR feat→review → manual test → merge → push review → fingerprint guard → build if native else skip`.
 
 # Documentation
 

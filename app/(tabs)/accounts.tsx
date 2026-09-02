@@ -317,6 +317,7 @@ export default function Accounts() {
 
       {isOwner ? (
         <Fab
+          label="Add Account"
           onPress={() => router.push("/account-form")}
           accessibilityLabel="Add account"
         />

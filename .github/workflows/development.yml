@@ -1,23 +1,8 @@
 name: Development (review)
 
-# Flow: PR feat/* → review → fingerprint guard → update/build → manual test (dev-client) → merge
-# - PR feat→review & push review keduanya trigger; fingerprint sama → OTA, beda → build baru
-# Docs: https://docs.expo.dev/build/eas-json/ , https://docs.expo.dev/eas-update/how-it-works/ , https://docs.expo.dev/develop/development-builds/development-workflows/
+# Flow: push review → fingerprint guard → build native only (JS skip, expo start cukup untuk solo)
+# Docs: https://docs.expo.dev/build/eas-json/ , https://docs.expo.dev/eas-update/how-it-works/
 on:
-  pull_request:
-    branches: [review]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "convex/**"
-      - "constants/**"
-      - "hooks/**"
-      - "lib/**"
-      - "utils/**"
-      - "assets/**"
-      - "app.config.js"
-      - "eas.json"
-      - "package.json"
   push:
     branches: [review]
     paths:
@@ -167,7 +152,7 @@ jobs:
             echo "Fingerprint berbeda (native/config berubah) → need_build=true"
             NEED_BUILD="true"
           else
-            echo "Fingerprint sama (hanya JS) → need_build=false (cukup EAS Update)"
+            echo "Fingerprint sama (hanya JS) → need_build=false (skip, expo start cukup)"
             NEED_BUILD="false"
           fi
           echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
@@ -200,32 +185,4 @@ jobs:
         run: |
           echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }} (${{ needs.fingerprint.outputs.last_build_id }})"
           eas build --platform android --profile development --non-interactive --no-wait
-
-  update:
-    name: Publish EAS Update (development)
-    needs: fingerprint
-    if: needs.fingerprint.outputs.need_build == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - run: npm ci
-      - name: Publish OTA update to channel development
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
-          EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
-          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        run: |
-          echo "Fingerprint sama — publish update saja"
-          echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }}"
-          eas update --channel development --message "dev review ${{ github.sha }}" --auto --non-interactive
+      # JS-only (fingerprint sama) → skip, expo start cukup untuk solo (tidak boros MAU). EAS Update development tidak auto.
