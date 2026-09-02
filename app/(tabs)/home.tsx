@@ -107,10 +107,6 @@ export default function Home() {
   const store = useMutation(api.users.store);
   const me = useQuery(api.users.getMe);
   const household = useQuery(api.households.getActive);
-  const members = useQuery(
-    api.households.listMembers,
-    household?._id ? { householdId: household._id } : "skip",
-  );
   const accountData = useQuery(api.accounts.list);
 
   const [synced, setSynced] = useState(false);
@@ -432,8 +428,6 @@ export default function Home() {
   const email = me?.email ?? user?.primaryEmailAddress?.emailAddress ?? "there";
   const firstName =
     user?.firstName ?? me?.name?.split(" ")[0] ?? email.split("@")[0].replace(/\./g, " ");
-  const memberCount = members?.members.length ?? 1;
-  const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
@@ -452,18 +446,8 @@ export default function Home() {
 
         <View className="mb-3 items-center gap-1.5">
           <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            {household.name}
+            {household.name} Household
           </Text>
-          <View
-            style={{
-              borderRadius: 999,
-              backgroundColor: C.surface,
-            }}
-            className="flex-row items-center gap-1.5 px-3 py-1"
-          >
-            <Feather name="users" size={14} color={C.primary} />
-            <Text className="text-xs font-medium text-primary dark:text-primary-dark">{memberLabel}</Text>
-          </View>
         </View>
 
         <View className="flex-row items-center justify-between">
