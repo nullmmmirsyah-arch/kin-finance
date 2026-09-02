@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-02 (CI/CD full manual development + PR check)
+> Last updated: 2026-09-02 (CI/CD dev EAS Update OTA + PR check)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -680,10 +680,11 @@ redistribution; JS-only changes can ship via `eas update --channel production`. 
 
 **Branches & channels:** `review` → `development` (internal APK, `eas.json:development` `developmentClient:true`, `channel:development`, `APP_VARIANT=development`), `main` → `production` (APK internal via `release.yml`). Feature branches `feat/*` are short-lived.
 
-**Development workflow (`.github/workflows/development.yml`):** `workflow_dispatch` only — full manual (no fingerprint; fingerprint lokal vs EAS selalu beda karena env mismatch, jadi gate manual lebih jujur). Single input `run_build` (boolean, default `false` — centang jika native berubah). `concurrency: group: development-review, cancel-in-progress: false` (queue). JS-only cukup `expo start`, hemat MAU.
+**Development workflow (`.github/workflows/development.yml`):** `workflow_dispatch` only — full manual (no fingerprint; fingerprint lokal vs EAS selalu beda karena env mismatch, jadi gate manual lebih jujur). 2 inputs: `run_build` (default `false` — build APK native) + `publish_update` (default `false` — OTA JS). `concurrency: group: development-review, cancel-in-progress: false` (queue). JS-only cukup `expo start`, hemat MAU; OTA ideal tetap jalan jika butuh share ke dev build tanpa kabel (EAS Update `how-it-works`).
 
 1. `check` (`needs: —`): `npm ci` → `npx tsc --noEmit` + `npm run lint` (Node 22, `actions/checkout@v4` `persist-credentials:false`, `actions/setup-node@v4` cache npm).
 2. `build` (`needs: check`, `if: inputs.run_build == true`): `expo/expo-github-action@v8` (`eas-version: latest`, `EXPO_TOKEN`), `npm ci`, `eas build --platform android --profile development --non-interactive --no-wait` dengan `EXPO_TOKEN` + `EXPO_PUBLIC_CONVEX_URL`/`EXPO_PUBLIC_CONVEX_SITE_URL`/`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Jika `run_build==false` → skip (JS-only).
+3. `publish-update` (`needs: [check, build]`, `if: always() && publish_update && check==success && build!=failure`): `eas update --channel development --message "Dev update from ${{ github.sha }}" --auto` (secrets `EXPO_PUBLIC_*`). Sesuai `how-it-works` — `channel development` auto-link ke branch `development`, `runtimeVersion` `appVersion` harus sama.
 
 Preview native via dev build `com.kinfinance.app.dev` + `expo start`; `branch development` optional (hanya jika butuh share tanpa laptop). File disync ke `main` agar `Run workflow` muncul dari default branch (GitHub requirement).
 
@@ -955,6 +956,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-02 | Docs | **CI/CD dev EAS Update OTA (how-it-works)**: `development.yml:7` tambah input `publish_update` (default `false`) + job `publish-update` (`needs: [check,build]` `always() && publish_update && check==success && build!=failure` → `eas update --channel development --auto --message "Dev update from ${{ github.sha }}"` dengan `EXPO_PUBLIC_*`) — sesuai `how-it-works` channel↔branch auto-link + runtimeVersion `appVersion`; OTA ideal tetap jalan walau ada build (JS-only share tanpa kabel). Update `PRD.md:679` §5.8 + header. |
 | 2026-09-02 | Docs | **CI/CD full manual + PR check (opsi A)**: `docs/Product Requirement Document/PRD.md:679` §5.8 hapus fingerprint (selalu beda env mismatch) → `development.yml:5` full manual `workflow_dispatch` `run_build` + `check` (`tsc`/`lint`) → `build` (`if: run_build` → `eas build --profile development`), JS-only `expo start` cukup; tambah `pr-check.yml:5` `pull_request: [review]` + `merge_group` lightweight `check` (`tsc`/`lint`/`vitest run`) `cancel-in-progress: true`; sync `development.yml`+`pr-check.yml` ke `main` agar `Run workflow` muncul dari default branch (GitHub requirement). Prev docs sync fingerprinted workflow superseded. |
 | 2026-09-02 | Docs | **CI/CD docs sync — manual trigger only**: `docs/Product Requirement Document/PRD.md:679` sync §5.8 to live workflows — `development.yml:5` `on: workflow_dispatch` only (hapus `on.push:[review]`/`on.pull_request` + `paths` filter, manual `run_build` default false, `concurrency: development-review` queue), `check` (`tsc`/`lint` Node 22), `fingerprint` (`fingerprint:generate` awk strip prefix + `jq .hash` → `current_hash`, `build:list --limit 1 --status finished` retry 3× + `actions/cache` `/tmp/fp-cache` fallback, `fingerprint:compare` debug, `need_build` logic `[]→true` / `current!=last→true` / else `false`), `build` (`if: inputs.run_build==true` → `eas build --profile development --no-wait` dengan `EXPO_PUBLIC_*`); `release.yml:4` `workflow_dispatch` 3 inputs (`run_build` false / `deploy_convex` true / `publish_update` true, `concurrency: release`), `check` → `convex-deploy` (`npx convex deploy` `CONVEX_DEPLOY_KEY`) + `build-apk` (`eas build --profile production`) → `publish-update` (`always() && publish_update`, `eas update --channel production --auto`); update `Last updated` header. Source of truth `.github/workflows/*.yml` verified. |
 | 2026-09-01 | Polish | **Accounts FAB label**: `app/(tabs)/accounts.tsx:319` add `label="Add Account"` to `Fab` (pill with plus + text, `components/Fab.tsx:34` labeled variant) to match `transactions` `Fab label="Add Transaction"`; owner-only. PRD §3.4. |
