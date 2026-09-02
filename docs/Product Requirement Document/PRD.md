@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-01 (Accounts FAB label Add Account; Home household card)
+> Last updated: 2026-09-02 (CI/CD full manual development + PR check)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -680,15 +680,23 @@ redistribution; JS-only changes can ship via `eas update --channel production`. 
 
 **Branches & channels:** `review` → `development` (internal APK, `eas.json:development` `developmentClient:true`, `channel:development`, `APP_VARIANT=development`), `main` → `production` (APK internal via `release.yml`). Feature branches `feat/*` are short-lived.
 
-**Flow (PR feat→review → manual test → merge):**
-1. Push `feat/*` → open PR `feat/* → review` (manual test via `expo start`, no CI trigger).
-2. Merge PR → `push: review` triggers `.github/workflows/development.yml` `on.push.branches:[review]` (+ `workflow_dispatch`, `paths` filter `app/**,convex/**,app.config.js,eas.json`).
-3. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
-4. `fingerprint` job: `eas fingerprint:generate --platform android --environment development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id` (retry 3x + cache fallback; fail if fetch gagal); `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)` (fail if EAS 503, jangan fallback build).
-4. `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`; `need_build==false` (JS only, `FAB`/`home`) → skip (expo start cukup untuk solo, tidak `eas update` branch development, hemat MAU).
-5. Preview native via dev build `com.kinfinance.app.dev` + `expo start`; `branch development` optional (hanya jika butuh share tanpa laptop). Solo pakai `expo start` saja.
+**Development workflow (`.github/workflows/development.yml`):** `workflow_dispatch` only — full manual (no fingerprint; fingerprint lokal vs EAS selalu beda karena env mismatch, jadi gate manual lebih jujur). Single input `run_build` (boolean, default `false` — centang jika native berubah). `concurrency: group: development-review, cancel-in-progress: false` (queue). JS-only cukup `expo start`, hemat MAU.
 
-Source of truth for CI is `.github/workflows/development.yml` (GitHub Actions — chosen over EAS Workflows for `check` visibility, `jq` fingerprint diff, and reuse of `secrets.EXPO_TOKEN`; EAS Workflows would duplicate quota with less log control). `release.yml` remains for `main` production.
+1. `check` (`needs: —`): `npm ci` → `npx tsc --noEmit` + `npm run lint` (Node 22, `actions/checkout@v4` `persist-credentials:false`, `actions/setup-node@v4` cache npm).
+2. `build` (`needs: check`, `if: inputs.run_build == true`): `expo/expo-github-action@v8` (`eas-version: latest`, `EXPO_TOKEN`), `npm ci`, `eas build --platform android --profile development --non-interactive --no-wait` dengan `EXPO_TOKEN` + `EXPO_PUBLIC_CONVEX_URL`/`EXPO_PUBLIC_CONVEX_SITE_URL`/`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Jika `run_build==false` → skip (JS-only).
+
+Preview native via dev build `com.kinfinance.app.dev` + `expo start`; `branch development` optional (hanya jika butuh share tanpa laptop). File disync ke `main` agar `Run workflow` muncul dari default branch (GitHub requirement).
+
+**PR gate (`.github/workflows/pr-check.yml`, opsi A):** `on: pull_request: branches: [review]` + `merge_group` — lightweight `check` (`tsc`/`lint`/`vitest run`) tanpa EAS/secrets, `concurrency: pr-check-${{ github.ref }}` `cancel-in-progress: true` untuk fast feedback sebelum merge ke `review`.
+
+**Release workflow (`.github/workflows/release.yml`):** `workflow_dispatch` only, `concurrency: group: release`. 3 inputs: `run_build` (default `false` — build APK baru, pakai kuota), `deploy_convex` (default `true`), `publish_update` (default `true`).
+
+1. `check`: `tsc` + `lint` (sama seperti development).
+2. `convex-deploy` (`needs: check`, `if: deploy_convex`): `npx convex deploy` dengan `CONVEX_DEPLOY_KEY`.
+3. `build-apk` (`needs: check`, `if: run_build`): `eas build --platform android --profile production --non-interactive` (secrets `EXPO_PUBLIC_*`).
+4. `publish-update` (`needs: [build-apk, convex-deploy]`, `if: always() && publish_update && !cancelled() && convex-deploy != failure && build-apk != failure`): `eas update --channel production --message "Release from ${{ github.sha }}" --auto`.
+
+Source of truth for CI is `.github/workflows/development.yml` + `release.yml` (GitHub Actions — chosen over EAS Workflows for `check` visibility, `jq` fingerprint diff, and reuse of `secrets.EXPO_TOKEN`; EAS Workflows would duplicate quota with less log control).
 
 ---
 
@@ -947,6 +955,8 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-02 | Docs | **CI/CD full manual + PR check (opsi A)**: `docs/Product Requirement Document/PRD.md:679` §5.8 hapus fingerprint (selalu beda env mismatch) → `development.yml:5` full manual `workflow_dispatch` `run_build` + `check` (`tsc`/`lint`) → `build` (`if: run_build` → `eas build --profile development`), JS-only `expo start` cukup; tambah `pr-check.yml:5` `pull_request: [review]` + `merge_group` lightweight `check` (`tsc`/`lint`/`vitest run`) `cancel-in-progress: true`; sync `development.yml`+`pr-check.yml` ke `main` agar `Run workflow` muncul dari default branch (GitHub requirement). Prev docs sync fingerprinted workflow superseded. |
+| 2026-09-02 | Docs | **CI/CD docs sync — manual trigger only**: `docs/Product Requirement Document/PRD.md:679` sync §5.8 to live workflows — `development.yml:5` `on: workflow_dispatch` only (hapus `on.push:[review]`/`on.pull_request` + `paths` filter, manual `run_build` default false, `concurrency: development-review` queue), `check` (`tsc`/`lint` Node 22), `fingerprint` (`fingerprint:generate` awk strip prefix + `jq .hash` → `current_hash`, `build:list --limit 1 --status finished` retry 3× + `actions/cache` `/tmp/fp-cache` fallback, `fingerprint:compare` debug, `need_build` logic `[]→true` / `current!=last→true` / else `false`), `build` (`if: inputs.run_build==true` → `eas build --profile development --no-wait` dengan `EXPO_PUBLIC_*`); `release.yml:4` `workflow_dispatch` 3 inputs (`run_build` false / `deploy_convex` true / `publish_update` true, `concurrency: release`), `check` → `convex-deploy` (`npx convex deploy` `CONVEX_DEPLOY_KEY`) + `build-apk` (`eas build --profile production`) → `publish-update` (`always() && publish_update`, `eas update --channel production --auto`); update `Last updated` header. Source of truth `.github/workflows/*.yml` verified. |
 | 2026-09-01 | Polish | **Accounts FAB label**: `app/(tabs)/accounts.tsx:319` add `label="Add Account"` to `Fab` (pill with plus + text, `components/Fab.tsx:34` labeled variant) to match `transactions` `Fab label="Add Transaction"`; owner-only. PRD §3.4. |
 | 2026-09-01 | Polish | **Home household card — name + Household, remove member count**: `app/(tabs)/home.tsx:453` change `{household.name}` → `{household.name} Household` and remove `members` query + badge (`Feather users` + `memberLabel` "N members", `C.surface` pill); household card now centered name + " Household" only. PRD §3.8, §5.2. |
 | 2026-09-01 | Feature | **CI/CD development workflow**: add `.github/workflows/development.yml` — `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`), `check` (`tsc`/`lint`), `fingerprint` (`eas fingerprint:generate --environment development` vs `eas build:list --status finished` + `fingerprint:compare`, `need_build` via `jq` + `awk` JSON extract for stdout prefix), `build` (`eas build --profile development`) when native changed else `update` (`eas update --channel development`); GitHub Actions chosen over EAS Workflows (log diff, reuse `secrets.EXPO_TOKEN`). Document in §5.8 (PR feat→review → fingerprint guard → update/build → manual test via dev-client Extensions/QR → merge) + §8. |
