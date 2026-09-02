@@ -2,24 +2,27 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
+import { validateBudgetAmount } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatAmountInput } from "@/utils/format";
-import { startOfMonth } from "@/utils/date";
+import { hapticSuccess, hapticError, hapticWarning } from "@/lib/haptics";
+import { formatMonthLabel, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
+import { getConvexErrorMessage } from "@/lib/errors";
 
 export default function BudgetForm() {
   const router = useRouter();
@@ -32,10 +35,13 @@ export default function BudgetForm() {
     budgetId ? { budgetId: budgetId as Id<"budgets"> } : "skip",
   );
   const categoryOptions = useQuery(api.budgets.categoryOptions);
+  const household = useQuery(api.households.getActive);
   const createBudget = useMutation(api.budgets.create);
   const updateBudget = useMutation(api.budgets.update);
   const { show } = useSnackbar();
   const C = useThemeColors();
+
+  const timezone = resolveTimezone(household?.timezone);
 
   const [amount, setAmount] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -56,14 +62,11 @@ export default function BudgetForm() {
 
   const rawPeriodStart = params.periodStart ? Number(params.periodStart) : NaN;
   const periodStart = Number.isFinite(rawPeriodStart)
-    ? startOfMonth(new Date(rawPeriodStart)).getTime()
-    : Date.now();
+    ? getMonthBounds(rawPeriodStart, timezone).start
+    : getMonthBounds(Date.now(), timezone).start;
 
   const monthTs = existingBudget?.periodStart ?? periodStart;
-  const monthLabel = new Date(monthTs).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = formatMonthLabel(monthTs, timezone);
 
   const options = useMemo(
     () => (categoryOptions ?? []).map((c) => ({ id: c._id, label: c.name })),
@@ -72,10 +75,22 @@ export default function BudgetForm() {
 
   const rawAmount = amount.replace(/,/g, "");
   const parsedAmount = Number(rawAmount);
-  const amountValid = rawAmount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount >= 1;
+  const amountValid = validateBudgetAmount(parsedAmount) === null;
+
+  const isDirty = useMemo(() => {
+    if (!isEdit) {
+      return amount !== "" || selectedCategoryId !== null;
+    }
+    if (!existingBudget) return false;
+    return amount.replace(/,/g, "") !== String(existingBudget.amount);
+  }, [isEdit, existingBudget, amount, selectedCategoryId]);
+
+  const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
 
   const canSubmit =
     !isLoading &&
+    household !== undefined &&
+    household !== null &&
     (!isEdit || existingBudget !== undefined) &&
     (isEdit || (amountValid && selectedCategoryId !== null));
 
@@ -83,16 +98,15 @@ export default function BudgetForm() {
     setError(null);
     setCategoryError(null);
 
-    if (rawAmount.trim() === "" || !Number.isFinite(parsedAmount)) {
-      setError("Amount must be a valid number.");
-      return;
-    }
-    if (parsedAmount < 1) {
-      setError("Amount must be at least 1.");
+    const err = validateBudgetAmount(parsedAmount);
+    if (err) {
+      setError(err);
+      void hapticWarning();
       return;
     }
     if (!isEdit && selectedCategoryId === null) {
       setCategoryError("Please select a category.");
+      void hapticWarning();
       return;
     }
 
@@ -111,15 +125,17 @@ export default function BudgetForm() {
         });
       }
       show(isEdit ? "Budget updated" : "Budget created");
+      void hapticSuccess();
+      markIntentional();
       router.back();
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update budget."
-            : "Failed to create budget.";
-      setError(message);
+      void hapticError();
+      const message = getConvexErrorMessage(
+        e,
+        isEdit ? "Failed to update budget." : "Failed to create budget.",
+      );
+      // P1-9: operational errors via Snackbar (e.g. duplicate budget)
+      show(message);
     } finally {
       setIsLoading(false);
     }
@@ -147,13 +163,10 @@ export default function BudgetForm() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 48, height: 48 }}
@@ -166,9 +179,11 @@ export default function BudgetForm() {
           </Text>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
+          className="flex-1"
           contentContainerClassName="gap-4 px-5 py-6"
           keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
         >
           <View className="gap-1.5">
             <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
@@ -222,7 +237,7 @@ export default function BudgetForm() {
             placeholder="Budget limit"
             value={amount}
             onChangeText={setAmount}
-            keyboardType="numeric"
+            keyboardType="number-pad"
             amount
             error={error}
           />
@@ -233,8 +248,8 @@ export default function BudgetForm() {
             loading={isLoading}
             disabled={!canSubmit}
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </SafeAreaView>
   );
 }

@@ -1,81 +1,19 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
+import { validateCategoryName } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 
 const categoryType = v.union(v.literal("income"), v.literal("expense"));
-
-const RESERVED_CATEGORY_NAME = "Initial Balance";
-
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
-
-function validateName(name: string): string {
-  const trimmed = name.trim();
-  if (trimmed.length === 0) {
-    throw new ConvexError("Category name is required.");
-  }
-  if (trimmed.length < 2) {
-    throw new ConvexError("Category name must be at least 2 characters.");
-  }
-  if (trimmed.length > 30) {
-    throw new ConvexError("Category name must be at most 30 characters.");
-  }
-  return trimmed;
-}
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { categories: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { categories: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { categories: null, isOwner: false };
-    }
-
+    const { membership } = result;
     const isOwner = membership.role === "owner";
     const all = await ctx.db
       .query("categories")
@@ -102,12 +40,11 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const name = validateName(args.name);
+    const err = validateCategoryName(args.name);
+    if (err) throw new ConvexError(err);
+    const name = args.name.trim();
 
     if (name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category name is reserved.");
@@ -149,15 +86,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const category = await ctx.db.get(args.categoryId);
-    if (category === null || category.householdId !== membership.householdId) {
-      throw new ConvexError("Category not found.");
-    }
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
 
     if (category.name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category cannot be modified.");
@@ -171,7 +102,9 @@ export const update = mutation({
     } = { updatedAt: Date.now() };
 
     if (args.name !== undefined) {
-      const name = validateName(args.name);
+      const err = validateCategoryName(args.name);
+      if (err) throw new ConvexError(err);
+      const name = args.name.trim();
       if (name === RESERVED_CATEGORY_NAME) {
         throw new ConvexError("This category name is reserved.");
       }
@@ -238,15 +171,9 @@ export const remove = mutation({
   args: { categoryId: v.id("categories") },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const category = await ctx.db.get(args.categoryId);
-    if (category === null || category.householdId !== membership.householdId) {
-      throw new ConvexError("Category not found.");
-    }
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
 
     if (category.name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category cannot be deleted.");

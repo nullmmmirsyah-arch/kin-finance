@@ -3,7 +3,35 @@ import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
-import { formatTime } from "@/utils/date";
+import { formatTimeTz } from "@/utils/date";
+
+const CATEGORY_ICONS: Record<string, string> = {
+  Groceries: "shopping-cart",
+  Food: "coffee",
+  Dining: "coffee",
+  Transport: "truck",
+  Rent: "home",
+  Utilities: "zap",
+  Salary: "briefcase",
+  Freelance: "briefcase",
+  Shopping: "shopping-bag",
+  Entertainment: "film",
+  Health: "heart",
+  Education: "book",
+  Savings: "dollar-sign",
+  Gifts: "gift",
+  Travel: "map",
+  Subscriptions: "repeat",
+  Insurance: "shield",
+  Debt: "credit-card",
+  Investments: "trending-up",
+  Other: "tag",
+};
+
+function getCategoryIcon(categoryName: string | null): string {
+  if (!categoryName) return "tag";
+  return CATEGORY_ICONS[categoryName] ?? "tag";
+}
 
 type Props = {
   categoryName: string | null;
@@ -13,6 +41,7 @@ type Props = {
   amount: number;
   type: "income" | "expense" | "transfer";
   date: number;
+  timezone?: string;
   onPress: () => void;
 };
 
@@ -24,6 +53,7 @@ export function TransactionCard({
   amount,
   type,
   date,
+  timezone = "UTC",
   onPress,
 }: Props) {
   const [pressed, setPressed] = useState(false);
@@ -71,9 +101,9 @@ export function TransactionCard({
         className="items-center justify-center"
       >
         <Feather
-          name={isTransfer ? "arrow-right" : "tag"}
+          name={(isTransfer ? "arrow-right" : getCategoryIcon(categoryName)) as any}
           size={18}
-          color={C.primary}
+          color={isTransfer ? C.primary : type === "income" ? C.success : C.error}
         />
       </View>
       <View className="flex-1">
@@ -81,7 +111,7 @@ export function TransactionCard({
           {displayNote}
         </Text>
         <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-          {formatTime(date)}
+          {formatTimeTz(date, timezone)}
         </Text>
       </View>
       <Text

@@ -1,23 +1,23 @@
 import { api } from "@/convex/_generated/api";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { validateInviteCode, INVITE_CODE_LENGTH } from "@/constants/validation";
 import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
-import { useThemeColors, useThemeGradients, Shadow } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@clerk/expo";
+import { getCalendars } from "expo-localization";
 
 type Mode = "create" | "join";
 
@@ -45,13 +45,16 @@ export default function Onboarding() {
     !isLoading &&
     (mode === "create"
       ? trimmedName.length >= 3
-      : trimmedCode.length === 8);
+      : validateInviteCode(trimmedCode) === null);
 
   const handleCreate = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      await createHousehold({ name: trimmedName });
+      await createHousehold({
+        name: trimmedName,
+        timezone: getCalendars()[0]?.timeZone ?? "UTC",
+      });
       router.replace("/home");
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to create household. Please try again."));
@@ -62,6 +65,11 @@ export default function Onboarding() {
 
   const handleJoin = async () => {
     setError(null);
+    const err = validateInviteCode(trimmedCode);
+    if (err) {
+      setError(err);
+      return;
+    }
     setIsLoading(true);
     try {
       await redeemInvite({ code: trimmedCode });
@@ -82,34 +90,32 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerClassName="flex-grow justify-center px-4 py-10"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={16}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-10"
-          keyboardShouldPersistTaps="handled"
-        >
           <View className="items-center gap-6">
             <LinearGradient
               colors={gradients.card}
               style={[
                 Shadow.card,
                 {
-                  width: 200,
-                  height: 200,
-                  borderRadius: 100,
+                  width: 96,
+                  height: 96,
+                  borderRadius: Radius.lg,
                   borderWidth: 1,
                   borderColor: C.primaryLight,
                 },
               ]}
               className="items-center justify-center"
             >
-              <Feather name="users" size={72} color={C.primary} />
+              <Feather name="users" size={40} color={C.primary} />
             </LinearGradient>
 
             <View className="items-center gap-2">
-              <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
                 Welcome to Kin Finance
               </Text>
               <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
@@ -176,11 +182,11 @@ export default function Onboarding() {
                 <>
                   <Input
                     value={code}
-                    placeholder="Enter 8-character invite code"
+                    placeholder={`Enter ${INVITE_CODE_LENGTH}-character invite code`}
                     onChangeText={(text) =>
                       setCode(text.toUpperCase().replace(/[^A-Z0-9]/g, ""))
                     }
-                    maxLength={8}
+                    maxLength={INVITE_CODE_LENGTH}
                     autoCapitalize="characters"
                     error={error}
                   />
@@ -204,8 +210,7 @@ export default function Onboarding() {
               </Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
   );
 }

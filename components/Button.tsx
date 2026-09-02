@@ -1,6 +1,7 @@
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import type { ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -11,6 +12,8 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  icon?: ReactNode;
+  badge?: string;
 };
 
 const variantStyles: Record<Variant, string> = {
@@ -38,6 +41,8 @@ export function Button({
   loading = false,
   disabled = false,
   className = "",
+  icon,
+  badge,
 }: Props) {
   const isDisabled = disabled || loading;
   const [pressed, setPressed] = useState(false);
@@ -58,7 +63,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={title}
       style={[
-        Shadow.card,
+        variant !== "danger" && Shadow.card,
         { borderRadius: Radius.md },
         isDisabled ? { opacity: 0.5 } : pressed ? { opacity: 0.92 } : undefined,
       ]}
@@ -67,9 +72,25 @@ export function Button({
       {loading ? (
         <ActivityIndicator size="small" color={indicatorColor} />
       ) : (
-        <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
-          {title}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          {icon}
+          <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
+            {title}
+          </Text>
+          {badge ? (
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: C.surface }}
+            >
+              <Text
+                className="text-xs font-medium"
+                style={{ color: C.primary }}
+              >
+                {badge}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       )}
     </Pressable>
   );

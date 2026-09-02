@@ -1,0 +1,62 @@
+name: Development (review)
+
+# Full manual: solo expo start cukup untuk JS → centang run_build hanya jika native berubah.
+# No fingerprint — fingerprint lokal vs EAS selalu beda (env mismatch), jadi manual lebih jujur.
+# Docs: https://docs.expo.dev/build/eas-json/
+on:
+  workflow_dispatch:
+    inputs:
+      run_build:
+        description: "Build native development (centang jika native berubah)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Jangan cancel build yang sedang jalan; queue saja.
+concurrency:
+  group: development-review
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  build:
+    name: Build development (Android)
+    needs: check
+    if: inputs.run_build == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build APK development
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
+          EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: eas build --platform android --profile development --non-interactive --no-wait

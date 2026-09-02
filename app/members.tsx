@@ -1,6 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -15,13 +14,19 @@ import { api } from "@/convex/_generated/api";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { validateHouseholdName, HOUSEHOLD_NAME_MAX } from "@/constants/validation";
+import { DEVICE_TIMEZONE_ID, timezonePickerOptions, timezonePickerValue, resolveTimezone, formatTimezoneLabel } from "@/constants/timezones";
 import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Input } from "@/components/Input";
+import { SelectField } from "@/components/SelectField";
 import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
+import { PendingInviteCard } from "@/components/PendingInviteCard";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
+import { hapticSuccess } from "@/lib/haptics";
 
 type Screen = "list" | "invite";
 
@@ -39,10 +44,41 @@ export default function Members() {
   );
   const removeMember = useMutation(api.households.removeMember);
   const createInvite = useMutation(api.invitations.create);
+  const revokeInvite = useMutation(api.invitations.revoke);
+  const invites = useQuery(
+    api.invitations.listActive,
+    household?._id ? { householdId: household._id } : "skip",
+  );
   const updateHousehold = useMutation(api.households.update);
+  const updateTimezone = useMutation(api.households.updateTimezone);
+
+  const handleTimezoneSelect = useCallback(
+    async (id: string) => {
+      if (!household?._id) return;
+      try {
+        const timezone = id === DEVICE_TIMEZONE_ID ? undefined : id;
+        await updateTimezone({ householdId: household._id, timezone });
+        show(
+          id === DEVICE_TIMEZONE_ID
+            ? "Timezone set to match device"
+            : `Timezone set to ${formatTimezoneLabel(timezone)}`,
+        );
+        void hapticSuccess();
+      } catch (e: any) {
+        show(getConvexErrorMessage(e, "Failed to update timezone."));
+      }
+    },
+    [household, updateTimezone, show],
+  );
+
+  useEffect(() => {
+    if (household === null) {
+      router.replace("/onboarding");
+    }
+  }, [household, router]);
 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -54,22 +90,64 @@ export default function Members() {
       (m) => m.userId === me?._id && m.role === "owner",
     ) ?? false;
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const pendingInvites =
+    isOwner && Array.isArray(invites) && invites.length > 0 ? invites : null;
+
+  const pendingInvitesSection =
+    pendingInvites === null ? null : (
+      <View className="gap-3">
+        <Text className="text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Pending Invites
+        </Text>
+        {pendingInvites.map((inv) => (
+          <PendingInviteCard
+            key={inv._id}
+            createdAt={inv.createdAt}
+            expiresAt={inv.expiresAt}
+            onRevoke={() => handleRevoke(inv._id)}
+          />
+        ))}
+      </View>
+    );
 
   const handleGenerateCode = useCallback(async () => {
     if (isGenerating) return;
-    setError(null);
     setIsGenerating(true);
     try {
       const result = await createInvite();
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
-      setError(getConvexErrorMessage(e, "Failed to generate invite code."));
+      show(getConvexErrorMessage(e, "Failed to generate invite code."));
     } finally {
       setIsGenerating(false);
     }
-  }, [createInvite, isGenerating]);
+  }, [createInvite, isGenerating, show]);
+
+  const handleRevoke = useCallback(
+    (invitationId: Id<"invitations">) => {
+      Alert.alert(
+        "Revoke Invite",
+        "Revoke this invite code? Anyone with this code will no longer be able to join.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Revoke",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await revokeInvite({ invitationId });
+                show("Invite revoked");
+              } catch (e: any) {
+                show(getConvexErrorMessage(e, "Failed to revoke invite."));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [revokeInvite, show],
+  );
 
   const handleRemoveMember = useCallback(
     (member: { userId: string; name?: string }) => {
@@ -90,7 +168,7 @@ export default function Members() {
                 });
                 show(`${member.name ?? "Member"} removed`);
               } catch (e: any) {
-                setError(getConvexErrorMessage(e, "Failed to remove member."));
+                show(getConvexErrorMessage(e, "Failed to remove member."));
               }
             },
           },
@@ -114,12 +192,9 @@ export default function Members() {
   const handleSaveRename = async () => {
     setRenameError(null);
     const trimmed = renameValue.trim();
-    if (trimmed.length < 3) {
-      setRenameError("Household name must be at least 3 characters.");
-      return;
-    }
-    if (trimmed.length > 50) {
-      setRenameError("Household name must be at most 50 characters.");
+    const err = validateHouseholdName(trimmed);
+    if (err) {
+      setRenameError(err);
       return;
     }
     if (!household?._id) return;
@@ -130,7 +205,7 @@ export default function Members() {
       setIsRenaming(false);
       show("Household renamed");
     } catch (e: any) {
-      setRenameError(e?.message ?? "Failed to rename household.");
+      setRenameError(getConvexErrorMessage(e, "Failed to rename household."));
     } finally {
       setIsSaving(false);
     }
@@ -177,17 +252,28 @@ export default function Members() {
     me === undefined
   ) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <View className="flex-row items-center gap-2">
+            <View style={{ width: 48, height: 48 }} />
+            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+              Household Members
+            </Text>
+          </View>
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          <Skeleton style={{ height: 88, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 72, borderRadius: Radius.md }} />
+          <Skeleton style={{ height: 72, borderRadius: Radius.md }} />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (household === null) {
-    router.replace("/onboarding");
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+        <Skeleton style={{ width: 120, height: 120, borderRadius: 999 }} />
       </SafeAreaView>
     );
   }
@@ -209,11 +295,6 @@ export default function Members() {
             Household Members
           </Text>
         </View>
-        {error ? (
-          <Text className="mt-2 text-sm text-error dark:text-error-dark">
-            {error}
-          </Text>
-        ) : null}
       </View>
 
       <View className="mt-4 px-5">
@@ -239,7 +320,7 @@ export default function Members() {
                 value={renameValue}
                 onChangeText={setRenameValue}
                 placeholder="Household name"
-                maxLength={50}
+                maxLength={HOUSEHOLD_NAME_MAX}
                 error={renameError}
               />
               <View className="flex-row gap-2">
@@ -284,13 +365,55 @@ export default function Members() {
             </View>
           )}
         </View>
+
+        <View className="mt-3">
+          {isOwner ? (
+            <SelectField
+              label="Timezone"
+              placeholder="Select a timezone"
+              value={timezonePickerValue(household?.timezone)}
+              options={timezonePickerOptions()}
+              onSelect={handleTimezoneSelect}
+            />
+          ) : (
+            <View
+              style={[
+                Shadow.card,
+                {
+                  borderRadius: Radius.md,
+                  backgroundColor: C.background,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                },
+              ]}
+              className="px-4 py-4"
+            >
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                Timezone
+              </Text>
+              <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                {formatTimezoneLabel(resolveTimezone(household?.timezone))}
+              </Text>
+              <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+                Only the household owner can change the timezone.
+              </Text>
+            </View>
+          )}
+          <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
+            Calendar months and budget periods use the household timezone so every
+            member sees the same dates. Match device follows the device timezone.
+          </Text>
+        </View>
       </View>
 
       {members.members.length === 1 ? (
         <View className="mt-6 flex-1 px-5">
+          {pendingInvitesSection ? (
+            <View className="mb-4">{pendingInvitesSection}</View>
+          ) : null}
           <View
             style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
+            className="flex-1 rounded-[16px]"
           >
             <EmptyState
               icon="users"
@@ -307,6 +430,7 @@ export default function Members() {
           contentContainerClassName="gap-3 px-5 pb-28"
           data={members.members}
           keyExtractor={(item) => item.userId}
+          ListHeaderComponent={pendingInvitesSection ?? undefined}
           renderItem={({ item }) => (
             <MemberCard
               name={item.name ?? "User"}

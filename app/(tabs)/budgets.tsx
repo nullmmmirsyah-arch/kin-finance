@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   Text,
   View,
 } from "react-native";
@@ -12,56 +12,92 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useThemeColors } from "@/constants/theme";
+import { Radius, useThemeColors } from "@/constants/theme";
 import { Fab } from "@/components/Fab";
 import { BudgetCard } from "@/components/BudgetCard";
 import { EmptyState } from "@/components/EmptyState";
 import { GradientCard } from "@/components/GradientCard";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
+import { ConnectivityBanner } from "@/components/ConnectivityBanner";
 import { formatNumber } from "@/utils/format";
-import { addMonths, startOfMonth } from "@/utils/date";
-
-const monthFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  year: "numeric",
-});
+import { formatMonthLabel, getMonthBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
+import { getConvexErrorMessage } from "@/lib/errors";
+import { useConnectivity } from "@/hooks/useConnectivity";
+import { hapticSuccess } from "@/lib/haptics";
 
 export default function Budgets() {
   const router = useRouter();
   const C = useThemeColors();
-  const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
   const { show } = useSnackbar();
   const removeBudget = useMutation(api.budgets.remove);
+  const household = useQuery(api.households.getActive);
 
-  const periodStart = selectedMonth.getTime();
-  const periodEnd = addMonths(selectedMonth, 1).getTime();
+  const timezone = resolveTimezone(household?.timezone);
+
+  const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stale, setStale] = useState(false);
+  const isConnected = useConnectivity();
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const monthStart =
+    selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
+  const periodStart = monthStart;
+  const periodEnd = getMonthBounds(monthStart, timezone).end;
 
   const result = useQuery(api.budgets.list, { periodStart, periodEnd });
+
+  useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result, isConnected, refreshKey]);
 
   const budgets = result?.budgets ?? null;
 
   const summary = useMemo(() => {
     if (budgets === null || budgets.length === 0) {
-      return { budgeted: 0, spent: 0 };
+      return { budgeted: 0, spent: 0, hasRedacted: false };
     }
     let budgeted = 0;
     let spent = 0;
+    let hasRedacted = false;
     for (const b of budgets) {
       budgeted += b.amount;
-      spent += b.spent;
+      if (b.spent === undefined) {
+        hasRedacted = true;
+      } else {
+        spent += b.spent;
+      }
     }
-    return { budgeted, spent };
+    return { budgeted, spent, hasRedacted };
   }, [budgets]);
 
-  const overallProgress = summary.budgeted > 0 ? summary.spent / summary.budgeted : 0;
+  const overallProgress =
+    summary.hasRedacted ? 0 : summary.budgeted > 0 ? summary.spent / summary.budgeted : 0;
 
   const handlePrevMonth = useCallback(() => {
-    setSelectedMonth((prev) => addMonths(prev, -1));
-  }, []);
+    setSelectedMonthStart((prev) => {
+      const current = prev ?? getMonthBounds(Date.now(), timezone).start;
+      return getMonthBounds(current - 1, timezone).start;
+    });
+  }, [timezone]);
 
   const handleNextMonth = useCallback(() => {
-    setSelectedMonth((prev) => addMonths(prev, 1));
-  }, []);
+    setSelectedMonthStart((prev) => {
+      const current = prev ?? getMonthBounds(Date.now(), timezone).start;
+      return getMonthBounds(current, timezone).end;
+    });
+  }, [timezone]);
 
   const handleDelete = useCallback(
     (budget: { _id: Id<"budgets">; category: { name: string } | undefined }) => {
@@ -79,8 +115,9 @@ export default function Budgets() {
                   show(`Budget for "${budget.category?.name ?? "Unknown"}" deleted`);
                 })
                 .catch((e: unknown) => {
-                  const message = e instanceof Error ? e.message : "Failed to delete budget.";
-                  Alert.alert("Error", message);
+                  show(
+                    getConvexErrorMessage(e, "Failed to delete budget."),
+                  );
                 });
             },
           },
@@ -92,8 +129,25 @@ export default function Budgets() {
 
   if (result === undefined) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
-        <ActivityIndicator size="large" color={C.primary} />
+      <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+        <View className="px-5 pt-4">
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+            Budgets
+          </Text>
+        </View>
+        {stale && (
+          <View className="pt-2">
+            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
+          </View>
+        )}
+        <View className="mt-4 items-center justify-center gap-4 px-5">
+          <Skeleton style={{ width: 200, height: 40, borderRadius: 999 }} />
+        </View>
+        <View className="mt-4 gap-3 px-5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} style={{ height: 96, borderRadius: Radius.md }} />
+          ))}
+        </View>
       </SafeAreaView>
     );
   }
@@ -116,6 +170,12 @@ export default function Budgets() {
         </Text>
       </View>
 
+      {stale && (
+        <View className="pt-2">
+          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
+        </View>
+      )}
+
       <View className="mt-4 flex-row items-center justify-center gap-4 px-5">
         <Pressable
           onPress={handlePrevMonth}
@@ -126,7 +186,7 @@ export default function Budgets() {
           <Text className="text-lg text-primary dark:text-primary-dark">{"<"}</Text>
         </Pressable>
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-          {monthFormatter.format(selectedMonth)}
+          {formatMonthLabel(periodStart, timezone)}
         </Text>
         <Pressable
           onPress={handleNextMonth}
@@ -155,34 +215,42 @@ export default function Budgets() {
                   <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
                     Spent
                   </Text>
-                  <Text
-                    className={`text-base font-semibold ${
-                      summary.spent > summary.budgeted
-                        ? "text-error dark:text-error-dark"
-                        : "text-text-primary dark:text-text-primary-dark"
-                    }`}
-                  >
-                    {formatNumber(summary.spent)}
-                  </Text>
+                  {summary.hasRedacted ? (
+                    <Text className="text-base font-semibold text-text-secondary dark:text-text-secondary-dark">
+                      —
+                    </Text>
+                  ) : (
+                    <Text
+                      className={`text-base font-semibold ${
+                        summary.spent > summary.budgeted
+                          ? "text-error dark:text-error-dark"
+                          : "text-text-primary dark:text-text-primary-dark"
+                      }`}
+                    >
+                      {formatNumber(summary.spent)}
+                    </Text>
+                  )}
                 </View>
               </View>
-              <View
-                style={{
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: C.border,
-                  overflow: "hidden",
-                }}
-              >
+              {summary.hasRedacted ? null : (
                 <View
                   style={{
-                    height: "100%",
-                    width: `${Math.min(overallProgress, 1) * 100}%`,
-                    backgroundColor: summary.spent > summary.budgeted ? C.error : C.primary,
+                    height: 8,
                     borderRadius: 4,
+                    backgroundColor: C.border,
+                    overflow: "hidden",
                   }}
-                />
-              </View>
+                >
+                  <View
+                    style={{
+                      height: "100%",
+                      width: `${Math.min(overallProgress, 1) * 100}%`,
+                      backgroundColor: summary.spent > summary.budgeted ? C.error : C.primary,
+                      borderRadius: 4,
+                    }}
+                  />
+                </View>
+              )}
             </View>
           </GradientCard>
         </View>
@@ -212,6 +280,23 @@ export default function Budgets() {
         <FlatList
           className="mt-4 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          removeClippedSubviews
+          windowSize={7}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          updateCellsBatchingPeriod={50}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                setRefreshKey(k=>k+1);
+                void hapticSuccess();
+                setTimeout(() => setRefreshing(false), 600);
+              }}
+              tintColor={C.primary}
+            />
+          }
           data={budgets}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (

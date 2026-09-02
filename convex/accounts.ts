@@ -1,6 +1,10 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "./_generated/server";
-import { api } from "./_generated/api";
+import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
+import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
+import { validateAccountName } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
+import { recomputeAllForHousehold } from "./periodBalances";
 
 const accountType = v.union(
   v.literal("cash"),
@@ -9,63 +13,14 @@ const accountType = v.union(
   v.literal("credit_card"),
 );
 
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
-
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return { accounts: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { accounts: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { accounts: null, isOwner: false };
-    }
-
+    const { membership } = result;
     const isOwner = membership.role === "owner";
     const all = await ctx.db
       .query("accounts")
@@ -87,22 +42,12 @@ export const create = mutation({
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { user, membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
+    const err = validateAccountName(args.name);
+    if (err) throw new ConvexError(err);
     const name = args.name.trim();
-    if (name.length === 0) {
-      throw new ConvexError("Account name is required.");
-    }
-    if (name.length < 2) {
-      throw new ConvexError("Account name must be at least 2 characters.");
-    }
-    if (name.length > 30) {
-      throw new ConvexError("Account name must be at most 30 characters.");
-    }
 
     const existing = await ctx.db
       .query("accounts")
@@ -119,57 +64,64 @@ export const create = mutation({
     if (!Number.isFinite(openingBalance)) {
       throw new ConvexError("Opening balance must be a valid number.");
     }
+    if (!Number.isSafeInteger(openingBalance)) {
+      throw new ConvexError("Opening balance must be a whole number.");
+    }
 
-    const now = Date.now();
-    const accountId = await ctx.db.insert("accounts", {
-      householdId: membership.householdId,
-      name,
-      type: args.type,
-      balance: 0,
-      hidden: args.hidden ?? false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
+    // P0-2: validate reserved category BEFORE inserting account to avoid orphan
+    let openingCategory: Doc<"categories"> | null = null;
+    let txType: "income" | "expense" | null = null;
     if (openingBalance !== 0) {
-      const txType = openingBalance > 0 ? "income" : "expense";
-      let category = await ctx.db
+      txType = openingBalance > 0 ? "income" : "expense";
+      const category = await ctx.db
         .query("categories")
         .withIndex("by_householdId", (q) =>
           q.eq("householdId", membership.householdId),
         )
         .filter((q) =>
           q.and(
-            q.eq(q.field("name"), "Initial Balance"),
-            q.eq(q.field("type"), txType),
+            q.eq(q.field("name"), RESERVED_CATEGORY_NAME),
+            q.eq(q.field("type"), txType!),
           ),
         )
         .first();
 
       if (category === null) {
-        const categoryId = await ctx.db.insert("categories", {
-          householdId: membership.householdId,
-          name: "Initial Balance",
-          type: txType,
-          hidden: false,
-          createdAt: now,
-          updatedAt: now,
-        });
-        category = await ctx.db.get(categoryId);
-      }
-
-      if (category === null) {
         throw new ConvexError("Initial Balance category not found.");
       }
+      openingCategory = category;
+    }
 
-      await ctx.runMutation(api.transactions.create, {
+    const now = Date.now();
+    // P0-2: atomic — balance set to openingBalance directly, single timestamp
+    const accountId = await ctx.db.insert("accounts", {
+      householdId: membership.householdId,
+      name,
+      type: args.type,
+      balance: openingBalance,
+      hidden: args.hidden ?? false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (openingBalance !== 0 && openingCategory !== null && txType !== null) {
+      await ctx.db.insert("transactions", {
+        householdId: membership.householdId,
         accountId,
-        categoryId: category._id,
+        categoryId: openingCategory._id,
         amount: openingBalance,
         type: txType,
         note: "Initial balance",
         date: now,
+        createdBy: user._id,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
       });
+      const householdForRecompute = await ctx.db.get(membership.householdId);
+      if (householdForRecompute) {
+        await recomputeAllForHousehold(ctx, householdForRecompute, now + 1);
+      }
     }
 
     return await ctx.db.get(accountId);
@@ -185,15 +137,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
     const patch: {
       name?: string;
@@ -203,16 +149,9 @@ export const update = mutation({
     } = { updatedAt: Date.now() };
 
     if (args.name !== undefined) {
+      const err = validateAccountName(args.name);
+      if (err) throw new ConvexError(err);
       const name = args.name.trim();
-      if (name.length === 0) {
-        throw new ConvexError("Account name is required.");
-      }
-      if (name.length < 2) {
-        throw new ConvexError("Account name must be at least 2 characters.");
-      }
-      if (name.length > 30) {
-        throw new ConvexError("Account name must be at most 30 characters.");
-      }
 
       const existing = await ctx.db
         .query("accounts")
@@ -249,15 +188,9 @@ export const remove = mutation({
   args: { accountId: v.id("accounts") },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
     const referencingTx = await ctx.db
       .query("transactions")
@@ -278,5 +211,115 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.accountId);
+  },
+});
+
+function computeExpectedBalances(
+  accounts: Doc<"accounts">[],
+  transactions: Doc<"transactions">[],
+): Map<string, number> {
+  const expected = new Map<string, number>();
+  for (const acc of accounts) expected.set(acc._id, 0);
+  for (const tx of transactions) {
+    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+      // transfer: from -amount, to +amount (amount is positive magnitude)
+      expected.set(tx.accountId, (expected.get(tx.accountId) ?? 0) - tx.amount);
+      expected.set(tx.toAccountId as string, (expected.get(tx.toAccountId as string) ?? 0) + tx.amount);
+    } else {
+      // income/expense: signed amount already
+      expected.set(tx.accountId, (expected.get(tx.accountId) ?? 0) + tx.amount);
+    }
+  }
+  return expected;
+}
+
+export const verify = query({
+  args: {},
+  handler: async (ctx) => {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) return null;
+    const { membership } = result;
+    const isOwner = membership.role === "owner";
+
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+
+    const visibleAccounts = isOwner ? accounts : accounts.filter((a) => !a.hidden);
+
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .take(10001);
+    if (transactions.length > 10000) {
+      throw new ConvexError("Too many transactions to verify. Please contact support.");
+    }
+
+    const expected = computeExpectedBalances(accounts, transactions as Doc<"transactions">[]);
+
+    const discrepancies: Array<{
+      accountId: string;
+      name: string;
+      stored: number;
+      expected: number;
+      delta: number;
+    }> = [];
+
+    let totalStored = 0;
+    let totalExpected = 0;
+    for (const acc of visibleAccounts) {
+      const exp = expected.get(acc._id) ?? 0;
+      totalStored += acc.balance;
+      totalExpected += exp;
+      if (acc.balance !== exp) {
+        discrepancies.push({
+          accountId: acc._id,
+          name: acc.name,
+          stored: acc.balance,
+          expected: exp,
+          delta: exp - acc.balance,
+        });
+      }
+    }
+
+    return { discrepancies, isOwner, totalStored, totalExpected };
+  },
+});
+
+export const reconcile = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .take(10001);
+    if (transactions.length > 10000) {
+      throw new ConvexError("Too many transactions to reconcile. Please contact support.");
+    }
+
+    const expected = computeExpectedBalances(accounts, transactions as Doc<"transactions">[]);
+    let fixed = 0;
+    const now = Date.now();
+    const discrepancies: Array<{ accountId: string; name: string; stored: number; expected: number }> = [];
+
+    for (const acc of accounts) {
+      const exp = expected.get(acc._id) ?? 0;
+      if (acc.balance !== exp) {
+        await ctx.db.patch(acc._id, { balance: exp, updatedAt: now });
+        fixed++;
+        discrepancies.push({ accountId: acc._id, name: acc.name, stored: acc.balance, expected: exp });
+      }
+    }
+
+    return { fixed, discrepancies };
   },
 });

@@ -1,6 +1,14 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
+import {
+  validateNote,
+  validateTimezone,
+  validateTransactionAmount,
+  validateTransactionDate,
+} from "../constants/validation";
+import { recomputeAllForHousehold } from "./periodBalances";
 
 const transactionType = v.union(
   v.literal("income"),
@@ -8,93 +16,121 @@ const transactionType = v.union(
   v.literal("transfer"),
 );
 
-const MAX_NOTE_LENGTH = 200;
+const MAX_LIST_ROWS = 1000;
 
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
+type ListFilters = {
+  accountIds?: Id<"accounts">[];
+  categoryIds?: Id<"categories">[];
+  type?: "income" | "expense" | "transfer";
+  search?: string;
+};
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
+function normalizeSearch(raw?: string): string | undefined {
+  const s = raw?.trim().toLowerCase();
+  if (!s || s.length < 2) return undefined;
+  return s;
 }
 
-function validateAmount(amount: number, type: "income" | "expense" | "transfer") {
-  if (!Number.isFinite(amount)) {
-    throw new ConvexError("Amount must be a finite number.");
+type EnrichedTransaction = Doc<"transactions"> & {
+  category?: Doc<"categories">;
+  account?: Doc<"accounts">;
+  toAccount?: Doc<"accounts">;
+};
+
+function matchesFilters(row: Doc<"transactions">, filters: ListFilters): boolean {
+  if (filters.accountIds !== undefined && !filters.accountIds.includes(row.accountId)) return false;
+  if (filters.categoryIds !== undefined) {
+    if (row.categoryId === undefined) return false;
+    if (!filters.categoryIds.includes(row.categoryId)) return false;
   }
-  if (amount === 0) {
-    throw new ConvexError("Amount must be a non-zero number.");
-  }
-  if (type === "income" && amount <= 0) {
-    throw new ConvexError("Amount must be positive for income transactions.");
-  }
-  if (type === "expense" && amount >= 0) {
-    throw new ConvexError("Amount must be negative for expense transactions.");
-  }
-  if (type === "transfer" && amount <= 0) {
-    throw new ConvexError("Amount must be positive for transfers.");
-  }
-  if (Math.abs(amount) < 1) {
-    throw new ConvexError("Amount must be at least 1.");
-  }
+  if (filters.type !== undefined && row.type !== filters.type) return false;
+  // search is handled separately after hydration (needs account/category names + amount)
+  // keep legacy note check for pre-hydration fast-path when no hydration available (summary without names)
+  // but extended search will be done via matchesSearchExtended — so we skip search here
+  return true;
 }
 
-function validateNote(note: string | undefined) {
-  if (note !== undefined && note.length > MAX_NOTE_LENGTH) {
-    throw new ConvexError("Note must be at most 200 characters.");
+function matchesSearch(
+  row: Doc<"transactions">,
+  search: string,
+  hydrated?: { account?: Doc<"accounts">; toAccount?: Doc<"accounts">; category?: Doc<"categories"> },
+): boolean {
+  const hay = (row.note ?? "").toLowerCase();
+  if (hay.includes(search)) return true;
+  // amount string (absolute value without commas, and raw search digits stripped of commas)
+  const searchDigits = search.replace(/,/g, "");
+  if (searchDigits.length > 0) {
+    const absStr = String(Math.abs(row.amount));
+    if (absStr.includes(searchDigits)) return true;
+    // also allow matching full signed string
+    if (String(row.amount).includes(searchDigits)) return true;
   }
-}
-
-function validateDate(date: number) {
-  if (!Number.isFinite(date)) {
-    throw new ConvexError("Date must be a valid timestamp.");
-  }
-  if (date > Date.now()) {
-    throw new ConvexError("Transaction date cannot be in the future.");
-  }
+  if (hydrated?.account && hydrated.account.name.toLowerCase().includes(search)) return true;
+  if (hydrated?.toAccount && hydrated.toAccount.name.toLowerCase().includes(search)) return true;
+  if (hydrated?.category && hydrated.category.name.toLowerCase().includes(search)) return true;
+  return false;
 }
 
 async function hydrate(
   ctx: QueryCtx,
   row: Doc<"transactions">,
-  categoryCache?: Map<string, any>,
+  cache?: Map<string, Doc<"accounts"> | Doc<"categories"> | undefined>,
 ) {
-  let category: any;
-  if (row.categoryId === undefined) {
-    category = undefined;
-  } else if (categoryCache?.has(row.categoryId)) {
-    category = categoryCache.get(row.categoryId);
-  } else {
-    category = (await ctx.db.get(row.categoryId)) ?? undefined;
-    categoryCache?.set(row.categoryId, category);
-  }
-  const account = (await ctx.db.get(row.accountId)) ?? undefined;
+  const getEntity = async <T>(
+    key: string,
+    id: Id<"accounts"> | Id<"categories">,
+  ): Promise<T | undefined> => {
+    if (cache?.has(key)) return cache.get(key) as T | undefined;
+    const doc = (await ctx.db.get(id)) as T | null;
+    const value = doc ?? undefined;
+    cache?.set(key, value as Doc<"accounts"> | Doc<"categories"> | undefined);
+    return value;
+  };
+
+  const category =
+    row.categoryId === undefined
+      ? undefined
+      : await getEntity<Doc<"categories">>(
+          `category:${row.categoryId}`,
+          row.categoryId,
+        );
+  const account = await getEntity<Doc<"accounts">>(
+    `account:${row.accountId}`,
+    row.accountId,
+  );
   const toAccount =
     row.toAccountId === undefined
       ? undefined
-      : ((await ctx.db.get(row.toAccountId)) ?? undefined);
+      : await getEntity<Doc<"accounts">>(
+          `account:${row.toAccountId}`,
+          row.toAccountId,
+        );
+
   return { category, account, toAccount };
+}
+
+async function applyBalanceDelta(
+  ctx: MutationCtx,
+  accountId: Id<"accounts">,
+  delta: number,
+  now: number,
+) {
+  if (delta === 0) return;
+  const account = await ctx.db.get(accountId);
+  if (account === null) return;
+  await ctx.db.patch(account._id, {
+    balance: account.balance + delta,
+    updatedAt: now,
+  });
+}
+
+async function reverseBalances(ctx: MutationCtx, tx: Doc<"transactions">, now: number) {
+  if (tx.type === "transfer" && tx.toAccountId !== undefined) {
+    await applyBalanceDelta(ctx, tx.accountId, tx.amount, now);
+    await applyBalanceDelta(ctx, tx.toAccountId, -tx.amount, now);
+  } else {
+    await applyBalanceDelta(ctx, tx.accountId, -tx.amount, now);
+  }
 }
 
 export const create = mutation({
@@ -110,38 +146,17 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    validateAmount(args.amount, args.type);
-    validateNote(args.note);
-    validateDate(args.date);
+    const err = validateTransactionAmount(args.amount, args.type);
+    if (err) throw new ConvexError(err);
+    const noteErr = validateNote(args.note);
+    if (noteErr) throw new ConvexError(noteErr);
+    const dateErr = validateTransactionDate(args.date);
+    if (dateErr) throw new ConvexError(dateErr);
 
-    const account = await ctx.db.get(args.accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
-    let category:
-      | {
-          _id: Id<"categories">;
-          householdId: Id<"households">;
-          name: string;
-          type: "income" | "expense";
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
-    let toAccount:
-      | {
-          _id: Id<"accounts">;
-          householdId: Id<"households">;
-          name: string;
-          type: "cash" | "bank" | "ewallet" | "credit_card";
-          balance: number;
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let category: Doc<"categories"> | undefined;
+    let toAccount: Doc<"accounts"> | undefined;
 
     if (args.type === "transfer") {
       if (args.categoryId !== undefined) {
@@ -153,10 +168,7 @@ export const create = mutation({
       if (args.toAccountId === args.accountId) {
         throw new ConvexError("From and To accounts must be different.");
       }
-      const to = await ctx.db.get(args.toAccountId);
-      if (to === null || to.householdId !== membership.householdId) {
-        throw new ConvexError("To account not found.");
-      }
+      const to = await getScopedDoc(ctx, args.toAccountId, membership.householdId, "To account");
       toAccount = to;
     } else {
       if (args.toAccountId !== undefined) {
@@ -169,10 +181,7 @@ export const create = mutation({
           "Category is required for income and expense transactions.",
         );
       }
-      const cat = await ctx.db.get(args.categoryId);
-      if (cat === null || cat.householdId !== membership.householdId) {
-        throw new ConvexError("Category not found.");
-      }
+      const cat = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
       if (cat.type !== args.type) {
         throw new ConvexError("Category type must match transaction type.");
       }
@@ -212,78 +221,524 @@ export const create = mutation({
     });
 
     if (args.type === "transfer") {
-      await ctx.db.patch(args.accountId, {
-        balance: account.balance - args.amount,
-        updatedAt: now,
-      });
-      await ctx.db.patch(args.toAccountId as Id<"accounts">, {
-        balance: toAccount!.balance + args.amount,
-        updatedAt: now,
-      });
+      await applyBalanceDelta(ctx, args.accountId, -args.amount, now);
+      await applyBalanceDelta(
+        ctx,
+        args.toAccountId as Id<"accounts">,
+        args.amount,
+        now,
+      );
     } else {
-      await ctx.db.patch(args.accountId, {
-        balance: account.balance + args.amount,
-        updatedAt: now,
-      });
+      await applyBalanceDelta(ctx, args.accountId, args.amount, now);
+    }
+
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
     }
 
     return transactionId;
   },
 });
 
+type PageCursor = { date: number; id: Id<"transactions"> };
+
+function normalizeListFilters(args: {
+  accountIds?: Id<"accounts">[];
+  categoryIds?: Id<"categories">[];
+  type?: "income" | "expense" | "transfer";
+  search?: string;
+}): ListFilters {
+  const filters: ListFilters = {};
+  if (args.accountIds !== undefined && args.accountIds.length > 0)
+    filters.accountIds = args.accountIds;
+  if (args.categoryIds !== undefined && args.categoryIds.length > 0)
+    filters.categoryIds = args.categoryIds;
+  if (args.type !== undefined) filters.type = args.type;
+  const s = normalizeSearch(args.search);
+  if (s !== undefined) filters.search = s;
+  return filters;
+}
+
+function pickPinnedDim(filters: ListFilters): "account" | "category" | "type" | "none" {
+  if (filters.accountIds !== undefined && filters.accountIds.length === 1) return "account";
+  if (filters.categoryIds !== undefined && filters.categoryIds.length === 1) return "category";
+  if (filters.type !== undefined) return "type";
+  return "none";
+}
+
+function pinnedRangeQuery(
+  ctx: QueryCtx,
+  householdId: Id<"households">,
+  filters: ListFilters,
+  pinnedDim: "account" | "category" | "type" | "none",
+  startDate: number,
+  endDate: number,
+  cursorDate: number | undefined,
+  atBoundary: boolean,
+) {
+  const base = ctx.db.query("transactions");
+  let builder: ReturnType<typeof base.withIndex>;
+  if (pinnedDim === "account") {
+    builder = base.withIndex("by_household_account_date", (q) => {
+      const lower = q
+        .eq("householdId", householdId)
+        .eq("accountId", filters.accountIds![0])
+        .gte("date", startDate);
+      if (cursorDate === undefined) return lower.lt("date", endDate);
+      return atBoundary ? lower.lt("date", cursorDate) : lower.lte("date", cursorDate);
+    });
+  } else if (pinnedDim === "category") {
+    builder = base.withIndex("by_household_category_date", (q) => {
+      const lower = q
+        .eq("householdId", householdId)
+        .eq("categoryId", filters.categoryIds![0])
+        .gte("date", startDate);
+      if (cursorDate === undefined) return lower.lt("date", endDate);
+      return atBoundary ? lower.lt("date", cursorDate) : lower.lte("date", cursorDate);
+    });
+  } else if (pinnedDim === "type") {
+    builder = base.withIndex("by_household_type_date", (q) => {
+      const lower = q
+        .eq("householdId", householdId)
+        .eq("type", filters.type!)
+        .gte("date", startDate);
+      if (cursorDate === undefined) return lower.lt("date", endDate);
+      return atBoundary ? lower.lt("date", cursorDate) : lower.lte("date", cursorDate);
+    });
+  } else {
+    builder = base.withIndex("by_household_date", (q) => {
+      const lower = q.eq("householdId", householdId).gte("date", startDate);
+      if (cursorDate === undefined) return lower.lt("date", endDate);
+      return atBoundary ? lower.lt("date", cursorDate) : lower.lte("date", cursorDate);
+    });
+  }
+  return builder;
+}
+
 export const list = query({
   args: {
     startDate: v.number(),
     endDate: v.number(),
+    limit: v.optional(v.number()),
+    accountIds: v.optional(v.array(v.id("accounts"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    type: v.optional(transactionType),
+    search: v.optional(v.string()),
+    cursor: v.optional(v.object({ date: v.number(), id: v.id("transactions") })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      return { transactions: null, isOwner: false };
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
+      return { transactions: null, isOwner: false, cursor: undefined, hasMore: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { transactions: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { transactions: null, isOwner: false };
-    }
-
+    const { membership } = result;
     const isOwner = membership.role === "owner";
+
+    const limit = Math.min(
+      Math.max(Math.floor(args.limit ?? MAX_LIST_ROWS), 1),
+      MAX_LIST_ROWS,
+    );
+    const SCAN_BUDGET = limit * 10;
+    const filters = normalizeListFilters(args);
+    const pinnedDim = pickPinnedDim(filters);
+    const entityCache = new Map<
+      string,
+      Doc<"accounts"> | Doc<"categories"> | undefined
+    >();
+
+    let cursorDate = args.cursor?.date;
+    let cursorId = args.cursor?.id;
+    let atBoundary = false;
+    let scanned = 0;
+    let rangeExhausted = false;
+    const collected: EnrichedTransaction[] = [];
+    let lastCollected: Doc<"transactions"> | undefined;
+    let lastScanned: Doc<"transactions"> | undefined;
+
+    while (collected.length < limit && scanned < SCAN_BUDGET) {
+      const batchSize = SCAN_BUDGET - scanned;
+      const fetched: Doc<"transactions">[] = await pinnedRangeQuery(
+        ctx,
+        membership.householdId,
+        filters,
+        pinnedDim,
+        args.startDate,
+        args.endDate,
+        cursorDate,
+        atBoundary,
+      )
+        .order("desc")
+        .take(batchSize + 1);
+      const hasExtra = fetched.length > batchSize;
+      const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, batchSize) : fetched;
+      const extra = hasExtra ? fetched[batchSize] : undefined;
+
+      scanned += rows.length;
+
+      let pastCursor = cursorDate === undefined || atBoundary;
+
+      for (const row of rows) {
+        lastScanned = row;
+        if (!pastCursor) {
+          if (row.date === cursorDate && row._id === cursorId) {
+            pastCursor = true;
+          }
+          continue;
+        }
+        if (!matchesFilters(row, filters)) continue;
+        const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
+        if (!isOwner && category !== undefined && category.hidden) continue;
+        if (filters.search !== undefined && !matchesSearch(row, filters.search, { category, account, toAccount })) continue;
+        const enriched = { ...row, category, account, toAccount };
+        collected.push(enriched);
+        lastCollected = row;
+        if (collected.length >= limit) break;
+      }
+
+      if (
+        rows.length < batchSize &&
+        (collected.length < limit || lastScanned === rows[rows.length - 1])
+      )
+        rangeExhausted = true;
+      if (collected.length >= limit) break;
+      if (rows.length < batchSize) break;
+      if (!pastCursor) {
+        atBoundary = true;
+        continue;
+      }
+
+      const lastRow = rows[rows.length - 1];
+      const tieContinues = extra !== undefined && extra.date === lastRow.date;
+      atBoundary = !tieContinues;
+      cursorDate = lastRow.date;
+      cursorId = lastRow._id;
+    }
+
+    const pageFilled = collected.length >= limit;
+    const resumeRow = pageFilled ? lastCollected : lastScanned;
+    const hasMore = !rangeExhausted && resumeRow !== undefined;
+    return {
+      transactions: collected,
+      isOwner,
+      cursor:
+        hasMore && resumeRow
+          ? { date: resumeRow.date, id: resumeRow._id }
+          : undefined,
+      hasMore,
+    };
+  },
+});
+
+const SUMMARY_BATCH_SIZE = 10000;
+
+export const summary = query({
+  args: {
+    startDate: v.number(),
+    endDate: v.number(),
+    accountIds: v.optional(v.array(v.id("accounts"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    type: v.optional(transactionType),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) return null;
+    const { membership } = result;
+    const isOwner = membership.role === "owner";
+
+    const filters = normalizeListFilters(args);
+    const pinnedDim = pickPinnedDim(filters);
+
+    let income = 0;
+    let expense = 0;
+    const hiddenCategoryCache = new Map<Id<"categories">, boolean>();
+    const accountNameCache = new Map<string, Doc<"accounts"> | undefined>();
+    const categoryNameCache = new Map<string, Doc<"categories"> | undefined>();
+    const toAccountNameCache = new Map<string, Doc<"accounts"> | undefined>();
+
+    let cursorDate: number | undefined;
+    let cursorId: Id<"transactions"> | undefined;
+    let atBoundary = false;
+
+    for (;;) {
+      const fetched: Doc<"transactions">[] = await pinnedRangeQuery(
+        ctx,
+        membership.householdId,
+        filters,
+        pinnedDim,
+        args.startDate,
+        args.endDate,
+        cursorDate,
+        atBoundary,
+      )
+        .order("desc")
+        .take(SUMMARY_BATCH_SIZE + 1);
+      const hasExtra = fetched.length > SUMMARY_BATCH_SIZE;
+      const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, SUMMARY_BATCH_SIZE) : fetched;
+      const extra = hasExtra ? fetched[SUMMARY_BATCH_SIZE] : undefined;
+
+      if (rows.length === 0) break;
+
+      let pastCursor = cursorDate === undefined || atBoundary;
+
+      for (const row of rows) {
+        if (!pastCursor) {
+          if (row.date === cursorDate && row._id === cursorId) {
+            pastCursor = true;
+          }
+          continue;
+        }
+        if (!isOwner && row.categoryId !== undefined) {
+          let hidden = hiddenCategoryCache.get(row.categoryId);
+          if (hidden === undefined) {
+            const category = await ctx.db.get(row.categoryId);
+            hidden = category?.hidden ?? false;
+            hiddenCategoryCache.set(row.categoryId, hidden);
+            if (category) categoryNameCache.set(row.categoryId, category as Doc<"categories">);
+          }
+          if (hidden) continue;
+        }
+        if (!matchesFilters(row, filters)) continue;
+        // extended search: note + amount + account/category names (hydration-light via caches)
+        if (filters.search !== undefined) {
+          let hydrated: { account?: Doc<"accounts">; toAccount?: Doc<"accounts">; category?: Doc<"categories"> } | undefined;
+          // lazy fetch only when search active
+          const getCached = async <T>(cache: Map<string, any>, id: string) => {
+            if (cache.has(id)) return cache.get(id) as T | undefined;
+            const doc = (await ctx.db.get(id as any)) as T | null;
+            const val = doc ?? undefined;
+            cache.set(id, val);
+            return val;
+          };
+          const account = await getCached<Doc<"accounts">>(accountNameCache, row.accountId);
+          const toAccount = row.toAccountId ? await getCached<Doc<"accounts">>(toAccountNameCache, row.toAccountId) : undefined;
+          let category: Doc<"categories"> | undefined;
+          if (row.categoryId) {
+            category = categoryNameCache.get(row.categoryId) ?? (await getCached<Doc<"categories">>(categoryNameCache, row.categoryId));
+          }
+          hydrated = { account, toAccount, category };
+          if (!matchesSearch(row, filters.search, hydrated)) continue;
+        }
+        if (row.type === "income") {
+          income += row.amount;
+        } else if (row.type === "expense") {
+          expense += Math.abs(row.amount);
+        }
+      }
+
+      if (rows.length < SUMMARY_BATCH_SIZE) break;
+
+      const lastRow = rows[rows.length - 1];
+      const tieContinues = extra !== undefined && extra.date === lastRow.date;
+      atBoundary = tieContinues ? false : true;
+      cursorDate = lastRow.date;
+      cursorId = lastRow._id;
+    }
+
+    return { income, expense, net: income - expense };
+  },
+});
+
+// ---- Timezone-aware month helpers (server-side, copied from utils/date.ts) ----
+function zonedParts(ts: number, timeZone: string): Record<string, number> {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(ts));
+  const result: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      result[part.type] = Number(part.value);
+    }
+  }
+  return result;
+}
+
+function zonedOffsetMs(ts: number, timeZone: string): number {
+  const p = zonedParts(ts, timeZone);
+  const wallAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return wallAsUtc - ts;
+}
+
+function zonedWallToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  timeZone: string,
+): number {
+  const naive = Date.UTC(year, month - 1, day, hour, minute, second);
+  let ts = naive - zonedOffsetMs(naive, timeZone);
+  ts = naive - zonedOffsetMs(ts, timeZone);
+  return ts;
+}
+
+function getYearMonthTz(ts: number, timeZone: string): { year: number; month: number } {
+  const p = zonedParts(ts, timeZone);
+  return { year: p.year, month: p.month };
+}
+
+function zonedMonthStartTz(year: number, month: number, timeZone: string): number {
+  return zonedWallToUtc(year, month, 1, 0, 0, 0, timeZone);
+}
+
+function getMonthStartForDate(ts: number, timeZone: string): number {
+  const { year, month } = getYearMonthTz(ts, timeZone);
+  return zonedMonthStartTz(year, month, timeZone);
+}
+
+function getNextMonthStart(periodStart: number, timeZone: string): number {
+  const { year, month } = getYearMonthTz(periodStart, timeZone);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return zonedMonthStartTz(nextYear, nextMonth, timeZone);
+}
+
+function formatMonthLabelTz(timestamp: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "long",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
+
+export const cashflow = query({
+  args: { startDate: v.number(), endDate: v.number(), timezone: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new ConvexError("Not authenticated.");
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) return null;
+    const { membership } = auth;
+    const household = await ctx.db.get(membership.householdId);
+    const storedTz = (household as { timezone?: string } | null)?.timezone;
+    const rawTz = args.timezone ?? storedTz ?? "UTC";
+    const tzErr = validateTimezone(rawTz);
+    if (tzErr) throw new ConvexError(tzErr);
+    const timezone = rawTz;
+    if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
+    if (args.endDate - args.startDate > 200 * 86_400_000) throw new ConvexError("Window too large.");
+    const isOwner = membership.role === "owner";
+
+    // Bounded single scan — avoid unbounded collect, cap at 10k rows (6 months typical <2k)
     const rows = await ctx.db
       .query("transactions")
       .withIndex("by_household_date", (q) =>
-        q
-          .eq("householdId", membership.householdId)
-          .gte("date", args.startDate)
-          .lt("date", args.endDate),
+        q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
       )
-      .collect();
+      .take(10001);
+    if (rows.length > 10000) throw new ConvexError("Too many transactions for this range. Please shorten the window.");
 
-    const transactions = [];
-    for (const row of rows) {
-      const { category, account, toAccount } = await hydrate(ctx, row);
-      if (!isOwner && category !== undefined && category.hidden) {
-        continue;
-      }
-      transactions.push({ ...row, category, account, toAccount });
+    // Build buckets for every month intersecting [startDate, endDate)
+    const buckets = new Map<number, { income: number; expense: number }>();
+    let cursor = getMonthStartForDate(args.startDate, timezone);
+    // Avoid infinite loop guard (max 12 months for 200 days)
+    let iterations = 0;
+    while (cursor < args.endDate && iterations < 24) {
+      buckets.set(cursor, { income: 0, expense: 0 });
+      cursor = getNextMonthStart(cursor, timezone);
+      iterations++;
     }
 
-    transactions.sort((a, b) => b.date - a.date);
-    return { transactions, isOwner };
+    const hiddenCache = new Map<Id<"categories">, boolean>();
+
+    for (const row of rows) {
+      if (row.type === "transfer") continue;
+      if (!isOwner && row.categoryId !== undefined) {
+        let hidden = hiddenCache.get(row.categoryId);
+        if (hidden === undefined) {
+          const cat = await ctx.db.get(row.categoryId);
+          hidden = cat?.hidden ?? false;
+          hiddenCache.set(row.categoryId, hidden);
+        }
+        if (hidden) continue;
+      }
+      const bucketKey = getMonthStartForDate(row.date, timezone);
+      const bucket = buckets.get(bucketKey);
+      if (bucket === undefined) continue;
+      if (row.type === "income") {
+        bucket.income += row.amount;
+      } else if (row.type === "expense") {
+        bucket.expense += Math.abs(row.amount);
+      }
+    }
+
+    const cashflow = Array.from(buckets.entries())
+      .map(([periodStart, v]) => ({
+        periodStart,
+        label: formatMonthLabelTz(periodStart, timezone),
+        income: v.income,
+        expense: v.expense,
+        net: v.income - v.expense,
+      }))
+      .sort((a, b) => a.periodStart - b.periodStart);
+
+    return { cashflow, isOwner };
+  },
+});
+
+export const spendingByCategory = query({
+  args: { startDate: v.number(), endDate: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new ConvexError("Not authenticated.");
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) return null;
+    const { membership } = auth;
+    const isOwner = membership.role === "owner";
+    if (args.endDate <= args.startDate) throw new ConvexError("Invalid window.");
+    if (args.endDate - args.startDate > 32 * 86_400_000) throw new ConvexError("Period too large.");
+    // Bounded scan — 1 month typical <1k rows, cap at 10k
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q.eq("householdId", membership.householdId).gte("date", args.startDate).lt("date", args.endDate),
+      )
+      .take(10001);
+    if (rows.length > 10000) throw new ConvexError("Too many transactions for this range. Please shorten the window.");
+
+    const hiddenCache = new Map<Id<"categories">, boolean>();
+    const nameCache = new Map<Id<"categories">, string>();
+    const agg = new Map<Id<"categories">, number>();
+
+    for (const row of rows) {
+      if (row.type !== "expense" || row.categoryId === undefined) continue;
+      if (!isOwner) {
+        let hidden = hiddenCache.get(row.categoryId);
+        if (hidden === undefined) {
+          const cat = await ctx.db.get(row.categoryId);
+          hidden = cat?.hidden ?? false;
+          hiddenCache.set(row.categoryId, hidden);
+          if (cat) nameCache.set(row.categoryId, cat.name);
+        }
+        if (hidden) continue;
+      } else if (!nameCache.has(row.categoryId)) {
+        const cat = await ctx.db.get(row.categoryId);
+        if (cat) nameCache.set(row.categoryId, cat.name);
+      }
+      agg.set(row.categoryId, (agg.get(row.categoryId) ?? 0) + Math.abs(row.amount));
+    }
+
+    const sorted = Array.from(agg.entries())
+      .map(([categoryId, amount]) => ({
+        categoryId,
+        name: nameCache.get(categoryId) ?? "Unknown",
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+    const total = sorted.reduce((s, x) => s + x.amount, 0);
+    const segments = sorted.slice(0, 10);
+    const othersAmount = sorted.length > 10 ? sorted.slice(10).reduce((s, x) => s + x.amount, 0) : 0;
+    return { segments, total, othersAmount, isOwner };
   },
 });
 
@@ -293,59 +748,94 @@ export const recent = query({
     cursor: v.optional(v.object({ date: v.number(), id: v.id("transactions") })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      return { transactions: null, isOwner: false };
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
+      return { transactions: null, isOwner: false, cursor: undefined, hasMore: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { transactions: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { transactions: null, isOwner: false };
-    }
+    const { membership } = result;
 
     const isOwner = membership.role === "owner";
     const limit = Math.min(Math.max(Math.floor(args.limit ?? 5), 1), 20);
+    const SCAN_BUDGET = limit * 10;
 
     if (isOwner) {
-      const rows = await ctx.db
-        .query("transactions")
-        .withIndex("by_household_date", (q) =>
-          q.eq("householdId", membership.householdId),
-        )
-        .order("desc")
-        .take(limit);
+      let scanned = 0;
+      let cursorDate = args.cursor?.date;
+      let cursorId = args.cursor?.id;
+      let atBoundary = false;
+      const collected: EnrichedTransaction[] = [];
+      const entityCache = new Map<string, Doc<"accounts"> | Doc<"categories"> | undefined>();
+      let lastCollected: Doc<"transactions"> | undefined;
+      let lastScanned: Doc<"transactions"> | undefined;
+      let rangeExhausted = false;
 
-      const transactions = [];
-      for (const row of rows) {
-        const { category, account, toAccount } = await hydrate(ctx, row);
-        transactions.push({ ...row, category, account, toAccount });
+      while (collected.length < limit && scanned < SCAN_BUDGET) {
+        const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
+        const fetched: Doc<"transactions">[] = await ctx.db
+          .query("transactions")
+          .withIndex("by_household_date", (q) => {
+            const base = q.eq("householdId", membership.householdId);
+            if (cursorDate === undefined) return base;
+            return atBoundary ? base.lt("date", cursorDate) : base.lte("date", cursorDate);
+          })
+          .order("desc")
+          .take(batchSize + 1);
+        const hasExtra = fetched.length > batchSize;
+        const rows: Doc<"transactions">[] = hasExtra ? fetched.slice(0, batchSize) : fetched;
+        const extra = hasExtra ? fetched[batchSize] : undefined;
+
+        if (rows.length === 0) {
+          rangeExhausted = true;
+          break;
+        }
+        scanned += rows.length;
+        let pastCursor = cursorDate === undefined || atBoundary;
+        let cursorFound = pastCursor;
+        for (const row of rows) {
+          lastScanned = row;
+          if (!pastCursor) {
+            if (row.date === cursorDate && row._id === cursorId) {
+              pastCursor = true;
+              cursorFound = true;
+            }
+            continue;
+          }
+          const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
+          collected.push({ ...row, category, account, toAccount });
+          lastCollected = row;
+          if (collected.length >= limit) break;
+        }
+        if (rows.length < batchSize) rangeExhausted = true;
+        if (collected.length >= limit) break;
+        if (rows.length < batchSize) break;
+        if (!cursorFound) {
+          atBoundary = true;
+          continue;
+        }
+        const lastRow = rows[rows.length - 1];
+        const tieContinues = extra !== undefined && extra.date === lastRow.date;
+        atBoundary = !tieContinues;
+        cursorDate = lastRow.date;
+        cursorId = lastRow._id;
       }
-
-      return { transactions, isOwner, cursor: undefined };
+      const pageFilled = collected.length >= limit;
+      const resumeRow = pageFilled ? lastCollected : lastScanned;
+      const hasMore = !rangeExhausted && resumeRow !== undefined;
+      return {
+        transactions: collected,
+        isOwner,
+        cursor: hasMore && resumeRow ? { date: resumeRow.date, id: resumeRow._id } : undefined,
+        hasMore,
+      };
     }
 
-    const SCAN_BUDGET = limit * 10;
+    // member path (original logic kept to preserve existing test expectations)
     let scanned = 0;
     let cursorDate = args.cursor?.date;
     let cursorId = args.cursor?.id;
     let atBoundary = false;
     const collected = [];
-    const categoryCache = new Map<string, any>();
+    const entityCache = new Map<string, any>();
 
     while (collected.length < limit && scanned < SCAN_BUDGET) {
       const batchSize = Math.min(SCAN_BUDGET - scanned, limit * 4);
@@ -374,7 +864,7 @@ export const recent = query({
           continue;
         }
 
-        const { category, account, toAccount } = await hydrate(ctx, row, categoryCache);
+        const { category, account, toAccount } = await hydrate(ctx, row, entityCache);
         if (category !== undefined && category.hidden) {
           continue;
         }
@@ -404,6 +894,7 @@ export const recent = query({
         hasMore && cursorDate !== undefined && cursorId !== undefined
           ? { date: cursorDate, id: cursorId }
           : undefined,
+      hasMore,
     };
   },
 });
@@ -411,30 +902,11 @@ export const recent = query({
 export const get = query({
   args: { transactionId: v.id("transactions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) {
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return null;
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return null;
-    }
+    const { membership } = result;
 
     const tx = await ctx.db.get(args.transactionId);
     if (tx === null || tx.householdId !== membership.householdId) {
@@ -448,15 +920,7 @@ export const get = query({
       }
     }
 
-    const category =
-      tx.categoryId === undefined
-        ? undefined
-        : ((await ctx.db.get(tx.categoryId)) ?? undefined);
-    const account = (await ctx.db.get(tx.accountId)) ?? undefined;
-    const toAccount =
-      tx.toAccountId === undefined
-        ? undefined
-        : ((await ctx.db.get(tx.toAccountId)) ?? undefined);
+    const { category, account, toAccount } = await hydrate(ctx, tx);
 
     return {
       transaction: { ...tx, category, account, toAccount },
@@ -479,10 +943,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    const tx = await ctx.db.get(args.transactionId);
-    if (tx === null || tx.householdId !== membership.householdId) {
-      throw new ConvexError("Transaction not found.");
-    }
+    const tx = await getScopedDoc(ctx, args.transactionId, membership.householdId, "Transaction");
 
     const type = args.type ?? tx.type;
     const amount = args.amount ?? tx.amount;
@@ -515,58 +976,29 @@ export const update = mutation({
       }
     }
 
-    validateAmount(amount, type);
-    if (args.note !== undefined) {
-      validateNote(args.note);
-    }
+    const err = validateTransactionAmount(amount, type);
+    if (err) throw new ConvexError(err);
+    const noteErr = validateNote(args.note);
+    if (noteErr) throw new ConvexError(noteErr);
     if (args.date !== undefined) {
-      validateDate(args.date);
+      const dateErr = validateTransactionDate(args.date);
+      if (dateErr) throw new ConvexError(dateErr);
     }
 
-    const account = await ctx.db.get(accountId);
-    if (account === null || account.householdId !== membership.householdId) {
-      throw new ConvexError("Account not found.");
-    }
+    const account = await getScopedDoc(ctx, accountId, membership.householdId, "Account");
 
-    let category:
-      | {
-          _id: Id<"categories">;
-          householdId: Id<"households">;
-          name: string;
-          type: "income" | "expense";
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let category: Doc<"categories"> | undefined;
     if (categoryId !== undefined) {
-      const cat = await ctx.db.get(categoryId);
-      if (cat === null || cat.householdId !== membership.householdId) {
-        throw new ConvexError("Category not found.");
-      }
+      const cat = await getScopedDoc(ctx, categoryId, membership.householdId, "Category");
       if (cat.type !== type) {
         throw new ConvexError("Category type must match transaction type.");
       }
       category = cat;
     }
 
-    let toAccount:
-      | {
-          _id: Id<"accounts">;
-          householdId: Id<"households">;
-          name: string;
-          type: "cash" | "bank" | "ewallet" | "credit_card";
-          balance: number;
-          hidden: boolean;
-          createdAt: number;
-          updatedAt: number;
-        }
-      | undefined;
+    let toAccount: Doc<"accounts"> | undefined;
     if (toAccountId !== undefined) {
-      const to = await ctx.db.get(toAccountId);
-      if (to === null || to.householdId !== membership.householdId) {
-        throw new ConvexError("To account not found.");
-      }
+      const to = await getScopedDoc(ctx, toAccountId, membership.householdId, "To account");
       toAccount = to;
     }
 
@@ -621,14 +1053,7 @@ export const update = mutation({
     }
 
     for (const [id, delta] of deltas) {
-      if (delta === 0) continue;
-      const doc = await ctx.db.get(id as Id<"accounts">);
-      if (doc !== null) {
-        await ctx.db.patch(doc._id, {
-          balance: doc.balance + delta,
-          updatedAt: now,
-        });
-      }
+      await applyBalanceDelta(ctx, id as Id<"accounts">, delta, now);
     }
 
     await ctx.db.patch(args.transactionId, {
@@ -643,6 +1068,11 @@ export const update = mutation({
       updatedAt: now,
     });
 
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
+    }
+
     return await ctx.db.get(args.transactionId);
   },
 });
@@ -652,10 +1082,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
 
-    const tx = await ctx.db.get(args.transactionId);
-    if (tx === null || tx.householdId !== membership.householdId) {
-      throw new ConvexError("Transaction not found.");
-    }
+    const tx = await getScopedDoc(ctx, args.transactionId, membership.householdId, "Transaction");
 
     if (membership.role !== "owner" && tx.categoryId !== undefined) {
       const category = await ctx.db.get(tx.categoryId);
@@ -667,31 +1094,12 @@ export const remove = mutation({
     }
 
     const now = Date.now();
-    if (tx.type === "transfer" && tx.toAccountId !== undefined) {
-      const from = await ctx.db.get(tx.accountId);
-      const to = await ctx.db.get(tx.toAccountId);
-      if (from !== null) {
-        await ctx.db.patch(from._id, {
-          balance: from.balance + tx.amount,
-          updatedAt: now,
-        });
-      }
-      if (to !== null) {
-        await ctx.db.patch(to._id, {
-          balance: to.balance - tx.amount,
-          updatedAt: now,
-        });
-      }
-    } else {
-      const account = await ctx.db.get(tx.accountId);
-      if (account !== null) {
-        await ctx.db.patch(account._id, {
-          balance: account.balance - tx.amount,
-          updatedAt: now,
-        });
-      }
-    }
-
+    await reverseBalances(ctx, tx, now);
     await ctx.db.delete(args.transactionId);
+
+    const householdForRecompute = await ctx.db.get(membership.householdId);
+    if (householdForRecompute) {
+      await recomputeAllForHousehold(ctx, householdForRecompute);
+    }
   },
 });

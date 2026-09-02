@@ -10,6 +10,16 @@ export const Colors = {
   success: "#065F46",
   error: "#991B1B",
   border: "#E7E5E4",
+  accountCash: "#065F46",
+  accountBank: "#92400E",
+  accountEwallet: "#1D4ED8",
+  accountCreditCard: "#991B1B",
+  deltaPositiveBg: "#065F4614",
+  deltaPositiveBorder: "#065F4633",
+  deltaNegativeBg: "#991B1B14",
+  deltaNegativeBorder: "#991B1B33",
+  chartAmber: "#D97706",
+  chartEmerald: "#059669",
 } as const;
 
 export const DarkColors = {
@@ -22,6 +32,16 @@ export const DarkColors = {
   success: "#34D399",
   error: "#F87171",
   border: "#44403C",
+  accountCash: "#34D399",
+  accountBank: "#F59E0B",
+  accountEwallet: "#60A5FA",
+  accountCreditCard: "#F87171",
+  deltaPositiveBg: "rgba(52,211,153,0.15)",
+  deltaPositiveBorder: "rgba(52,211,153,0.25)",
+  deltaNegativeBg: "rgba(248,113,113,0.15)",
+  deltaNegativeBorder: "rgba(248,113,113,0.25)",
+  chartAmber: "#F59E0B",
+  chartEmerald: "#34D399",
 } as const;
 
 export function useThemeColors() {
@@ -59,44 +79,16 @@ export const Shadow = {
   },
 } as const;
 
-export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-} as const;
-
 export const Radius = {
   sm: 12,
   md: 16,
   lg: 24,
 } as const;
 
-export const Typography = {
-  h1: {
-    fontSize: 28,
-    fontWeight: "700" as const,
-    color: Colors.textPrimary,
-  },
-  h2: {
-    fontSize: 20,
-    fontWeight: "600" as const,
-    color: Colors.textPrimary,
-  },
-  body: {
-    fontSize: 16,
-    fontWeight: "400" as const,
-    color: Colors.textPrimary,
-  },
-  caption: {
-    fontSize: 14,
-    fontWeight: "400" as const,
-    color: Colors.textSecondary,
-  },
-  small: {
-    fontSize: 12,
-    fontWeight: "400" as const,
-    color: Colors.textSecondary,
-  },
+export const FontSize = {
+  display: 28,
+  heading: 18,
+  body: 16,
+  label: 14,
+  caption: 12,
 } as const;

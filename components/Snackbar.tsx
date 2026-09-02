@@ -1,9 +1,14 @@
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Animated, Text, View } from "react-native";
+import { Animated, Pressable, Text, View } from "react-native";
+
+export type SnackbarAction = {
+  label: string;
+  onPress: () => void;
+};
 
 type SnackbarContextValue = {
-  show: (message: string) => void;
+  show: (message: string, action?: SnackbarAction) => void;
 };
 
 const SnackbarContext = createContext<SnackbarContextValue | null>(null);
@@ -19,13 +24,36 @@ export function useSnackbar() {
 export function SnackbarProvider({ children }: { children: ReactNode }) {
   const C = useThemeColors();
   const [message, setMessage] = useState<string | null>(null);
+  const [action, setAction] = useState<SnackbarAction | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
 
+  const hide = useCallback(() => {
+    opacity.stopAnimation();
+    translateY.stopAnimation();
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setMessage(null);
+        setAction(null);
+      }
+    });
+  }, [opacity, translateY]);
+
   const show = useCallback(
-    (text: string) => {
+    (text: string, action?: SnackbarAction) => {
       const current = ++generation.current;
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
@@ -34,6 +62,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
       opacity.stopAnimation();
       translateY.stopAnimation();
       setMessage(text);
+      setAction(action ?? null);
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
@@ -47,25 +76,12 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
         }),
       ]).start();
       hideTimer.current = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: 20,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start(({ finished }) => {
-          if (finished && generation.current === current) {
-            setMessage(null);
-          }
-        });
-      }, 2500);
+        if (generation.current === current) {
+          hide();
+        }
+      }, action ? 6000 : 2500);
     },
-    [opacity, translateY],
+    [hide, opacity, translateY],
   );
 
   useEffect(() => {
@@ -77,13 +93,13 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
       opacity.stopAnimation();
       translateY.stopAnimation();
     };
-  }, [opacity, translateY]);
+  }, [hide, opacity, translateY]);
 
   return (
     <SnackbarContext.Provider value={{ show }}>
       {children}
       {message ? (
-        <View pointerEvents="none" className="absolute bottom-24 left-5 right-5">
+        <View pointerEvents="box-none" className="absolute bottom-24 left-5 right-5">
           <Animated.View
             style={[
               Shadow.elevated,
@@ -97,9 +113,23 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
               },
             ]}
           >
-            <Text className="text-center text-base font-medium text-background dark:text-background-dark">
-              {message}
-            </Text>
+            <View className="flex-row items-center gap-4">
+              <Text className="flex-1 text-base font-medium text-background dark:text-background-dark">
+                {message}
+              </Text>
+              {action ? (
+                <Pressable
+                  onPress={action.onPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
+                  className="min-h-12 items-center justify-center"
+                >
+                  <Text className="text-base font-bold text-primary-light dark:text-primary">
+                    {action.label}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           </Animated.View>
         </View>
       ) : null}

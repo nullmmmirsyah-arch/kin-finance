@@ -1,29 +1,25 @@
-import { useAuth, useSignIn, useSignUp, useSSO } from "@clerk/expo";
-import { useRouter } from "expo-router";
-import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
-import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
-import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
+import { CodeField } from "@/components/Auth/CodeField";
+import { EmailField } from "@/components/Auth/EmailField";
+import { GoogleButton } from "@/components/Auth/GoogleButton";
+import { PasswordField } from "@/components/Auth/PasswordField";
+import { ResetFlow } from "@/components/Auth/ResetFlow";
+import { useAuthFlow } from "@/hooks/useAuthFlow";
+import { useResetFlow } from "@/hooks/useResetFlow";
+import { getLastAuthMethod } from "@/lib/auth-preference";
+import { useAuth } from "@clerk/expo";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useRef, useState } from "react";
+import { Image, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function useWarmUpBrowser() {
   useEffect(() => {
+    if (Platform.OS === "web") return;
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();
@@ -32,411 +28,259 @@ function useWarmUpBrowser() {
 }
 
 type Mode = "sign-in" | "sign-up";
+type SuccessScreen = "verify" | "reset" | null;
+
+function Divider({ text }: { text: string }) {
+  return (
+    <View className="flex-row items-center gap-3">
+      <View className="h-px flex-1 bg-border dark:bg-border-dark" />
+      <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">{text}</Text>
+      <View className="h-px flex-1 bg-border dark:bg-border-dark" />
+    </View>
+  );
+}
 
 export default function Index() {
   useWarmUpBrowser();
-  const C = useThemeColors();
-  const gradients = useThemeGradients();
-
   const { isSignedIn } = useAuth();
   const router = useRouter();
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
-  const { startSSOFlow } = useSSO();
-
   const [mode, setMode] = useState<Mode>("sign-in");
-  const [emailAddress, setEmailAddress] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isMfaVerifying, setIsMfaVerifying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [ssoSignIn, setSsoSignIn] = useState<
-    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["signIn"]> | null
-  >(null);
-  const [ssoSetActive, setSsoSetActive] = useState<
-    NonNullable<Awaited<ReturnType<typeof startSSOFlow>>["setActive"]> | null
-  >(null);
+  const [preferred, setPreferred] = useState<"google" | "email" | null>(null);
+  const [successScreen, setSuccessScreen] = useState<SuccessScreen>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  const auth = useAuthFlow({ onVerifySuccess: () => setSuccessScreen("verify") });
+  const reset = useResetFlow(auth.emailAddress, auth.setEmailError, auth.setPasswordError, auth.setError, {
+    onResetSuccess: () => setSuccessScreen("reset"),
+  });
 
   useEffect(() => {
-    if (isSignedIn) {
-      router.replace("/home");
-    }
-  }, [isSignedIn, router]);
+    if (isSignedIn && !successScreen) router.replace("/home");
+  }, [isSignedIn, router, successScreen]);
 
-  const handleSignIn = async () => {
-    setError(null);
-    setEmailError(null);
-    setPasswordError(null);
-    const trimmedEmail = emailAddress.trim();
-    if (!trimmedEmail) {
-      setEmailError("Please enter your email.");
-      return;
-    }
-    if (!password) {
-      setPasswordError("Please enter your password.");
-      return;
-    }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setEmailError("Please enter a valid email address.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { error } = await signIn.password({ emailAddress: trimmedEmail, password });
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message);
-        }
-      } else if (signIn.status === "needs_client_trust") {
-        const emailCodeFactor = signIn.supportedSecondFactors?.find(
-          (factor) => factor.strategy === "email_code",
-        );
-        if (emailCodeFactor) {
-          const { error: sendError } = await signIn.mfa.sendEmailCode();
-          if (sendError) {
-            setError(sendError.message);
-            return;
-          }
-          setIsMfaVerifying(true);
-        } else {
-          setError("No email verification method is available.");
-        }
-      } else {
-        setError("Sign in failed. Please check your email and password.");
-      }
-    } catch {
-      setError("A network error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    void getLastAuthMethod().then((m) => {
+      if (m) setPreferred(m);
+    });
+  }, []);
 
-  const handleSignUp = async () => {
-    setError(null);
-    setEmailError(null);
-    setPasswordError(null);
-    const trimmedEmail = emailAddress.trim();
-    if (!trimmedEmail) {
-      setEmailError("Please enter your email.");
-      return;
-    }
-    if (!password) {
-      setPasswordError("Please enter your password.");
-      return;
-    }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setEmailError("Please enter a valid email address.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { error } = await signUp.password({ emailAddress: trimmedEmail, password });
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      const { error: sendError } = await signUp.verifications.sendEmailCode();
-      if (sendError) {
-        setError(sendError.message);
-        return;
-      }
-      setIsVerifying(true);
-    } catch {
-      setError("A network error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerify = async () => {
-    setError(null);
-    const trimmedCode = code.trim();
-    if (!trimmedCode) {
-      setError("Please enter the verification code.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { error } = await signUp.verifications.verifyEmailCode({
-        code: trimmedCode,
-      });
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      const { error: finalizeError } = await signUp.finalize();
-      if (finalizeError) {
-        setError(finalizeError.message);
-      }
-    } catch {
-      setError("A network error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleMfaVerify = async () => {
-    setError(null);
-    const trimmedCode = code.trim();
-    if (!trimmedCode) {
-      setError("Please enter the verification code.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      if (ssoSignIn) {
-        const updated = await ssoSignIn.attemptSecondFactor({
-          strategy: "email_code",
-          code: trimmedCode,
-        });
-        if (updated.status === "complete" && updated.createdSessionId) {
-          if (!ssoSetActive) {
-            setError("Session could not be activated. Please try again.");
-            return;
-          }
-          await ssoSetActive({ session: updated.createdSessionId });
-          return;
-        }
-        setError("Verification is not complete. Please try again.");
-        return;
-      }
-      const { error } = await signIn.mfa.verifyEmailCode({ code: trimmedCode });
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      if (signIn.status === "complete") {
-        const { error: finalizeError } = await signIn.finalize();
-        if (finalizeError) {
-          setError(finalizeError.message);
-        }
-      } else {
-        setError("Verification is not complete. Please try again.");
-      }
-    } catch {
-      setError("A network error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const { createdSessionId, setActive, signIn: ssoSignIn, signUp: ssoSignUp } =
-        await startSSOFlow({
-          strategy: "oauth_google",
-          redirectUrl: Linking.createURL("/", { scheme: "kinfinance" }),
-        });
-      if (createdSessionId) {
-        await setActive?.({ session: createdSessionId });
-        return;
-      }
-      if (ssoSignIn?.status === "needs_client_trust") {
-        const emailCodeFactor = ssoSignIn.supportedSecondFactors?.find(
-          (factor) => factor.strategy === "email_code",
-        );
-        if (emailCodeFactor) {
-          if (!setActive) {
-            setError(
-              "Google sign in could not be completed. Please try again.",
-            );
-            return;
-          }
-          await ssoSignIn.prepareSecondFactor({ strategy: "email_code" });
-          setSsoSignIn(ssoSignIn);
-          setSsoSetActive(setActive);
-          setIsMfaVerifying(true);
-          return;
-        }
-        setError("No email verification method is available.");
-        return;
-      }
-      if (ssoSignUp?.status === "missing_requirements") {
-        const missingFields = ssoSignUp.missingFields ?? [];
-        const updateParams: Record<string, string> = {};
-        if (missingFields.includes("password") && password) {
-          updateParams.password = password;
-        }
-        if (Object.keys(updateParams).length > 0) {
-          const updated = await ssoSignUp.update(updateParams);
-          if (updated.status === "complete" && updated.createdSessionId) {
-            await setActive?.({ session: updated.createdSessionId });
-            return;
-          }
-        }
-        setError(
-          "Google sign-up requires additional information. Please sign up with email instead.",
-        );
-        return;
-      }
-      setError("Google sign in failed. Please try again.");
-    } catch {
-      setError("Google sign in failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!successScreen) return;
+    const t = setTimeout(() => setSuccessScreen(null), 1500);
+    return () => clearTimeout(t);
+  }, [successScreen]);
 
   const resetVerification = () => {
-    setCode("");
-    setError(null);
-    setEmailError(null);
-    setPasswordError(null);
+    auth.setCode("");
+    reset.setCode("");
+    auth.setError(null);
+    auth.setEmailError(null);
+    auth.setPasswordError(null);
+    auth.setConfirmError(null);
   };
 
   const backToAuth = () => {
-    const wasMfa = isMfaVerifying;
-    setIsMfaVerifying(false);
-    setIsVerifying(false);
-    if (ssoSignIn) {
-      setSsoSignIn(null);
-      setSsoSetActive(null);
-    } else if (wasMfa) {
-      void signIn.reset();
-    } else {
-      void signUp.reset();
-    }
+    const wasMfa = auth.isMfaVerifying;
+    auth.resetAuth();
     resetVerification();
+    if (wasMfa) void auth.setIsMfaVerifying(false);
   };
+
+  const startReset = () => {
+    resetVerification();
+    reset.setResetStep("email");
+  };
+  const backToResetEmail = () => {
+    reset.setResetStep("email");
+    reset.setCode("");
+    auth.setError(null);
+  };
+  const cancelReset = () => {
+    reset.resetState();
+    auth.setError(null);
+    auth.setEmailError(null);
+    auth.setPasswordError(null);
+  };
+
+  const googlePrimary = preferred === "google";
+  const subtitle =
+    mode === "sign-in"
+      ? googlePrimary
+        ? "One tap to get back in with Google."
+        : "Welcome back. Sign in to your family's ledger."
+      : googlePrimary
+        ? "Join in one tap with Google."
+        : "Create an account and start your family's ledger.";
+  const dividerEmail = mode === "sign-in" ? "or sign in with email" : "or sign up with email";
+
+  const emailInputs = (
+    <>
+      <EmailField
+        value={auth.emailAddress}
+        onChange={auth.setEmailAddress}
+        error={auth.emailError}
+        badge={preferred === "email" ? "Last used" : undefined}
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+      />
+      <PasswordField
+        ref={passwordRef}
+        label="Password"
+        value={auth.password}
+        onChange={auth.setPassword}
+        error={auth.passwordError}
+        placeholder={mode === "sign-in" ? "Your password" : "Create a password"}
+        autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+        textContentType={mode === "sign-in" ? "password" : "newPassword"}
+        returnKeyType={mode === "sign-in" ? "go" : "next"}
+        onSubmitEditing={mode === "sign-in" ? auth.handleSignIn : () => confirmRef.current?.focus()}
+      />
+      {mode === "sign-up" ? (
+        <PasswordField
+          ref={confirmRef}
+          label="Confirm password"
+          value={auth.confirmPassword}
+          onChange={auth.setConfirmPassword}
+          error={auth.confirmError}
+          placeholder="Re-enter password"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          onSubmitEditing={auth.handleSignUp}
+        />
+      ) : null}
+      {mode === "sign-in" ? (
+        <Pressable onPress={startReset} accessibilityRole="button" className="min-h-12 items-end justify-center">
+          <Text className="text-sm font-medium text-primary dark:text-primary-dark">Forgot password?</Text>
+        </Pressable>
+      ) : null}
+      {auth.error ? (
+        <Text accessibilityLiveRegion="polite" className="text-center text-sm text-error dark:text-error-dark">
+          {auth.error}
+        </Text>
+      ) : null}
+    </>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        contentContainerClassName="flex-grow justify-center px-4 py-10"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={16}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-10"
-          keyboardShouldPersistTaps="handled"
-        >
-          <View className="items-center gap-6">
-            <LinearGradient
-              colors={gradients.card}
-              style={[
-                Shadow.card,
-                {
-                  width: 96,
-                  height: 96,
-                  borderRadius: Radius.lg,
-                  borderWidth: 1,
-                  borderColor: C.primaryLight,
-                },
-              ]}
-              className="items-center justify-center"
-            >
-              <Feather name="home" size={40} color={C.primary} />
-            </LinearGradient>
-
-            {isMfaVerifying || isVerifying ? (
-              <View className="w-full gap-4">
-                <View className="items-center gap-2">
-                  <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-                    {isMfaVerifying
-                      ? "Security Check"
-                      : "Check Your Email"}
-                  </Text>
-                  <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
-                    {isMfaVerifying
-                      ? "Enter the verification code sent to your email."
-                      : "Enter the verification code we sent to you."}
-                  </Text>
-                </View>
-                <Input
-                  value={code}
-                  placeholder="Verification code"
-                  onChangeText={setCode}
-                  keyboardType="numeric"
-                  error={error}
-                />
-                <Button
-                  title="Verify"
-                  onPress={isMfaVerifying ? handleMfaVerify : handleVerify}
-                  loading={isLoading}
-                />
-                <Pressable
-                  onPress={backToAuth}
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center py-2"
-                >
-                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                    Back
-                  </Text>
-                </Pressable>
+        <View className="items-center gap-6">
+          <Image source={require("../assets/images/splash-icon.png")} style={{ width: 200, height: 200 }} resizeMode="contain" />
+          {successScreen ? (
+            <View className="w-full gap-4">
+              <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
+                {successScreen === "verify" ? "You're all set" : "Password updated"}
+              </Text>
+              <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
+                {successScreen === "verify" ? "Welcome to your family's ledger." : "Welcome back to your family's ledger."}
+              </Text>
+            </View>
+          ) : auth.isMfaVerifying || auth.isVerifying ? (
+            <View className="w-full gap-4">
+              <View className="items-center gap-2">
+                <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
+                  {auth.isMfaVerifying ? "A quick check" : "Check your email"}
+                </Text>
+                <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
+                  {auth.isMfaVerifying ? "Enter the code we emailed you to keep your family's money safe." : "Enter the 6-digit code we sent to your email."}
+                </Text>
               </View>
-            ) : (
-              <View className="w-full gap-4">
-                <View className="items-center gap-2">
-                  <Text className="text-center text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-                    Kin Finance
-                  </Text>
-                  <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
-                    {mode === "sign-in"
-                      ? "Welcome back. Sign in to continue."
-                      : "Create an account to get started."}
-                  </Text>
-                </View>
-                <Input
-                  value={emailAddress}
-                  placeholder="Email"
-                  onChangeText={setEmailAddress}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  error={emailError}
-                />
-                <Input
-                  value={password}
-                  placeholder="Password"
-                  secureTextEntry
-                  onChangeText={setPassword}
-                  error={passwordError}
-                />
-                {error ? (
-                  <Text className="text-center text-sm text-error dark:text-error-dark">{error}</Text>
-                ) : null}
-                <Button
-                  title={mode === "sign-in" ? "Sign In" : "Sign Up"}
-                  onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-                  loading={isLoading}
-                />
-                <Button
-                  title="Continue with Google"
-                  variant="secondary"
-                  onPress={handleGoogle}
-                  disabled={isLoading}
-                />
-                <Pressable
-                  onPress={() => {
-                    setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-                    setError(null);
-                    setEmailError(null);
-                    setPasswordError(null);
-                  }}
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center py-2"
-                >
-                  <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                    {mode === "sign-in"
-                      ? "Don't have an account? Sign up"
-                      : "Already have an account? Sign in"}
-                  </Text>
-                </Pressable>
+              <CodeField
+                value={auth.code}
+                onChange={auth.setCode}
+                error={auth.error}
+                onSubmitEditing={auth.isMfaVerifying ? auth.handleMfaVerify : auth.handleVerify}
+              />
+              <Button title="Verify" onPress={auth.isMfaVerifying ? auth.handleMfaVerify : auth.handleVerify} loading={auth.isLoading} />
+              <Pressable onPress={backToAuth} accessibilityRole="button" className="min-h-12 items-center justify-center py-2">
+                <Text className="text-sm font-medium text-primary dark:text-primary-dark">Back</Text>
+              </Pressable>
+            </View>
+          ) : reset.resetStep ? (
+            <ResetFlow
+              resetStep={reset.resetStep}
+              emailAddress={auth.emailAddress}
+              onEmailChange={auth.setEmailAddress}
+              emailError={auth.emailError}
+              code={reset.code}
+              onCodeChange={reset.setCode}
+              resetPassword={reset.resetPassword}
+              onResetPasswordChange={reset.setResetPassword}
+              passwordError={auth.passwordError}
+              error={auth.error}
+              isLoading={reset.isLoading}
+              onSendCode={reset.handleSendResetCode}
+              onResendCode={reset.handleResendResetCode}
+              onVerifyCode={reset.handleVerifyResetCode}
+              onSubmitPassword={reset.handleSubmitNewPassword}
+              onBackToEmail={backToResetEmail}
+              onCancel={cancelReset}
+            />
+          ) : (
+            <View className="w-full gap-4">
+              <View className="items-center gap-2">
+                <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">{subtitle}</Text>
               </View>
-            )}
-            <View nativeID="clerk-captcha" />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              {googlePrimary ? (
+                <>
+                  {emailInputs}
+                  <Button
+                    title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                    variant="secondary"
+                    onPress={mode === "sign-in" ? auth.handleSignIn : auth.handleSignUp}
+                    loading={auth.isLoading}
+                    disabled={auth.isGoogleLoading}
+                  />
+                  <Divider text="or continue with Google" />
+                  <GoogleButton badge="Last used" loading={auth.isGoogleLoading} disabled={auth.isLoading} onPress={auth.handleGoogle} />
+                </>
+              ) : (
+                <>
+                  <GoogleButton
+                    loading={auth.isGoogleLoading}
+                    disabled={auth.isLoading}
+                    onPress={auth.handleGoogle}
+                    variant="secondary"
+                  />
+                  <Divider text={dividerEmail} />
+                  {emailInputs}
+                  <Button
+                    title={mode === "sign-in" ? "Sign In" : "Sign Up"}
+                    onPress={mode === "sign-in" ? auth.handleSignIn : auth.handleSignUp}
+                    loading={auth.isLoading}
+                    disabled={auth.isGoogleLoading}
+                  />
+                </>
+              )}
+              <Pressable
+                onPress={() => {
+                  setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+                  auth.setError(null);
+                  auth.setEmailError(null);
+                  auth.setPasswordError(null);
+                  auth.setConfirmError(null);
+                  auth.setPassword("");
+                  auth.setConfirmPassword("");
+                }}
+                accessibilityRole="button"
+                className="min-h-12 items-center justify-center py-2"
+              >
+                <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                  {mode === "sign-in" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          <View nativeID="clerk-captcha" />
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

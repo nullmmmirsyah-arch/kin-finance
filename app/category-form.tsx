@@ -2,24 +2,26 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Switch,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
+import { validateCategoryName, CATEGORY_NAME_MAX } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
+import { useDiscardGuard } from "@/hooks/useDiscardGuard";
+import { getConvexErrorMessage } from "@/lib/errors";
+import { hapticSuccess } from "@/lib/haptics";
 
 export default function CategoryForm() {
   const router = useRouter();
@@ -57,20 +59,34 @@ export default function CategoryForm() {
 
   const trimmedName = name.trim();
   const canSubmit =
-    trimmedName.length >= 2 &&
-    trimmedName.length <= 30 &&
+    validateCategoryName(trimmedName) === null &&
     !isLoading &&
     result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
 
+  const isDirty = useMemo(() => {
+    if (!isEdit) {
+      return (
+        name.trim() !== "" ||
+        type !== "expense" ||
+        hidden !== false
+      );
+    }
+    if (!editingCategory) return false;
+    return (
+      name !== editingCategory.name ||
+      type !== editingCategory.type ||
+      hidden !== editingCategory.hidden
+    );
+  }, [isEdit, editingCategory, name, type, hidden]);
+
+  const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
+
   const handleSubmit = async () => {
     setError(null);
-    if (trimmedName.length < 2) {
-      setError("Category name must be at least 2 characters.");
-      return;
-    }
-    if (trimmedName.length > 30) {
-      setError("Category name must be at most 30 characters.");
+    const err = validateCategoryName(trimmedName);
+    if (err) {
+      setError(err);
       return;
     }
 
@@ -91,14 +107,14 @@ export default function CategoryForm() {
         });
       }
       show(isEdit ? "Category updated" : "Category created");
+      void hapticSuccess();
+      markIntentional();
       router.back();
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : isEdit
-            ? "Failed to update category."
-            : "Failed to create category.";
+      const message = getConvexErrorMessage(
+        e,
+        isEdit ? "Failed to update category." : "Failed to create category.",
+      );
       setError(message);
     } finally {
       setIsLoading(false);
@@ -133,13 +149,10 @@ export default function CategoryForm() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View className="flex-1">
         <View className="flex-row items-center gap-2 px-5 pt-4">
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 48, height: 48 }}
@@ -152,16 +165,18 @@ export default function CategoryForm() {
           </Text>
         </View>
 
-        <ScrollView
+        <KeyboardAwareScrollView
+          className="flex-1"
           contentContainerClassName="gap-4 px-5 py-6"
           keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
         >
           <Input
             label="Category name"
             placeholder="e.g. Food, Salary"
             value={name}
             onChangeText={setName}
-            maxLength={30}
+            maxLength={CATEGORY_NAME_MAX}
             error={error}
           />
 
@@ -207,8 +222,8 @@ export default function CategoryForm() {
             loading={isLoading}
             disabled={!canSubmit}
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </SafeAreaView>
   );
 }

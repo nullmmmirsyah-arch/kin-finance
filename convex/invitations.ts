@@ -1,14 +1,14 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
+import { INVITE_CHARSET, INVITE_CODE_LENGTH } from "../constants/validation";
 
-const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const CODE_LENGTH = 8;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function generateCode(): string {
-  const bytes = new Uint8Array(CODE_LENGTH);
+  const bytes = new Uint8Array(INVITE_CODE_LENGTH);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => CHARSET[b % CHARSET.length]).join("");
+  return Array.from(bytes, (b) => INVITE_CHARSET[b % INVITE_CHARSET.length]).join("");
 }
 
 async function hmacHash(data: string, secret: string): Promise<string> {
@@ -26,43 +26,11 @@ async function hmacHash(data: string, secret: string): Promise<string> {
     .join("");
 }
 
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
-
 export const create = mutation({
   args: {},
   handler: async (ctx) => {
     const { user, membership } = await getUserAndMembership(ctx);
-
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
+    requireOwner(membership);
 
     const secret = process.env.INVITE_SECRET;
     if (!secret) {
@@ -71,6 +39,17 @@ export const create = mutation({
 
     const now = Date.now();
     const expiresAt = now + SEVEN_DAYS_MS;
+
+    // P0-1: auto-revoke previous active invites so only one active code exists
+    const previousActive = await ctx.db
+      .query("invitations")
+      .withIndex("by_householdId", (q) => q.eq("householdId", membership.householdId))
+      .collect();
+    for (const inv of previousActive) {
+      if (!inv.revoked && inv.expiresAt > now && inv.useCount < inv.maxUses) {
+        await ctx.db.patch(inv._id, { revoked: true, updatedAt: now });
+      }
+    }
 
     let code: string;
     let codeHash: string;
@@ -118,18 +97,9 @@ export const revoke = mutation({
   args: { invitationId: v.id("invitations") },
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
 
-    if (membership.role !== "owner") {
-      throw new ConvexError("You are not the owner of this household.");
-    }
-
-    const invitation = await ctx.db.get(args.invitationId);
-    if (
-      invitation === null ||
-      invitation.householdId !== membership.householdId
-    ) {
-      throw new ConvexError("Invitation not found.");
-    }
+    const invitation = await getScopedDoc(ctx, args.invitationId, membership.householdId, "Invitation");
 
     await ctx.db.patch(args.invitationId, {
       revoked: true,
@@ -244,31 +214,14 @@ export const redeem = mutation({
 export const listActive = query({
   args: { householdId: v.id("households") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return [];
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
+    const result = await findUserAndMembership(ctx);
     if (
-      membership === null ||
-      membership.householdId !== args.householdId
+      result === null ||
+      result.membership.householdId !== args.householdId
     ) {
+      return [];
+    }
+    if (result.membership.role !== "owner") {
       return [];
     }
 

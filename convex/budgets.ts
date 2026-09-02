@@ -1,34 +1,8 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "./_generated/server";
-
-async function getUserAndMembership(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity === null) {
-    throw new ConvexError("You are not signed in.");
-  }
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_tokenIdentifier", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-
-  if (user === null) {
-    throw new ConvexError("User not found.");
-  }
-
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
-
-  if (membership === null) {
-    throw new ConvexError("You are not a member of a household.");
-  }
-
-  return { user, membership };
-}
+import { mutation, query } from "./_generated/server";
+import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
+import { validateBudgetAmount } from "../constants/validation";
+import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 
 export const list = query({
   args: {
@@ -36,31 +10,11 @@ export const list = query({
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return { budgets: null, isOwner: false };
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return { budgets: null, isOwner: false };
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return { budgets: null, isOwner: false };
-    }
-
+    const { membership } = auth;
     const isOwner = membership.role === "owner";
 
     if (args.periodEnd <= args.periodStart) {
@@ -116,13 +70,14 @@ export const list = query({
       const category = categoryMap.get(budget.categoryId);
       const spent = spendingByCategory.get(budget.categoryId) ?? 0;
       const progress = budget.amount > 0 ? spent / budget.amount : 0;
+      const redacted = !isOwner && category?.hidden === true;
       return {
         ...budget,
         category: category
           ? { _id: category._id, name: category.name, hidden: category.hidden }
           : undefined,
-        spent,
-        progress,
+        spent: redacted ? undefined : spent,
+        progress: redacted ? undefined : progress,
       };
     });
 
@@ -133,30 +88,11 @@ export const list = query({
 export const get = query({
   args: { budgetId: v.id("budgets") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return null;
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return null;
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return null;
-    }
+    const { membership } = auth;
 
     const budget = await ctx.db.get(args.budgetId);
     if (budget === null || budget.householdId !== membership.householdId) {
@@ -177,30 +113,11 @@ export const get = query({
 export const categoryOptions = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) {
       return [];
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_tokenIdentifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-
-    if (user === null) {
-      return [];
-    }
-
-    const membership = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (membership === null) {
-      return [];
-    }
+    const { membership } = auth;
 
     const categories = await ctx.db
       .query("categories")
@@ -210,7 +127,7 @@ export const categoryOptions = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("type"), "expense"),
-          q.neq(q.field("name"), "Initial Balance"),
+          q.neq(q.field("name"), RESERVED_CATEGORY_NAME),
         ),
       )
       .collect();
@@ -228,17 +145,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    if (!Number.isFinite(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be at least 1.");
-    }
+    const err = validateBudgetAmount(args.amount);
+    if (err) throw new ConvexError(err);
 
-    const category = await ctx.db.get(args.categoryId);
-    if (
-      category === null ||
-      category.householdId !== membership.householdId
-    ) {
-      throw new ConvexError("Category not found.");
-    }
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
 
     if (category.type !== "expense") {
       throw new ConvexError("Cannot create budget for an income category.");
@@ -281,14 +191,10 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { user, membership } = await getUserAndMembership(ctx);
 
-    const budget = await ctx.db.get(args.budgetId);
-    if (budget === null || budget.householdId !== membership.householdId) {
-      throw new ConvexError("Budget not found.");
-    }
+    const budget = await getScopedDoc(ctx, args.budgetId, membership.householdId, "Budget");
 
-    if (!Number.isFinite(args.amount) || args.amount < 1) {
-      throw new ConvexError("Amount must be at least 1.");
-    }
+    const err = validateBudgetAmount(args.amount);
+    if (err) throw new ConvexError(err);
 
     const now = Date.now();
     await ctx.db.patch(args.budgetId, {
@@ -306,10 +212,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const { membership } = await getUserAndMembership(ctx);
 
-    const budget = await ctx.db.get(args.budgetId);
-    if (budget === null || budget.householdId !== membership.householdId) {
-      throw new ConvexError("Budget not found.");
-    }
+    const budget = await getScopedDoc(ctx, args.budgetId, membership.householdId, "Budget");
 
     await ctx.db.delete(args.budgetId);
   },
