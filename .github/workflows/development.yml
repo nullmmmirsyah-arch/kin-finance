@@ -114,19 +114,27 @@ jobs:
           echo "Fetching last finished development build (retry 3x)..."
           LAST_HASH=""
           LAST_ID=""
-          LAST_JSON="[]"
+          LAST_JSON=""
           for i in 1 2 3; do
-            LAST_JSON=$(eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive 2> /tmp/list.log || echo "[]")
-            LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty' 2>/dev/null || echo "")
-            LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty' 2>/dev/null || echo "")
-            if [ -n "$LAST_HASH" ]; then break; fi
-            echo "Attempt $i: build:list gagal / empty, log:"; cat /tmp/list.log || true; echo "LAST_JSON: $LAST_JSON"; sleep 3
+            if eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive > /tmp/list.json 2> /tmp/list.log; then
+              LAST_JSON=$(cat /tmp/list.json)
+              LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty' 2>/dev/null || echo "")
+              LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty' 2>/dev/null || echo "")
+              if [ -n "$LAST_HASH" ] || [ "$LAST_JSON" = "[]" ]; then break; fi
+              echo "Attempt $i: empty hash but JSON=$LAST_JSON, retry..."
+            else
+              echo "Attempt $i: build:list failed, log:"; cat /tmp/list.log || true; LAST_JSON=""; sleep 3
+            fi
           done
-          # Fallback ke cache GitHub jika EAS 503/400 (Our services aren't available)
-          if [ -z "$LAST_HASH" ] && [ -f /tmp/fp-cache/last_hash.txt ]; then
+          # Fallback ke cache GitHub jika EAS 503/400 (Our services aren't available) — hanya jika fetch gagal (LAST_JSON=="")
+          if [ -z "$LAST_JSON" ] && [ -f /tmp/fp-cache/last_hash.txt ]; then
             LAST_HASH=$(cat /tmp/fp-cache/last_hash.txt | tr -d '\r\n' | xargs || true)
             LAST_ID=$(cat /tmp/fp-cache/last_id.txt 2>/dev/null | tr -d '\r\n' | xargs || true)
             echo "Fallback cache: LAST_HASH=$LAST_HASH LAST_ID=$LAST_ID"
+          elif [ -z "$LAST_JSON" ]; then
+            echo "::error::Gagal fetch last fingerprint (EAS 503 + cache kosong) — failing workflow"
+            cat /tmp/list.log 2>/dev/null || true
+            exit 1
           fi
           echo "Last build id: ${LAST_ID:-<none>}"
           echo "Last hash: ${LAST_HASH:-<none>}"
@@ -136,7 +144,6 @@ jobs:
           mkdir -p /tmp/fp-cache
           [ -n "$LAST_HASH" ] && echo "$LAST_HASH" > /tmp/fp-cache/last_hash.txt
           [ -n "$LAST_ID" ] && echo "$LAST_ID" > /tmp/fp-cache/last_id.txt
-          # Juga simpan current untuk next run jika build baru
           echo "$CURRENT_HASH" > /tmp/fp-cache/current_hash.txt
 
           # Optional deep compare (untuk log diff). Tidak menggagalkan job.
@@ -145,11 +152,18 @@ jobs:
             eas fingerprint:compare --build-id "$LAST_ID" --json --non-interactive 2>/dev/null | jq '.' || true
           fi
 
+          # Jika gagal baca fingerprint (LAST_JSON=="" sudah handled di atas) — jika LAST_HASH kosong karena truly no previous build (LAST_JSON=="[]"), allow build
+          if [ -z "$LAST_HASH" ] && [ "$LAST_JSON" = "[]" ]; then
+            echo "No previous finished build → need_build=true"
+            echo "need_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::need_build=true current=$CURRENT_HASH last=none (no previous build)"
+            exit 0
+          elif [ -z "$LAST_HASH" ]; then
+            echo "::error::Gagal fetch last fingerprint — failing workflow"
+            exit 1
+          fi
           NEED_BUILD="false"
-          if [ -z "$LAST_HASH" ]; then
-            echo "No previous finished build (EAS + cache kosong) → need_build=true (safe)"
-            NEED_BUILD="true"
-          elif [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
+          if [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
             echo "Fingerprint berbeda (native/config berubah) → need_build=true"
             NEED_BUILD="true"
           else
