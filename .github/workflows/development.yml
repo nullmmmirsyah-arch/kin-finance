@@ -89,4 +89,4 @@ jobs:
           EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
           EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        run: eas update --channel development --message "Dev update from ${{ github.sha }}" --auto --non-interactive
+        run: eas update --channel development --auto --non-interactive
