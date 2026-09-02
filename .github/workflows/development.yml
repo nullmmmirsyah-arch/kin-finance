@@ -83,4 +83,4 @@ jobs:
       - name: Publish update to development channel
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas update --platform android --channel development --auto --non-interactive
+        run: eas update --platform android --channel development --environment development --auto --non-interactive
