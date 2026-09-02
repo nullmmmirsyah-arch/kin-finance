@@ -1,6 +1,7 @@
 name: Development (review)
 
-# Flow: manual trigger only (solo, expo start cukup untuk JS) → centang run_build jika native berubah
+# Full manual: solo expo start cukup untuk JS → centang run_build hanya jika native berubah.
+# No fingerprint — fingerprint lokal vs EAS selalu beda (env mismatch), jadi manual lebih jujur.
 # Docs: https://docs.expo.dev/build/eas-json/
 on:
   workflow_dispatch:
@@ -34,124 +35,9 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
 
-  fingerprint:
-    name: Check fingerprint
-    needs: check
-    runs-on: ubuntu-latest
-    outputs:
-      need_build: ${{ steps.compare.outputs.need_build }}
-      current_hash: ${{ steps.compare.outputs.current_hash }}
-      last_hash: ${{ steps.compare.outputs.last_hash }}
-      last_build_id: ${{ steps.compare.outputs.last_build_id }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - name: Restore fingerprint cache (fallback saat EAS 503)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/fp-cache
-          key: fp-development-last-hash
-      - run: npm ci
-      - name: Compare fingerprint vs last development build
-        id: compare
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          echo "Generating current fingerprint (android, profile development)..."
-          # Ref: `eas fingerprint:generate --help` — --json "Enable JSON output, non-JSON messages will be printed to stderr."
-          # Reality (SDK 54, eas-cli 21.7.1): stdout masih prefix "Environment variables..." sebelum JSON, jadi extract JSON part.
-          eas fingerprint:generate --platform android --environment development --json --non-interactive > /tmp/fp.json 2> /tmp/fp.log || true
-          cat /tmp/fp.log
-          echo "--- stdout raw (first 3 lines) ---"
-          head -n 3 /tmp/fp.json || true
-          awk '/^\{/ {f=1} f' /tmp/fp.json > /tmp/fp.clean.json || true
-          CURRENT_HASH=$(jq -r '.hash // empty' /tmp/fp.clean.json 2>/dev/null | tr -d '\r\n' | xargs || true)
-          if [ -z "$CURRENT_HASH" ]; then
-            echo "::error::Gagal generate fingerprint current — clean JSON:"
-            cat /tmp/fp.clean.json 2>/dev/null || cat /tmp/fp.json 2>/dev/null || true
-            echo "--- stderr log ---"
-            cat /tmp/fp.log 2>/dev/null || true
-            exit 1
-          fi
-          echo "Current hash: $CURRENT_HASH"
-          echo "current_hash=$CURRENT_HASH" >> "$GITHUB_OUTPUT"
-
-          echo "Fetching last finished development build (retry 3x)..."
-          LAST_HASH=""
-          LAST_ID=""
-          LAST_JSON=""
-          for i in 1 2 3; do
-            if eas build:list --platform android --profile development --limit 1 --status finished --json --non-interactive > /tmp/list.json 2> /tmp/list.log; then
-              LAST_JSON=$(cat /tmp/list.json)
-              LAST_HASH=$(echo "$LAST_JSON" | jq -r '.[0].fingerprint.hash // empty' 2>/dev/null || echo "")
-              LAST_ID=$(echo "$LAST_JSON" | jq -r '.[0].id // empty' 2>/dev/null || echo "")
-              if [ -n "$LAST_HASH" ] || [ "$LAST_JSON" = "[]" ]; then break; fi
-              echo "Attempt $i: empty hash but JSON=$LAST_JSON, retry..."
-            else
-              echo "Attempt $i: build:list failed, log:"; cat /tmp/list.log || true; LAST_JSON=""; sleep 3
-            fi
-          done
-          # Fallback ke cache GitHub jika EAS 503/400 (Our services aren't available) — hanya jika fetch gagal (LAST_JSON=="")
-          if [ -z "$LAST_JSON" ] && [ -f /tmp/fp-cache/last_hash.txt ]; then
-            LAST_HASH=$(cat /tmp/fp-cache/last_hash.txt | tr -d '\r\n' | xargs || true)
-            LAST_ID=$(cat /tmp/fp-cache/last_id.txt 2>/dev/null | tr -d '\r\n' | xargs || true)
-            echo "Fallback cache: LAST_HASH=$LAST_HASH LAST_ID=$LAST_ID"
-          elif [ -z "$LAST_JSON" ]; then
-            echo "::error::Gagal fetch last fingerprint (EAS 503 + cache kosong) — failing workflow"
-            cat /tmp/list.log 2>/dev/null || true
-            exit 1
-          fi
-          echo "Last build id: ${LAST_ID:-<none>}"
-          echo "Last hash: ${LAST_HASH:-<none>}"
-          echo "last_hash=$LAST_HASH" >> "$GITHUB_OUTPUT"
-          echo "last_build_id=$LAST_ID" >> "$GITHUB_OUTPUT"
-          # Simpan untuk cache next run (actions/cache akan persist /tmp/fp-cache)
-          mkdir -p /tmp/fp-cache
-          [ -n "$LAST_HASH" ] && echo "$LAST_HASH" > /tmp/fp-cache/last_hash.txt
-          [ -n "$LAST_ID" ] && echo "$LAST_ID" > /tmp/fp-cache/last_id.txt
-          echo "$CURRENT_HASH" > /tmp/fp-cache/current_hash.txt
-
-          # Optional deep compare (untuk log diff). Tidak menggagalkan job.
-          if [ -n "$LAST_ID" ]; then
-            echo "Running eas fingerprint:compare for debug..."
-            eas fingerprint:compare --build-id "$LAST_ID" --json --non-interactive 2>/dev/null | jq '.' || true
-          fi
-
-          # Jika gagal baca fingerprint (LAST_JSON=="" sudah handled di atas) — jika LAST_HASH kosong karena truly no previous build (LAST_JSON=="[]"), allow build
-          if [ -z "$LAST_HASH" ] && [ "$LAST_JSON" = "[]" ]; then
-            echo "No previous finished build → need_build=true"
-            echo "need_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::need_build=true current=$CURRENT_HASH last=none (no previous build)"
-            exit 0
-          elif [ -z "$LAST_HASH" ]; then
-            echo "::error::Gagal fetch last fingerprint — failing workflow"
-            exit 1
-          fi
-          NEED_BUILD="false"
-          if [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
-            echo "Fingerprint berbeda (native/config berubah) → need_build=true"
-            NEED_BUILD="true"
-          else
-            echo "Fingerprint sama (hanya JS) → need_build=false (skip, expo start cukup)"
-            NEED_BUILD="false"
-          fi
-          echo "need_build=$NEED_BUILD" >> "$GITHUB_OUTPUT"
-          echo "::notice::need_build=$NEED_BUILD current=$CURRENT_HASH last=${LAST_HASH:-none}"
-
   build:
     name: Build development (Android)
-    needs: fingerprint
+    needs: check
     if: inputs.run_build == true
     runs-on: ubuntu-latest
     steps:
@@ -167,13 +53,10 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - name: Build APK development (fingerprint changed)
+      - name: Build APK development
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
           EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        run: |
-          echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }} (${{ needs.fingerprint.outputs.last_build_id }})"
-          eas build --platform android --profile development --non-interactive --no-wait
-      # JS-only (fingerprint sama) → skip, expo start cukup untuk solo (tidak boros MAU). EAS Update development tidak auto.
+        run: eas build --platform android --profile development --non-interactive --no-wait
