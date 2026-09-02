@@ -13,7 +13,7 @@ on:
       publish_update:
         description: "Publish EAS Update (OTA) ke channel development"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -63,7 +63,7 @@ jobs:
           EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL }}
           EXPO_PUBLIC_CONVEX_SITE_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_SITE_URL }}
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-        run: eas build --platform android --profile development --non-interactive --no-wait
+        run: eas build --platform android --profile development --non-interactive
 
   publish-update:
     name: Publish EAS Update
