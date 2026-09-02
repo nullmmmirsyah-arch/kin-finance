@@ -4,20 +4,6 @@ name: Development (review)
 # - PR feat→review & push review keduanya trigger; fingerprint sama → OTA, beda → build baru
 # Docs: https://docs.expo.dev/build/eas-json/ , https://docs.expo.dev/eas-update/how-it-works/ , https://docs.expo.dev/develop/development-builds/development-workflows/
 on:
-  pull_request:
-    branches: [review]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "convex/**"
-      - "constants/**"
-      - "hooks/**"
-      - "lib/**"
-      - "utils/**"
-      - "assets/**"
-      - "app.config.js"
-      - "eas.json"
-      - "package.json"
   push:
     branches: [review]
     paths:
@@ -228,4 +214,4 @@ jobs:
         run: |
           echo "Fingerprint sama — publish update saja"
           echo "Current: ${{ needs.fingerprint.outputs.current_hash }} | Last: ${{ needs.fingerprint.outputs.last_hash }}"
-          eas update --channel development --message "dev review ${{ github.sha }}" --auto --non-interactive
+          eas update --branch development --message "dev review ${{ github.sha }}" --non-interactive
