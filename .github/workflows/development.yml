@@ -1,23 +1,14 @@
 name: Development (review)
 
-# Flow: push review → fingerprint guard → build native only (JS skip, expo start cukup untuk solo)
-# Docs: https://docs.expo.dev/build/eas-json/ , https://docs.expo.dev/eas-update/how-it-works/
+# Flow: manual trigger only (solo, expo start cukup untuk JS) → centang run_build jika native berubah
+# Docs: https://docs.expo.dev/build/eas-json/
 on:
-  push:
-    branches: [review]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "convex/**"
-      - "constants/**"
-      - "hooks/**"
-      - "lib/**"
-      - "utils/**"
-      - "assets/**"
-      - "app.config.js"
-      - "eas.json"
-      - "package.json"
   workflow_dispatch:
+    inputs:
+      run_build:
+        description: "Build native development (centang jika native berubah)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -161,7 +152,7 @@ jobs:
   build:
     name: Build development (Android)
     needs: fingerprint
-    if: needs.fingerprint.outputs.need_build == 'true'
+    if: inputs.run_build == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
