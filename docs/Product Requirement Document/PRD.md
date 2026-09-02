@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-01 (Home household card — name + Household, remove member count; + CI/CD workflow)
+> Last updated: 2026-09-01 (Accounts FAB label Add Account; Home household card)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`
 
 ---
@@ -947,6 +947,7 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-01 | Polish | **Accounts FAB label**: `app/(tabs)/accounts.tsx:319` add `label="Add Account"` to `Fab` (pill with plus + text, `components/Fab.tsx:34` labeled variant) to match `transactions` `Fab label="Add Transaction"`; owner-only. PRD §3.4. |
 | 2026-09-01 | Polish | **Home household card — name + Household, remove member count**: `app/(tabs)/home.tsx:453` change `{household.name}` → `{household.name} Household` and remove `members` query + badge (`Feather users` + `memberLabel` "N members", `C.surface` pill); household card now centered name + " Household" only. PRD §3.8, §5.2. |
 | 2026-09-01 | Feature | **CI/CD development workflow**: add `.github/workflows/development.yml` — `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`), `check` (`tsc`/`lint`), `fingerprint` (`eas fingerprint:generate --environment development` vs `eas build:list --status finished` + `fingerprint:compare`, `need_build` via `jq` + `awk` JSON extract for stdout prefix), `build` (`eas build --profile development`) when native changed else `update` (`eas update --channel development`); GitHub Actions chosen over EAS Workflows (log diff, reuse `secrets.EXPO_TOKEN`). Document in §5.8 (PR feat→review → fingerprint guard → update/build → manual test via dev-client Extensions/QR → merge) + §8. |
 | 2026-09-01 | Fix | **CodeRabbit review batch (4 major + 2 minor)**: `convex/periodBalances.ts:48` add `hiddenAccountCache` alongside `hiddenCategoryCache` — member `buildExpectedMap` now skips `account.hidden` before `category.hidden` (prevents member leak on hidden accounts, review major 52-60); `periodBalances.ts:10-35` introduce `validateTimezone` + `resolveEffectiveTimezone(household.timezone, args.timezone)` in `get`/`listWindow` and persist concrete IANA at `households.create` (`getCalendars()[0].timeZone ?? "UTC"`) so stored `periodStart` keys (`getPeriodBounds`) match requested keys (review major timezone 17); `app/(tabs)/home.tsx:147` period timer now deps `[currentPeriodBounds.end, nowTick]` re-arms capped `MAX_TIMEOUT` via `nowTick` updates until actual boundary (review major 153-155); `home.tsx:363` add `isPrevDisabled` (`selectedPeriodStart <= pagerPeriods[0].periodStart`) + guard `handlePrev` and `disabled`/`opacity 0.4` on Previous chevron (review major 541 — prevents selecting outside 12-period `buildPeriodWindow` window); `docs/superpowers/specs/2026-08-31-period-handling-design.md:129` `balanceMode ?? "carryOver"` → `?? "fresh"` to match `households.balanceMode` default + `periodBalances` fallback; `tests/home-period.manual.md:17` relax `+` prefix requirement for period net text while retaining closingBalance match. Updates §3.8, §3.10, verification `npx tsc --noEmit` + `npm run lint` + `npm test` + `coderabbit review --agent` clean. |
