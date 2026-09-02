@@ -440,7 +440,7 @@ export default function Home() {
       <View className="px-5 pb-2 pt-4">
         <View className="mb-3 flex-row items-center justify-between">
           <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            Hello, {firstName}!
+            Hi, {firstName}!
           </Text>
         </View>
 
