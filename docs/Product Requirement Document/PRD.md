@@ -681,12 +681,12 @@ redistribution; JS-only changes can ship via `eas update --channel production`. 
 **Branches & channels:** `review` → `development` (internal APK, `eas.json:development` `developmentClient:true`, `channel:development`, `APP_VARIANT=development`), `main` → `production` (APK internal via `release.yml`). Feature branches `feat/*` are short-lived.
 
 **Flow (PR feat→review → manual test → merge):**
-1. Push `feat/*` → open PR `feat/* → review` triggers `.github/workflows/development.yml` `on.pull_request.branches:[review]` + `on.push.branches:[review]` (+ `workflow_dispatch`).
-2. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
-3. `fingerprint` job: `eas fingerprint:generate --platform android --profile development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id`; `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)`.
-4. `need_build==false` (JS only) → `eas update --channel development --auto`; `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`.
-5. Preview on dev build via `expo-dev-client` Extensions panel / deep link `kinfinance://expo-development-client/?url=https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b?channel-name=development` / QR `https://qr.expo.dev/development-client?appScheme=kinfinance&url=...` (see `develop/development-builds/development-workflows`).
-6. Merge PR → `push: review` reruns same fingerprint guard as final gate (quota-safe via `concurrency: development-review` + `paths` filter `app/**,convex/**,app.config.js,eas.json`); `runtimeVersion: appVersion` (`app.config.js`) so guard prevents publishing native-breaking OTA.
+1. Push `feat/*` → open PR `feat/* → review` (manual test via `expo start`, no CI trigger).
+2. Merge PR → `push: review` triggers `.github/workflows/development.yml` `on.push.branches:[review]` (+ `workflow_dispatch`, `paths` filter `app/**,convex/**,app.config.js,eas.json`).
+3. `check` job: `npx tsc --noEmit` + `npm run lint` (must pass before fingerprint).
+4. `fingerprint` job: `eas fingerprint:generate --platform android --environment development --json` → `current_hash`; `eas build:list --platform android --profile development --status finished --limit 1 --json` → `last_hash`/`last_build_id` (retry 3x + cache fallback; fail if fetch gagal); `eas fingerprint:compare --build-id` for debug log. `need_build = (last_hash==null || current_hash != last_hash)` (fail if EAS 503, jangan fallback build).
+5. `need_build==false` (JS only) → `eas update --branch development`; `need_build==true` (native: `app.config.js` plugins, `package.json` native deps, `eas.json`) → `eas build --platform android --profile development --non-interactive --no-wait`.
+6. Preview on dev build via `expo-dev-client` Extensions panel / deep link `kinfinance://expo-development-client/?url=https://u.expo.dev/3d0f78fd-4210-4c6b-832b-f56ebadc380b?channel-name=development` / QR `https://qr.expo.dev/development-client?appScheme=kinfinance&url=...` (see `develop/development-builds/development-workflows`); `branch development` terisi setelah `push: review` (bukan PR), jadi device `Updates → development` tidak `No compatible`.
 
 Source of truth for CI is `.github/workflows/development.yml` (GitHub Actions — chosen over EAS Workflows for `check` visibility, `jq` fingerprint diff, and reuse of `secrets.EXPO_TOKEN`; EAS Workflows would duplicate quota with less log control). `release.yml` remains for `main` production.
 
