@@ -74,7 +74,7 @@ export const list = query({
       return {
         ...budget,
         category: category
-          ? { _id: category._id, name: category.name, hidden: category.hidden }
+          ? { _id: category._id, name: category.name, hidden: category.hidden, icon: category.icon }
           : undefined,
         spent: redacted ? undefined : spent,
         progress: redacted ? undefined : progress,
@@ -132,7 +132,7 @@ export const categoryOptions = query({
       )
       .collect();
 
-    return categories.map((c) => ({ _id: c._id, name: c.name, hidden: c.hidden }));
+    return categories.map((c) => ({ _id: c._id, name: c.name, hidden: c.hidden, icon: c.icon }));
   },
 });
 

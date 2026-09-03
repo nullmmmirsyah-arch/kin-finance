@@ -157,7 +157,7 @@ export default function TransactionForm() {
     const categories = categoryResult?.categories ?? [];
     return categories
       .filter((c) => c.type === type)
-      .map((c) => ({ id: c._id, label: c.name }));
+      .map((c) => ({ id: c._id, label: c.name, icon: c.icon }));
   }, [categoryResult, type]);
 
   useEffect(() => {

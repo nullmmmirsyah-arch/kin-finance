@@ -448,6 +448,7 @@ export default function Search() {
           <View className="px-2">
             <TransactionCard
               categoryName={item.category?.name ?? null}
+              categoryIcon={item.category?.icon ?? null}
               isTransfer={item.type === "transfer"}
               toAccountName={item.toAccount?.name}
               accountName={item.account?.name}
