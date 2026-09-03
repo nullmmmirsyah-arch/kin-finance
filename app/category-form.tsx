@@ -14,7 +14,15 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
+import {
+  ALL_CATEGORY_ICONS,
+  CATEGORY_ICON_MAP,
+  DEFAULT_CATEGORY_ICON,
+  type CategoryIconName,
+  isValidCategoryIcon,
+} from "@/constants/categoryIcons";
 import { validateCategoryName, CATEGORY_NAME_MAX } from "@/constants/validation";
+import { Image } from "expo-image";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -37,6 +45,7 @@ export default function CategoryForm() {
 
   const [name, setName] = useState("");
   const [type, setType] = useState<CategoryType>("expense");
+  const [icon, setIcon] = useState<CategoryIconName>(DEFAULT_CATEGORY_ICON);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +62,11 @@ export default function CategoryForm() {
       seeded.current = true;
       setName(editingCategory.name);
       setType(editingCategory.type);
+      setIcon(
+        isValidCategoryIcon(editingCategory.icon ?? "")
+          ? (editingCategory.icon as CategoryIconName)
+          : DEFAULT_CATEGORY_ICON,
+      );
       setHidden(editingCategory.hidden);
     }
   }, [editingCategory]);
@@ -69,6 +83,7 @@ export default function CategoryForm() {
       return (
         name.trim() !== "" ||
         type !== "expense" ||
+        icon !== DEFAULT_CATEGORY_ICON ||
         hidden !== false
       );
     }
@@ -76,9 +91,10 @@ export default function CategoryForm() {
     return (
       name !== editingCategory.name ||
       type !== editingCategory.type ||
+      icon !== (editingCategory.icon ?? DEFAULT_CATEGORY_ICON) ||
       hidden !== editingCategory.hidden
     );
-  }, [isEdit, editingCategory, name, type, hidden]);
+  }, [isEdit, editingCategory, name, type, icon, hidden]);
 
   const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
 
@@ -97,12 +113,14 @@ export default function CategoryForm() {
           categoryId: categoryId as Id<"categories">,
           name: trimmedName,
           type,
+          icon,
           hidden,
         });
       } else {
         await createCategory({
           name: trimmedName,
           type,
+          icon,
           hidden,
         });
       }
@@ -193,6 +211,41 @@ export default function CategoryForm() {
                   onPress={() => setType(t.id)}
                 />
               ))}
+            </View>
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+              Icon
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {ALL_CATEGORY_ICONS.map((n) => {
+                const selected = icon === n;
+                return (
+                  <Pressable
+                    key={n}
+                    onPress={() => setIcon(n as CategoryIconName)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select icon ${n}`}
+                    accessibilityState={{ selected }}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 12,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? C.primary : C.border,
+                      backgroundColor: selected ? C.surface : C.background,
+                    }}
+                    className="items-center justify-center"
+                  >
+                    <Image
+                      source={CATEGORY_ICON_MAP[n as CategoryIconName]}
+                      style={{ width: 32, height: 32 }}
+                      contentFit="contain"
+                    />
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
