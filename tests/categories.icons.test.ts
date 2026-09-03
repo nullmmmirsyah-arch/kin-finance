@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   isValidCategoryIcon,
   getCategoryIconSource,
   DEFAULT_CATEGORY_ICON,
   CATEGORY_ICON_MAP,
+  ALL_CATEGORY_ICONS,
 } from "@/constants/categoryIcons";
 
 describe("categoryIcons", () => {
@@ -26,6 +29,14 @@ describe("categoryIcons", () => {
   it("ALL icons in map are valid", () => {
     for (const key of Object.keys(CATEGORY_ICON_MAP)) {
       expect(isValidCategoryIcon(key)).toBe(true);
+    }
+  });
+  it("all icon files exist on disk (manifest + 56 PNG)", () => {
+    const iconsDir = path.resolve(__dirname, "../assets/icons");
+    expect(fs.existsSync(path.join(iconsDir, "manifest.json"))).toBe(true);
+    for (const name of ALL_CATEGORY_ICONS) {
+      const p = path.join(iconsDir, `${name}.png`);
+      expect(fs.existsSync(p), `missing ${name}.png`).toBe(true);
     }
   });
 });
