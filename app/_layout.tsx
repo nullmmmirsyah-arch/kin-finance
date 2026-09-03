@@ -112,6 +112,7 @@ function RootNavigator() {
         <Stack.Screen name="transaction-form" />
         <Stack.Screen name="budget-form" />
         <Stack.Screen name="members" />
+        <Stack.Screen name="search" />
       </Stack.Protected>
       <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="index" />
