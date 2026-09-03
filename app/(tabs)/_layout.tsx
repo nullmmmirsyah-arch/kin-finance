@@ -25,20 +25,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="reports"
+        options={{
+          title: "Reports",
+          tabBarIcon: ({ color }) => (
+            <Feather name="bar-chart-2" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="accounts"
         options={{
           title: "Accounts",
           tabBarIcon: ({ color }) => (
             <Feather name="credit-card" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="transactions"
-        options={{
-          title: "Transactions",
-          tabBarIcon: ({ color }) => (
-            <Feather name="list" size={22} color={color} />
           ),
         }}
       />
@@ -60,6 +60,7 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="transactions" options={{ href: null }} />
     </Tabs>
   );
 }

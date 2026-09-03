@@ -3,7 +3,6 @@ import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
-import { formatTimeTz } from "@/utils/date";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "shopping-cart",
@@ -37,6 +36,7 @@ type Props = {
   categoryName: string | null;
   isTransfer: boolean;
   toAccountName?: string;
+  accountName?: string;
   note: string | null;
   amount: number;
   type: "income" | "expense" | "transfer";
@@ -49,11 +49,12 @@ export function TransactionCard({
   categoryName,
   isTransfer,
   toAccountName,
+  accountName,
   note,
   amount,
   type,
   date,
-  timezone = "UTC",
+  timezone: _timezone = "UTC",
   onPress,
 }: Props) {
   const [pressed, setPressed] = useState(false);
@@ -81,6 +82,15 @@ export function TransactionCard({
       : type === "expense"
         ? C.error
         : C.textPrimary;
+
+  const subtitle = isTransfer
+    ? accountName && toAccountName
+      ? `${accountName} → ${toAccountName}`
+      : (accountName ?? "Transfer")
+    : `${categoryName ?? "No category"}${accountName ? ` • ${accountName}` : ""}`;
+
+  void date;
+  void _timezone;
 
   return (
     <Pressable
@@ -110,8 +120,11 @@ export function TransactionCard({
         <Text numberOfLines={1} className="text-base text-text-primary dark:text-text-primary-dark">
           {displayNote}
         </Text>
-        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-          {formatTimeTz(date, timezone)}
+        <Text
+          numberOfLines={1}
+          className="text-xs text-text-secondary dark:text-text-secondary-dark"
+        >
+          {subtitle}
         </Text>
       </View>
       <Text

@@ -6,10 +6,12 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
   RefreshControl,
-  ScrollView,
+  SectionList,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,10 +37,13 @@ import {
   getNextPeriod,
 } from "@/utils/period";
 import { resolveTimezone } from "@/constants/timezones";
-import { DeltaCard, SpendingDonut } from "@/components/charts";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
+import { MonthPicker } from "@/components/MonthPicker";
+import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
+import { Id } from "@/convex/_generated/dataModel";
+import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
 
 const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
   cash: "accountCash",
@@ -47,7 +52,7 @@ const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThe
   credit_card: "accountCreditCard",
 };
 
-const RECENT_TRANSACTIONS_LIMIT = 5;
+const PAGE_SIZE = 30;
 
 const BudgetPill = memo(function BudgetPill({
   pill,
@@ -177,10 +182,7 @@ export default function Home() {
     return getPeriodBounds(selectedPeriodStart, timezone, periodType).end;
   }, [selectedPeriodStart, timezone, periodType]);
 
-  const prevPeriodStart = useMemo(() => {
-    if (selectedPeriodStart === null) return undefined;
-    return getPrevPeriod(selectedPeriodStart, timezone, periodType);
-  }, [selectedPeriodStart, timezone, periodType]);
+
 
   const pagerPeriods = useMemo(
     () => buildPeriodWindow(nowTick, timezone, periodType, 12).periods,
@@ -202,10 +204,6 @@ export default function Home() {
     api.periodBalances.get,
     selectedPeriodStart !== null ? { periodStart: selectedPeriodStart, periodType, timezone } : "skip",
   );
-  const prevBalances = useQuery(
-    api.periodBalances.get,
-    prevPeriodStart !== undefined ? { periodStart: prevPeriodStart, periodType, timezone } : "skip",
-  );
 
   const monthBudgets = useQuery(
     api.budgets.list,
@@ -214,40 +212,172 @@ export default function Home() {
       : "skip",
   );
 
-  const spendingRes = useQuery(
-    api.transactions.spendingByCategory,
-    household && selectedPeriodStart !== null && periodEnd !== undefined
-      ? { startDate: selectedPeriodStart, endDate: periodEnd }
-      : "skip",
+  const categoriesResult = useQuery(api.categories.list);
+
+  // Search + Filter states (period-bound)
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchCommitted, setSearchCommitted] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [accountIds, setAccountIds] = useState<Id<"accounts">[]>([]);
+  const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const commitSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setSearchCommitted(searchDraft.trim());
+    void hapticSuccess();
+  }, [searchDraft]);
+
+  const clearSearch = useCallback(() => {
+    setSearchDraft("");
+    setSearchCommitted("");
+  }, []);
+
+  const accountOptions = useMemo(() => accountData?.accounts ?? [], [accountData]);
+  const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
+
+  const contextualCategoryOptions = useMemo(() => {
+    if (typeFilter === "transfer") return [];
+    if (typeFilter === "all") return categoryOptions;
+    return categoryOptions.filter((c) => c.type === typeFilter);
+  }, [typeFilter, categoryOptions]);
+
+  const accountSelected = useMemo(
+    () => accountOptions.filter((a) => accountIds.includes(a._id)).length,
+    [accountOptions, accountIds],
+  );
+  const categorySelected = useMemo(
+    () => contextualCategoryOptions.filter((c) => categoryIds.includes(c._id)).length,
+    [contextualCategoryOptions, categoryIds],
+  );
+  const accountState = getSelectionState(accountOptions.length, accountSelected);
+  const categoryState = getSelectionState(contextualCategoryOptions.length, categorySelected);
+  const activeFilterCount = filterBadgeCount(
+    typeFilter !== "all",
+    accountState,
+    accountSelected,
+    categoryState,
+    categorySelected,
   );
 
-  const recent = useQuery(
+  const queryArgs = useMemo(() => {
+    if (selectedPeriodStart === null || periodEnd === undefined) return null;
+    const normalizedAccounts = normalizeSelection(
+      accountIds,
+      accountOptions.map((a) => a._id),
+    );
+    const normalizedCategories = normalizeSelection(
+      categoryIds,
+      contextualCategoryOptions.map((c) => c._id),
+    );
+    return {
+      startDate: selectedPeriodStart,
+      endDate: periodEnd,
+      ...(typeFilter !== "all" ? { type: typeFilter } : {}),
+      ...(normalizedAccounts !== undefined ? { accountIds: normalizedAccounts } : {}),
+      ...(normalizedCategories !== undefined ? { categoryIds: normalizedCategories } : {}),
+      ...(searchCommitted.length >= 2 ? { search: searchCommitted } : {}),
+    } as {
+      startDate: number;
+      endDate: number;
+      type?: "income" | "expense" | "transfer";
+      accountIds?: Id<"accounts">[];
+      categoryIds?: Id<"categories">[];
+      search?: string;
+    };
+  }, [selectedPeriodStart, periodEnd, typeFilter, accountIds, categoryIds, accountOptions, contextualCategoryOptions, searchCommitted]);
+
+  const [activeCursor, setActiveCursor] = useState<{ date: number; id: Id<"transactions"> } | undefined>(undefined);
+
+  const result = useQuery(
     api.transactions.list,
-    selectedPeriodStart !== null && periodEnd !== undefined
-      ? { startDate: selectedPeriodStart, endDate: periodEnd, limit: RECENT_TRANSACTIONS_LIMIT }
+    queryArgs !== null
+      ? {
+          ...queryArgs,
+          limit: PAGE_SIZE,
+          ...(activeCursor !== undefined ? { cursor: activeCursor } : {}),
+        }
       : "skip",
   );
 
-  const recentTransactions = useMemo(() => {
-    if (recent === undefined) return undefined;
-    if (recent === null) return null;
-    // recent from list returns {transactions, ...}
-    const txs = (recent as { transactions: unknown }).transactions as
-      | {
-          _id: string;
-          accountId: string;
-          categoryId?: string;
-          toAccountId?: string;
-          amount: number;
-          type: "income" | "expense" | "transfer";
-          note?: string;
-          date: number;
-          category?: { name: string | null } | null;
-          toAccount?: { name: string } | null;
-        }[]
-      | null;
-    return (txs as unknown) as typeof recent extends { transactions: infer T } ? T : never;
-  }, [recent]);
+
+
+  type Tx = NonNullable<NonNullable<typeof result>["transactions"]>[number];
+
+  const [nextCursor, setNextCursor] = useState<{ date: number; id: Id<"transactions"> } | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pagedTransactions, setPagedTransactions] = useState<Tx[] | null>(null);
+
+  const activeCursorRef = useRef(activeCursor);
+  activeCursorRef.current = activeCursor;
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  isLoadingMoreRef.current = isLoadingMore;
+  const pagesMapRef = useRef<Map<string, Tx[]>>(new Map());
+
+  const queryArgsKey = useMemo(() => (queryArgs ? JSON.stringify(queryArgs) : "__skip__"), [queryArgs]);
+
+  useEffect(() => {
+    setActiveCursor(undefined);
+    setNextCursor(undefined);
+    setHasMore(false);
+    setIsLoadingMore(false);
+    setPagedTransactions(null);
+    pagesMapRef.current.clear();
+  }, [queryArgsKey]);
+
+  useEffect(() => {
+    if (isConnected === false) {
+      setStale(true);
+      return;
+    }
+    if (result !== undefined) {
+      setStale(false);
+      return;
+    }
+    const t = setTimeout(() => setStale(true), 3000);
+    return () => clearTimeout(t);
+  }, [result, isConnected, refreshKey]);
+
+  useEffect(() => {
+    if (result === undefined) return;
+    if (result.transactions === null) {
+      setPagedTransactions(null);
+      setHasMore(false);
+      setNextCursor(undefined);
+      setIsLoadingMore(false);
+      pagesMapRef.current.clear();
+      return;
+    }
+    const key =
+      activeCursorRef.current === undefined ? "__first__" : JSON.stringify(activeCursorRef.current);
+    pagesMapRef.current.set(key, [...result.transactions]);
+    const flat = Array.from(pagesMapRef.current.values()).flat();
+    const byId = new Map<string, Tx>();
+    for (const tx of flat) {
+      const existing = byId.get(tx._id);
+      if (
+        !existing ||
+        (tx.updatedAt ?? 0) > (existing.updatedAt ?? 0) ||
+        ((tx.updatedAt ?? 0) === (existing.updatedAt ?? 0) && tx.date > existing.date)
+      ) {
+        byId.set(tx._id, tx);
+      }
+    }
+    const deduped = Array.from(byId.values()).sort((a, b) => b.date - a.date || (a._id < b._id ? 1 : -1));
+    setPagedTransactions(deduped);
+    setNextCursor(result.cursor ?? undefined);
+    setHasMore(result.hasMore);
+    setIsLoadingMore(false);
+  }, [result]);
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || isLoadingMoreRef.current || nextCursor === undefined) return;
+    if (pagedTransactions === null) return;
+    setIsLoadingMore(true);
+    setActiveCursor(nextCursor);
+  }, [hasMore, nextCursor, pagedTransactions]);
 
   const budgetPills = useMemo(() => {
     const budgets = monthBudgets?.budgets;
@@ -265,13 +395,9 @@ export default function Home() {
     router.push("/budgets");
   }, [router]);
 
-  const recentGroups = useMemo(() => {
-    const transactions = recentTransactions as
-      | { _id: string; date: number; amount: number; type: string; note?: string | null; category?: { name: string | null } | null; toAccount?: { name: string } | null }[]
-      | null
-      | undefined;
-    if (transactions === undefined || transactions === null) return transactions ?? null;
-    if (transactions.length === 0) return [];
+  const sections = useMemo(() => {
+    const transactions = pagedTransactions;
+    if (transactions === null) return null;
     const groups = new Map<string, typeof transactions>();
     for (const tx of transactions) {
       const key = formatDateHeaderTz(tx.date, timezone);
@@ -282,59 +408,43 @@ export default function Home() {
         groups.set(key, [tx]);
       }
     }
-    return Array.from(groups.entries()).map(([title, data]) => ({
+    const entries = Array.from(groups.entries()).map(([title, data]) => ({
       title,
       data,
       total: sumNetExcludingTransfers(data as unknown as { amount: number; type: string }[]),
     }));
-  }, [recentTransactions, timezone]);
+    return entries;
+  }, [pagedTransactions, timezone]);
 
-  const currentNet = useMemo(() => {
+  const currentClosing = useMemo(() => {
+    if (balances && typeof balances.closingBalance === "number") return balances.closingBalance;
     if (balances) return balances.income - balances.expense;
     return 0;
   }, [balances]);
-  const prevNet = useMemo(() => {
-    if (prevBalances) return prevBalances.income - prevBalances.expense;
-    return 0;
-  }, [prevBalances]);
-  const currentClosing = useMemo(() => {
-    if (balances && typeof balances.closingBalance === "number") return balances.closingBalance;
-    return currentNet;
-  }, [balances, currentNet]);
-  const prevClosing = useMemo(() => {
-    if (prevBalances && typeof prevBalances.closingBalance === "number") return prevBalances.closingBalance;
-    return prevNet;
-  }, [prevBalances, prevNet]);
 
   const currentLabel = useMemo(() => {
     if (selectedPeriodStart === null) return "";
     return formatPeriodLabel(selectedPeriodStart, timezone, periodType);
   }, [selectedPeriodStart, timezone, periodType]);
-  const prevLabel = useMemo(() => {
-    if (prevPeriodStart === undefined) return "";
-    return formatPeriodLabel(prevPeriodStart, timezone, periodType);
-  }, [prevPeriodStart, timezone, periodType]);
 
   useEffect(() => {
     if (isConnected === false) {
       setStale(true);
       return;
     }
-    const isLoadingAnalytics = spendingRes === undefined;
     const isLoading =
       household === undefined ||
       accountData === undefined ||
       balances === undefined ||
       monthBudgets === undefined ||
-      recent === undefined ||
-      isLoadingAnalytics;
+      result === undefined;
     if (!isLoading) {
       setStale(false);
       return;
     }
     const t = setTimeout(() => setStale(true), 3000);
     return () => clearTimeout(t);
-  }, [household, accountData, balances, monthBudgets, recent, spendingRes, isConnected, refreshKey]);
+  }, [household, accountData, balances, monthBudgets, result, isConnected, refreshKey]);
 
   const sync = useCallback(async () => {
     setSyncError(null);
@@ -392,6 +502,7 @@ export default function Home() {
 
   const [prevPressed, setPrevPressed] = useState(false);
   const [nextPressed, setNextPressed] = useState(false);
+  const [headerPressed, setHeaderPressed] = useState(false);
 
   if (syncError) {
     return (
@@ -473,10 +584,24 @@ export default function Home() {
             <Feather name="chevron-left" size={20} color={C.textPrimary} />
           </Pressable>
 
-          <View className="flex-1 items-center gap-1">
-            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-              {selectedPeriodStart !== null ? currentLabel : ""}
-            </Text>
+          <Pressable
+            onPress={() => setPickerOpen(true)}
+            onPressIn={() => setHeaderPressed(true)}
+            onPressOut={() => setHeaderPressed(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Open month picker"
+            style={{
+              flex: 1,
+              alignItems: "center",
+              gap: 4,
+              opacity: headerPressed ? 0.7 : 1,
+            }}
+          >
+            <View className="flex-row items-center gap-1">
+              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                {selectedPeriodStart !== null ? currentLabel : ""} {selectedPeriodStart !== null ? "▼" : ""}
+              </Text>
+            </View>
             <View className="flex-row items-center gap-1.5">
               {pagerPeriods.map((p, idx) => (
                 <View
@@ -490,7 +615,7 @@ export default function Home() {
                 />
               ))}
             </View>
-          </View>
+          </Pressable>
 
           <Pressable
             onPress={handleNext}
@@ -532,417 +657,550 @@ export default function Home() {
       >
         {pagerPeriods.map((p) => {
           const isSelected = p.periodStart === selectedPeriodStart;
+          const todayMs = Date.now();
+          const todayInPeriod =
+            selectedPeriodStart !== null && periodEnd !== undefined && todayMs >= selectedPeriodStart && todayMs < periodEnd;
           return (
-            <View key={String(p.periodStart)} collapsable={false}>
+            <View key={String(p.periodStart)} collapsable={false} style={{ flex: 1 }}>
               {isSelected ? (
-            <ScrollView
-              contentContainerClassName="px-5 pb-10 pt-4"
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={() => {
-                    setRefreshing(true);
-                    setRefreshKey((k) => k + 1);
-                    void hapticSuccess();
-                    setTimeout(() => setRefreshing(false), 600);
-                  }}
-                  tintColor={C.primary}
-                />
-              }
-            >
-              <GradientCard>
-                <View className="gap-4 py-1">
-                  <View className="items-center gap-1">
-                    <View
-                      style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
-                      className="px-3 py-1"
-                    >
-                      <Text className="text-center text-[11px] font-semibold tracking-widest text-primary dark:text-primary-dark">
-                        PERIOD BALANCE
-                      </Text>
-                    </View>
-                    {balances === undefined ? (
-                      <Skeleton style={{ width: 160, height: 32 }} />
-                    ) : (
-                      <Text className="text-center text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
-                        {formatNumber(balances === null ? 0 : currentClosing)}
-                      </Text>
-                    )}
-                    <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
-                      {currentLabel}
-                      {balances !== null && balances !== undefined
-                        ? ` • Opening ${formatNumber(balances.openingBalance)}`
-                        : ""}
-                    </Text>
-                  </View>
-
-                  <View style={{ height: 1, backgroundColor: `${C.border}66` }} />
-
-                  {balances === undefined ? (
-                    <View className="flex-row gap-3">
-                      <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
-                      <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
-                    </View>
-                  ) : (
-                    <View className="flex-row items-center">
-                      <View className="flex-1 flex-row items-center gap-3">
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 999,
-                            backgroundColor: `${C.success}14`,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Feather name="trending-up" size={16} color={C.success} />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
-                            INCOME
-                          </Text>
-                          <Text className="text-base font-semibold" style={{ color: C.success }}>
-                            +{formatNumber(balances === null ? 0 : balances.income)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View
-                        style={{
-                          width: 1,
-                          height: 36,
-                          backgroundColor: C.border,
-                          opacity: 0.6,
-                        }}
-                      />
-
-                      <View className="flex-1 flex-row items-center gap-3 pl-4">
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 999,
-                            backgroundColor: `${C.error}14`,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Feather name="trending-down" size={16} color={C.error} />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
-                            EXPENSE
-                          </Text>
-                          <Text className="text-base font-semibold" style={{ color: C.error }}>
-                            -{formatNumber(balances === null ? 0 : balances.expense)}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </GradientCard>
-
-              {monthBudgets === undefined ? (
-                <View className="mt-6 gap-3">
-                  <Skeleton style={{ height: 24, borderRadius: Radius.md }} />
-                  <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
-                </View>
-              ) : (
-                <View className="mt-6">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-                      Budgets
-                    </Text>
-                    {budgetPills.length > 0 && (
-                      <Pressable
-                        onPress={() => router.push("/budgets")}
-                        accessibilityRole="button"
-                        className="min-h-12 items-center justify-center"
-                      >
-                        <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                  {budgetPills.length > 0 ? (
-                    <View className="mt-2 gap-3">
-                      {budgetPills.map((pill) => (
-                        <BudgetPill key={pill.id} pill={pill} onPress={handleBudgetPillPress} />
-                      ))}
-                    </View>
-                  ) : (
-                    <EmptyState
-                      icon="pie-chart"
-                      title="No budgets yet"
-                      description="Set a budget for each category to track your spending"
-                      actionLabel="Create Budget"
-                      onAction={() => router.push("/budget-form")}
+                <SectionList
+                  contentContainerStyle={{ paddingBottom: 112, paddingTop: 16 }}
+                  style={{ flex: 1 }}
+                  sections={sections ?? []}
+                  keyExtractor={(item) => item._id}
+                  stickySectionHeadersEnabled={false}
+                  onEndReached={loadMore}
+                  onEndReachedThreshold={0.5}
+                  removeClippedSubviews
+                  windowSize={7}
+                  initialNumToRender={12}
+                  maxToRenderPerBatch={10}
+                  updateCellsBatchingPeriod={50}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={() => {
+                        setRefreshing(true);
+                        setRefreshKey((k) => k + 1);
+                        void hapticSuccess();
+                        setTimeout(() => setRefreshing(false), 600);
+                      }}
+                      tintColor={C.primary}
                     />
-                  )}
-                </View>
-              )}
-
-              {spendingRes === undefined ? (
-                <View className="mt-6 gap-3">
-                  <Skeleton style={{ height: 80, borderRadius: Radius.md }} />
-                  <Skeleton style={{ height: 140, borderRadius: Radius.md }} />
-                </View>
-              ) : spendingRes && spendingRes.segments ? (
-                <View className="mt-6 gap-3">
-                  <DeltaCard
-                    currentClosing={currentClosing}
-                    prevClosing={prevClosing}
-                    currentLabel={currentLabel}
-                    prevLabel={prevLabel}
-                    periodType={periodType}
-                  />
-                  <SpendingDonut
-                    segments={spendingRes.segments.map((s: { name: string; amount: number }) => ({
-                      name: s.name,
-                      amount: s.amount,
-                    }))}
-                    total={spendingRes.total}
-                    othersAmount={spendingRes.othersAmount}
-                  />
-                </View>
-              ) : null}
-
-              <View className="mt-8">
-                <View className="flex-row items-center justify-between">
-                  <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-                    My Accounts
-                  </Text>
-                  <Pressable
-                    onPress={() => router.push("/accounts")}
-                    accessibilityRole="button"
-                    className="min-h-12 items-center justify-center"
-                  >
-                    <Text className="text-sm font-medium text-primary dark:text-primary-dark">Manage</Text>
-                  </Pressable>
-                </View>
-
-                {accountData === undefined || accountData.accounts === null ? (
-                  <FlatList
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mt-2"
-                    contentContainerClassName="gap-3 pr-5"
-                    data={[0, 1]}
-                    keyExtractor={(item) => String(item)}
-                    renderItem={() => (
-                      <Skeleton
-                        style={{
-                          width: 160,
-                          height: 96,
-                          borderRadius: Radius.md,
-                        }}
-                      />
-                    )}
-                    removeClippedSubviews
-                    windowSize={5}
-                    initialNumToRender={2}
-                    maxToRenderPerBatch={2}
-                  />
-                ) : accountData.accounts.length === 0 ? (
-                  <EmptyState
-                    icon="credit-card"
-                    title="No accounts yet"
-                    description="Add your first account to start tracking"
-                    actionLabel={accountData.isOwner ? "Add Account" : undefined}
-                    onAction={accountData.isOwner ? () => router.push("/account-form") : undefined}
-                  />
-                ) : (
-                  <FlatList
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mt-2"
-                    contentContainerClassName="gap-3 pr-5"
-                    data={accountData.accounts}
-                    keyExtractor={(item) => item._id}
-                    removeClippedSubviews
-                    windowSize={5}
-                    initialNumToRender={4}
-                    maxToRenderPerBatch={4}
-                    updateCellsBatchingPeriod={50}
-                    getItemLayout={(_, index) => ({
-                      length: 160,
-                      offset: 172 * index,
-                      index,
-                    })}
-                    renderItem={({ item }) => {
-                      const meta = ACCOUNT_TYPES.find((t) => t.id === item.type) ?? ACCOUNT_TYPES[0];
-                      const tintKey = ACCOUNT_TYPE_THEME_KEY[item.type] ?? "primary";
-                      const tint = C[tintKey] ?? C.primary;
-                      return (
-                        <Pressable
-                          onPress={() =>
-                            accountData.isOwner
-                              ? router.push({
-                                  pathname: "/account-form",
-                                  params: { id: item._id },
-                                })
-                              : router.push("/accounts")
-                          }
-                          accessibilityRole="button"
-                          accessibilityLabel={`${item.name}, balance ${formatNumber(item.balance)}`}
-                          style={[
-                            Shadow.card,
-                            {
-                              width: 160,
-                              borderRadius: Radius.md,
-                              backgroundColor: C.background,
-                              borderWidth: 1,
-                              borderColor: C.border,
-                            },
-                          ]}
-                          className="p-4"
-                        >
-                          <View
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: Radius.sm,
-                              backgroundColor: `${tint}15`,
-                            }}
-                            className="items-center justify-center"
-                          >
-                            <Feather name={meta.icon} size={18} color={tint} />
-                          </View>
-                          <Text
-                            numberOfLines={1}
-                            className="mt-3 text-base font-semibold text-text-primary dark:text-text-primary-dark"
-                          >
-                            {item.name}
-                          </Text>
-                          <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-                            {formatNumber(item.balance)}
-                          </Text>
-                        </Pressable>
-                      );
-                    }}
-                    ListFooterComponent={
-                      accountData.isOwner ? (
-                        <Pressable
-                          onPress={() => router.push("/account-form")}
-                          accessibilityRole="button"
-                          accessibilityLabel="Add account"
-                          style={[
-                            Shadow.card,
-                            {
-                              width: 160,
-                              borderRadius: Radius.md,
-                              backgroundColor: C.surface,
-                              borderWidth: 1,
-                              borderColor: C.border,
-                            },
-                          ]}
-                          className="items-center justify-center p-4"
-                        >
-                          <View className="h-10 w-10 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
-                            <Feather name="plus" size={18} color={C.background} />
-                          </View>
-                          <Text className="mt-2 text-sm font-medium text-primary dark:text-primary-dark">
-                            Add Account
-                          </Text>
-                        </Pressable>
-                      ) : null
-                    }
-                  />
-                )}
-              </View>
-
-              <View className="mt-8">
-                <View className="flex-row items-center justify-between">
-                  <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-                    Recent Transactions
-                  </Text>
-                  <Pressable
-                    onPress={() => router.push("/transactions")}
-                    accessibilityRole="button"
-                    className="min-h-12 items-center justify-center"
-                  >
-                    <Text className="text-sm font-medium text-primary dark:text-primary-dark">See All</Text>
-                  </Pressable>
-                </View>
-                <View style={{ backgroundColor: C.background }} className="mt-2 rounded-[16px]">
-                  {recent === undefined ? (
-                    <View className="gap-3 px-4 py-4">
-                      {Array.from({ length: RECENT_TRANSACTIONS_LIMIT }).map((_, i) => (
-                        <View key={i} className="flex-row items-center gap-3">
-                          <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
-                          <View className="flex-1 gap-2">
-                            <Skeleton style={{ width: "70%", height: 14 }} />
-                            <Skeleton style={{ width: "40%", height: 12 }} />
-                          </View>
-                          <Skeleton style={{ width: 64, height: 14 }} />
-                        </View>
-                      ))}
-                    </View>
-                  ) : recentGroups === null || recentGroups.length === 0 ? (
-                    <EmptyState
-                      icon="book-open"
-                      title="No transactions yet"
-                      description="Start by recording your first transaction"
-                      actionLabel="Add Transaction"
-                      onAction={() => router.push("/transaction-form")}
-                    />
-                  ) : (
-                    <>
-                      {recentGroups.map((group) => (
-                        <View key={group.title} className="py-1">
-                          <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
-                            <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-                              {group.title}
-                            </Text>
-                            <Text
-                              className="text-sm font-semibold"
-                              style={{
-                                color:
-                                  group.total > 0
-                                    ? C.success
-                                    : group.total < 0
-                                      ? C.error
-                                      : C.textSecondary,
-                              }}
+                  }
+                  ListHeaderComponent={
+                    <View className="px-5 pb-4">
+                      <GradientCard>
+                        <View className="gap-4 py-1">
+                          <View className="items-center gap-1">
+                            <View
+                              style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
+                              className="px-3 py-1"
                             >
-                              {group.total > 0 ? "+" : ""}
-                              {formatNumber(group.total)}
+                              <Text className="text-center text-[11px] font-semibold tracking-widest text-primary dark:text-primary-dark">
+                                PERIOD BALANCE
+                              </Text>
+                            </View>
+                            {balances === undefined ? (
+                              <Skeleton style={{ width: 160, height: 32 }} />
+                            ) : (
+                              <Text className="text-center text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                                {formatNumber(balances === null ? 0 : currentClosing)}
+                              </Text>
+                            )}
+                            <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
+                              {currentLabel}
+                              {balances !== null && balances !== undefined
+                                ? ` • Opening ${formatNumber(balances.openingBalance)}`
+                                : ""}
                             </Text>
                           </View>
-                          {group.data.map((tx) => (
-                            <TransactionCard
-                              key={tx._id}
-                              categoryName={(tx.category as { name?: string } | null)?.name ?? null}
-                              isTransfer={tx.type === "transfer"}
-                              toAccountName={(tx.toAccount as { name?: string } | null)?.name}
-                              note={(tx.note as string | null) ?? null}
-                              amount={tx.amount}
-                              type={tx.type as "income" | "expense" | "transfer"}
-                              date={tx.date}
-                              timezone={timezone}
-                              onPress={() =>
-                                router.push({
-                                  pathname: "/transaction-form",
-                                  params: { id: tx._id },
-                                })
-                              }
-                            />
-                          ))}
+
+                          <View style={{ height: 1, backgroundColor: `${C.border}66` }} />
+
+                          {balances === undefined ? (
+                            <View className="flex-row gap-3">
+                              <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
+                              <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
+                            </View>
+                          ) : (
+                            <View className="flex-row items-center">
+                              <View className="flex-1 flex-row items-center gap-3">
+                                <View
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 999,
+                                    backgroundColor: `${C.success}14`,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Feather name="trending-up" size={16} color={C.success} />
+                                </View>
+                                <View className="flex-1">
+                                  <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                                    INCOME
+                                  </Text>
+                                  <Text className="text-base font-semibold" style={{ color: C.success }}>
+                                    +{formatNumber(balances === null ? 0 : balances.income)}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View
+                                style={{
+                                  width: 1,
+                                  height: 36,
+                                  backgroundColor: C.border,
+                                  opacity: 0.6,
+                                }}
+                              />
+
+                              <View className="flex-1 flex-row items-center gap-3 pl-4">
+                                <View
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 999,
+                                    backgroundColor: `${C.error}14`,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <Feather name="trending-down" size={16} color={C.error} />
+                                </View>
+                                <View className="flex-1">
+                                  <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                                    EXPENSE
+                                  </Text>
+                                  <Text className="text-base font-semibold" style={{ color: C.error }}>
+                                    -{formatNumber(balances === null ? 0 : balances.expense)}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
                         </View>
-                      ))}
-                    </>
+                      </GradientCard>
+
+                      <View className="mt-4 flex-row gap-2">
+                        <View className="flex-1 flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
+                          <Feather name="search" size={16} color={C.textSecondary} />
+                          <TextInput
+                            value={searchDraft}
+                            onChangeText={setSearchDraft}
+                            placeholder="Search notes, amounts, accounts…"
+                            placeholderTextColor={C.textSecondary}
+                            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
+                            accessibilityLabel="Search notes, amounts, accounts and categories"
+                            returnKeyType="search"
+                            onSubmitEditing={commitSearch}
+                          />
+                          {searchDraft.length > 0 && (
+                            <Pressable
+                              onPress={clearSearch}
+                              accessibilityLabel="Clear search"
+                              className="h-10 w-10 items-center justify-center"
+                            >
+                              <Feather name="x" size={16} color={C.textSecondary} />
+                            </Pressable>
+                          )}
+                        </View>
+                        <Pressable
+                          onPress={commitSearch}
+                          accessibilityRole="button"
+                          accessibilityLabel="Search"
+                          style={{ backgroundColor: C.primary, borderRadius: 999 }}
+                          className="min-h-12 items-center justify-center px-5"
+                        >
+                          <Text className="text-sm font-semibold" style={{ color: C.background }}>
+                            Search
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      <View className="mt-2 flex-row">
+                        <Pressable
+                          onPress={() => setFilterOpen(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel="Filter"
+                          style={{
+                            borderWidth: 1,
+                            borderColor: activeFilterCount > 0 ? C.primary : C.border,
+                            backgroundColor: activeFilterCount > 0 ? `${C.primary}14` : C.background,
+                            borderRadius: 999,
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Feather
+                            name="filter"
+                            size={14}
+                            color={activeFilterCount > 0 ? C.primary : C.textSecondary}
+                          />
+                          <Text
+                            className="text-sm font-medium"
+                            style={{ color: activeFilterCount > 0 ? C.primary : C.textSecondary }}
+                          >
+                            {activeFilterCount > 0 ? `Filter · ${activeFilterCount}` : "Filter"}
+                          </Text>
+                          <Feather
+                            name="chevron-down"
+                            size={14}
+                            color={activeFilterCount > 0 ? C.primary : C.textSecondary}
+                          />
+                        </Pressable>
+                      </View>
+
+                      {monthBudgets === undefined ? (
+                        <View className="mt-6 gap-3">
+                          <Skeleton style={{ height: 24, borderRadius: Radius.md }} />
+                          <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
+                        </View>
+                      ) : (
+                        <View className="mt-6">
+                          <View className="flex-row items-center justify-between">
+                            <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                              Budgets
+                            </Text>
+                            {budgetPills.length > 0 && (
+                              <Pressable
+                                onPress={() => router.push("/budgets")}
+                                accessibilityRole="button"
+                                className="min-h-12 items-center justify-center"
+                              >
+                                <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                                  See All
+                                </Text>
+                              </Pressable>
+                            )}
+                          </View>
+                          {budgetPills.length > 0 ? (
+                            <View className="mt-2 gap-3">
+                              {budgetPills.map((pill) => (
+                                <BudgetPill key={pill.id} pill={pill} onPress={handleBudgetPillPress} />
+                              ))}
+                            </View>
+                          ) : (
+                            <EmptyState
+                              icon="pie-chart"
+                              title="No budgets yet"
+                              description="Set a budget for each category to track your spending"
+                              actionLabel="Create Budget"
+                              onAction={() => router.push("/budget-form")}
+                            />
+                          )}
+                        </View>
+                      )}
+
+                      <View className="mt-8">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                            My Accounts
+                          </Text>
+                          <Pressable
+                            onPress={() => router.push("/accounts")}
+                            accessibilityRole="button"
+                            className="min-h-12 items-center justify-center"
+                          >
+                            <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                              Manage
+                            </Text>
+                          </Pressable>
+                        </View>
+
+                        {accountData === undefined || accountData.accounts === null ? (
+                          <FlatList
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            className="mt-2"
+                            contentContainerClassName="gap-3 pr-5"
+                            data={[0, 1]}
+                            keyExtractor={(item) => String(item)}
+                            renderItem={() => (
+                              <Skeleton
+                                style={{
+                                  width: 160,
+                                  height: 96,
+                                  borderRadius: Radius.md,
+                                }}
+                              />
+                            )}
+                            removeClippedSubviews
+                            windowSize={5}
+                            initialNumToRender={2}
+                            maxToRenderPerBatch={2}
+                          />
+                        ) : accountData.accounts.length === 0 ? (
+                          <EmptyState
+                            icon="credit-card"
+                            title="No accounts yet"
+                            description="Add your first account to start tracking"
+                            actionLabel={accountData.isOwner ? "Add Account" : undefined}
+                            onAction={accountData.isOwner ? () => router.push("/account-form") : undefined}
+                          />
+                        ) : (
+                          <FlatList
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            className="mt-2"
+                            contentContainerClassName="gap-3 pr-5"
+                            data={accountData.accounts}
+                            keyExtractor={(item) => item._id}
+                            removeClippedSubviews
+                            windowSize={5}
+                            initialNumToRender={4}
+                            maxToRenderPerBatch={4}
+                            updateCellsBatchingPeriod={50}
+                            getItemLayout={(_, index) => ({
+                              length: 160,
+                              offset: 172 * index,
+                              index,
+                            })}
+                            renderItem={({ item }) => {
+                              const meta = ACCOUNT_TYPES.find((t) => t.id === item.type) ?? ACCOUNT_TYPES[0];
+                              const tintKey = ACCOUNT_TYPE_THEME_KEY[item.type] ?? "primary";
+                              const tint = C[tintKey] ?? C.primary;
+                              return (
+                                <Pressable
+                                  onPress={() =>
+                                    accountData.isOwner
+                                      ? router.push({
+                                          pathname: "/account-form",
+                                          params: { id: item._id },
+                                        })
+                                      : router.push("/accounts")
+                                  }
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${item.name}, balance ${formatNumber(item.balance)}`}
+                                  style={[
+                                    Shadow.card,
+                                    {
+                                      width: 160,
+                                      borderRadius: Radius.md,
+                                      backgroundColor: C.background,
+                                      borderWidth: 1,
+                                      borderColor: C.border,
+                                    },
+                                  ]}
+                                  className="p-4"
+                                >
+                                  <View
+                                    style={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: Radius.sm,
+                                      backgroundColor: `${tint}15`,
+                                    }}
+                                    className="items-center justify-center"
+                                  >
+                                    <Feather name={meta.icon} size={18} color={tint} />
+                                  </View>
+                                  <Text
+                                    numberOfLines={1}
+                                    className="mt-3 text-base font-semibold text-text-primary dark:text-text-primary-dark"
+                                  >
+                                    {item.name}
+                                  </Text>
+                                  <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                                    {formatNumber(item.balance)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            }}
+                            ListFooterComponent={
+                              accountData.isOwner ? (
+                                <Pressable
+                                  onPress={() => router.push("/account-form")}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Add account"
+                                  style={[
+                                    Shadow.card,
+                                    {
+                                      width: 160,
+                                      borderRadius: Radius.md,
+                                      backgroundColor: C.surface,
+                                      borderWidth: 1,
+                                      borderColor: C.border,
+                                    },
+                                  ]}
+                                  className="items-center justify-center p-4"
+                                >
+                                  <View className="h-10 w-10 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
+                                    <Feather name="plus" size={18} color={C.background} />
+                                  </View>
+                                  <Text className="mt-2 text-sm font-medium text-primary dark:text-primary-dark">
+                                    Add Account
+                                  </Text>
+                                </Pressable>
+                              ) : null
+                            }
+                          />
+                        )}
+                      </View>
+
+                      <View className="mt-6">
+                        <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                          Transactions
+                        </Text>
+                      </View>
+                    </View>
+                  }
+                  ListEmptyComponent={
+                    result === undefined || pagedTransactions === null ? (
+                      <View className="gap-3 px-5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <View key={i} className="flex-row items-center gap-3 px-2 py-2">
+                            <Skeleton style={{ width: 40, height: 40, borderRadius: Radius.sm }} />
+                            <View className="flex-1 gap-2">
+                              <Skeleton style={{ width: "70%", height: 14 }} />
+                              <Skeleton style={{ width: "40%", height: 12 }} />
+                            </View>
+                            <Skeleton style={{ width: 64, height: 14 }} />
+                          </View>
+                        ))}
+                      </View>
+                    ) : todayInPeriod && pagedTransactions.length === 0 && activeFilterCount === 0 && searchCommitted.length < 2 ? (
+                      <View className="px-5">
+                        <View
+                          style={[Shadow.card, { backgroundColor: C.background, borderRadius: 16 }]}
+                          className="flex-row items-center justify-between p-4"
+                        >
+                          <View className="flex-1">
+                            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                              No record for today
+                            </Text>
+                            <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+                              Start tracking your spending
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center gap-3">
+                            <View
+                              style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: 6,
+                                backgroundColor: C.primaryLight,
+                              }}
+                            />
+                            <Pressable
+                              onPress={() => router.push("/transaction-form")}
+                              accessibilityRole="button"
+                              accessibilityLabel="Add transaction"
+                              style={{ backgroundColor: C.primaryLight, borderRadius: 999 }}
+                              className="h-10 w-10 items-center justify-center"
+                            >
+                              <Feather name="plus" size={18} color={C.textPrimary} />
+                            </Pressable>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <View className="px-5">
+                        <View style={{ backgroundColor: C.background }} className="rounded-[16px]">
+                          <EmptyState
+                            icon="book-open"
+                            title="No transactions yet"
+                            description="Start by recording your first transaction"
+                            actionLabel="Add Transaction"
+                            onAction={() => router.push("/transaction-form")}
+                          />
+                        </View>
+                      </View>
+                    )
+                  }
+                  renderSectionHeader={({ section }) => (
+                    <View className="flex-row items-center justify-between bg-background px-5 pb-1 pt-4 dark:bg-background-dark">
+                      <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                        {section.title}
+                      </Text>
+                      <Text
+                        className="text-sm font-semibold"
+                        style={{
+                          color:
+                            section.total > 0
+                              ? C.success
+                              : section.total < 0
+                                ? C.error
+                                : C.textSecondary,
+                        }}
+                      >
+                        {section.total > 0 ? "+" : ""}
+                        {formatNumber(section.total)}
+                      </Text>
+                    </View>
                   )}
-                </View>
-              </View>
-            </ScrollView>
+                  renderItem={({ item }) => (
+                    <View className="px-2">
+                      <TransactionCard
+                        categoryName={item.category?.name ?? null}
+                        isTransfer={item.type === "transfer"}
+                        toAccountName={item.toAccount?.name}
+                        accountName={item.account?.name}
+                        note={item.note ?? null}
+                        amount={item.amount}
+                        type={item.type as "income" | "expense" | "transfer"}
+                        date={item.date}
+                        timezone={timezone}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/transaction-form",
+                            params: { id: item._id },
+                          })
+                        }
+                      />
+                    </View>
+                  )}
+                  ListFooterComponent={
+                    isLoadingMore ? (
+                      <View className="items-center py-4">
+                        <ActivityIndicator color={C.primary} />
+                      </View>
+                    ) : null
+                  }
+                />
               ) : (
                 <View style={{ flex: 1, backgroundColor: C.background }} />
               )}
             </View>
           );
         })}
+
       </PagerView>
+      {selectedPeriodStart !== null && (
+        <MonthPicker
+          visible={pickerOpen}
+          selectedPeriodStart={selectedPeriodStart}
+          tz={timezone}
+          onSelect={(ps) => {
+            setSelectedPeriodStart(ps);
+            const idx = pagerPeriods.findIndex((p) => p.periodStart === ps);
+            if (idx >= 0) pagerRef.current?.setPage(idx);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      <FilterSheet
+        visible={filterOpen}
+        typeFilter={typeFilter}
+        accountIds={accountIds}
+        categoryIds={categoryIds}
+        accounts={accountData?.accounts ?? []}
+        categories={categoriesResult?.categories ?? []}
+        onApply={(type, aIds, cIds) => {
+          setTypeFilter(type);
+          setAccountIds(aIds);
+          setCategoryIds(cIds);
+        }}
+        onClose={() => setFilterOpen(false)}
+      />
+
+
       <Fab
         label="Add Transaction"
         onPress={() => router.push("/transaction-form")}
