@@ -182,6 +182,7 @@ export default function Categories() {
               <CategoryCard
                 name={item.name}
                 type={item.type}
+                icon={item.icon}
                 hidden={item.hidden}
                 onToggleVisibility={() => handleToggleVisibility(item)}
                 onEdit={() =>
@@ -196,6 +197,7 @@ export default function Categories() {
               <CategoryCard
                 name={item.name}
                 type={item.type}
+                icon={item.icon}
                 hidden={item.hidden}
               />
             )
