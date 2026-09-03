@@ -197,9 +197,14 @@ export default function Search() {
     const clampedEnd = Math.min(newEnd, todayEnd);
     // ensure start <= end-1 — keep sheet open and swap if invalid
     if (newStart >= clampedEnd) {
-      const swappedStart = clampedEnd - 86400000;
-      setDraftFrom(new Date(swappedStart));
-      setDraftTo(new Date(clampedEnd - 1));
+      const fromStart = getDayBounds(draftFrom, tz).start;
+      const toStart = getDayBounds(draftTo, tz).start;
+      const earlierStart = Math.min(fromStart, toStart);
+      const laterStart = Math.max(fromStart, toStart);
+      const laterEnd = getDayBounds(new Date(laterStart), tz).end;
+      const clampedLaterEnd = Math.min(laterEnd, todayEnd);
+      setDraftFrom(new Date(earlierStart));
+      setDraftTo(new Date(clampedLaterEnd - 1));
       return;
     }
     setHasEditedDate(true);

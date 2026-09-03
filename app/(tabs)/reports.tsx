@@ -20,7 +20,19 @@ export default function Reports() {
   const household = useQuery(api.households.getActive);
   const timezone = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
 
-  const [nowTick] = useState(() => Date.now());
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const currentPeriodBounds = useMemo(() => getPeriodBounds(nowTick, timezone, "monthly"), [nowTick, timezone]);
+  useEffect(() => {
+    const delay = currentPeriodBounds.end - Date.now();
+    if (delay <= 0) {
+      setNowTick(Date.now());
+      return;
+    }
+    const MAX_TIMEOUT = 2147483647 - 1000;
+    const capped = Math.min(delay + 1000, MAX_TIMEOUT);
+    const t = setTimeout(() => setNowTick(Date.now()), capped);
+    return () => clearTimeout(t);
+  }, [currentPeriodBounds.end, nowTick]);
   const pagerPeriods = useMemo(() => buildPeriodWindow(nowTick, timezone, "monthly", 12).periods, [nowTick, timezone]);
 
   const [selectedPeriodStart, setSelectedPeriodStart] = useState<number | null>(null);
@@ -97,9 +109,9 @@ export default function Reports() {
   const isNextDisabled = useMemo(() => {
     if (selectedPeriodStart === null) return true;
     const next = getNextPeriod(selectedPeriodStart, timezone, "monthly");
-    const curStart = getPeriodBounds(Date.now(), timezone, "monthly").start;
+    const curStart = currentPeriodBounds.start;
     return next > curStart;
-  }, [selectedPeriodStart, timezone]);
+  }, [selectedPeriodStart, timezone, currentPeriodBounds.start]);
 
   const handlePrev = useCallback(() => {
     if (selectedPeriodStart === null) return;
@@ -114,13 +126,13 @@ export default function Reports() {
   const handleNext = useCallback(() => {
     if (selectedPeriodStart === null) return;
     const next = getNextPeriod(selectedPeriodStart, timezone, "monthly");
-    const curStart = getPeriodBounds(Date.now(), timezone, "monthly").start;
+    const curStart = currentPeriodBounds.start;
     if (next > curStart) return;
     setSelectedPeriodStart(next);
     void hapticSuccess();
     const idx = pagerPeriods.findIndex((p) => p.periodStart === next);
     if (idx >= 0) pagerRef.current?.setPage(idx);
-  }, [selectedPeriodStart, timezone, pagerPeriods]);
+  }, [selectedPeriodStart, timezone, pagerPeriods, currentPeriodBounds.start]);
 
   const [prevPressed, setPrevPressed] = useState(false);
   const [nextPressed, setNextPressed] = useState(false);
@@ -286,10 +298,6 @@ export default function Reports() {
           >
             <Feather name="chevron-right" size={20} color={C.textPrimary} />
           </Pressable>
-        </View>
-
-        <View className="mt-3 flex-row justify-end">
-          <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Filter</Text>
         </View>
       </View>
 

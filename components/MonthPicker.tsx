@@ -105,7 +105,7 @@ export function MonthPicker({
           <View className="mt-4 flex-row items-center justify-center gap-4">
             <Pressable
               onPress={() => setYear((y) => y - 1)}
-              className="h-10 w-10 items-center justify-center rounded-full bg-surface"
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-surface-dark"
             >
               <Feather name="chevron-left" size={18} color={C.textPrimary} />
             </Pressable>
@@ -118,7 +118,7 @@ export function MonthPicker({
               }}
               disabled={year >= curYear}
               style={{ opacity: year >= curYear ? 0.4 : 1 }}
-              className="h-10 w-10 items-center justify-center rounded-full bg-surface"
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-surface-dark"
             >
               <Feather name="chevron-right" size={18} color={C.textPrimary} />
             </Pressable>
