@@ -301,8 +301,7 @@ export default function Home() {
       : "skip",
   );
 
-  const summary = useQuery(api.transactions.summary, queryArgs !== null ? queryArgs : "skip");
-  void summary;
+
 
   type Tx = NonNullable<NonNullable<typeof result>["transactions"]>[number];
 
@@ -1085,17 +1084,17 @@ export default function Home() {
                                 width: 12,
                                 height: 12,
                                 borderRadius: 6,
-                                backgroundColor: "#facc15",
+                                backgroundColor: C.primaryLight,
                               }}
                             />
                             <Pressable
                               onPress={() => router.push("/transaction-form")}
                               accessibilityRole="button"
                               accessibilityLabel="Add transaction"
-                              style={{ backgroundColor: "#facc15", borderRadius: 999 }}
+                              style={{ backgroundColor: C.primaryLight, borderRadius: 999 }}
                               className="h-10 w-10 items-center justify-center"
                             >
-                              <Feather name="plus" size={18} color="#000" />
+                              <Feather name="plus" size={18} color={C.textPrimary} />
                             </Pressable>
                           </View>
                         </View>

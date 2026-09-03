@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
@@ -52,6 +52,14 @@ export function MonthPicker({
     year: "numeric",
   }).format(new Date(selectedPeriodStart));
   const [year, setYear] = useState<number>(Number(selYearStr));
+  useEffect(() => {
+    if (visible) {
+      const y = Number(
+        new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric" }).format(new Date(selectedPeriodStart)),
+      );
+      setYear(y);
+    }
+  }, [visible, selectedPeriodStart, tz]);
   const now = Date.now();
   const curYear = Number(
     new Intl.DateTimeFormat("en-US", {

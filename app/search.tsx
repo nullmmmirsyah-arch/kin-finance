@@ -46,6 +46,7 @@ export default function Search() {
 
   const [startDate, setStartDate] = useState<number>(defaultStart);
   const [endDate, setEndDate] = useState<number>(defaultEnd);
+  const [hasEditedDate, setHasEditedDate] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -64,16 +65,13 @@ export default function Search() {
     }
   }, [dateSheetOpen, startDate, endDate]);
 
-  // Re-anchor defaults when tz resolves (only if not yet customized)
-  // We keep user-chosen window; only initialize once on mount
+  // Re-anchor defaults when tz resolves, only if user hasn't edited
   useEffect(() => {
-    // if still defaults, recompute when tz changes before user customizes
-    // Compare to initial defaults derived from first render: if user hasn't opened filter/date, keep updated
-    // Simplify: if search/filter untouched and start==defaultStart, update
-    // Skip to avoid overwriting user selection — only sync if close to default
-    // Use a ref to track whether user modified dates
-    // For MVP: no auto-resync after mount
-  }, [tz, defaultStart, defaultEnd]);
+    if (!hasEditedDate) {
+      setStartDate(defaultStart);
+      setEndDate(defaultEnd);
+    }
+  }, [tz, defaultStart, defaultEnd, hasEditedDate]);
 
   const dateLabel = useMemo(
     () => `${formatDateShortTz(startDate, tz)} – ${formatDateShortTz(endDate - 1, tz)}`,
@@ -197,12 +195,14 @@ export default function Search() {
     // enforce future disabled: end cannot be after today
     const todayEnd = getDayBounds(new Date(), tz).end;
     const clampedEnd = Math.min(newEnd, todayEnd);
-    // ensure start <= end-1
+    // ensure start <= end-1 — keep sheet open and swap if invalid
     if (newStart >= clampedEnd) {
-      // if invalid, keep as is and just close (or swap)
-      setDateSheetOpen(false);
+      const swappedStart = clampedEnd - 86400000;
+      setDraftFrom(new Date(swappedStart));
+      setDraftTo(new Date(clampedEnd - 1));
       return;
     }
+    setHasEditedDate(true);
     setStartDate(newStart);
     setEndDate(clampedEnd);
     setDateSheetOpen(false);
@@ -245,7 +245,7 @@ export default function Search() {
           <TextInput
             value={searchDraft}
             onChangeText={setSearchDraft}
-            placeholder="Categories, amount, tags, etc., separated by ','"
+            placeholder="Search categories, amounts, notes"
             placeholderTextColor={C.textSecondary}
             className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
             accessibilityLabel="Search global"
@@ -399,7 +399,9 @@ export default function Search() {
           style={[Shadow.card, { backgroundColor: C.background, borderRadius: Radius.md }]}
           className="mt-3 flex-row items-center justify-between px-4 py-3"
         >
-          <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">Records {summary === undefined ? "–" : recordsCount}</Text>
+          <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+            {summary === undefined ? "Records –" : `Records ${recordsCount} loaded${hasMore ? "+" : ""}`}
+          </Text>
           <View className="flex-row items-center gap-3">
             <View className="flex-row items-center gap-1">
               <Feather name="trending-up" size={14} color={C.success} />

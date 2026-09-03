@@ -23,8 +23,10 @@ export function BillRankingCard({ type, segments }: Props) {
     >
       <View className="flex-row items-center justify-between">
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">Bill Amount Ranking TOP 10</Text>
-        <View style={{ backgroundColor: "#fde68a", borderRadius: 999 }} className="px-3 py-1">
-          <Text className="text-xs font-semibold text-text-primary">{type === "expenses" ? "Expenses" : "Income"}</Text>
+        <View style={{ backgroundColor: C.primaryLight, borderRadius: 999 }} className="px-3 py-1">
+          <Text className="text-xs font-semibold" style={{ color: C.textPrimary }}>
+            {type === "expenses" ? "Expenses" : "Income"}
+          </Text>
         </View>
       </View>
 

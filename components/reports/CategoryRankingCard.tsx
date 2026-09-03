@@ -41,7 +41,7 @@ export function CategoryRankingCard({ type, segments, total, othersAmount, onTog
           accessibilityRole="button"
           accessibilityLabel={`Toggle to ${type === "expenses" ? "Income" : "Expenses"}`}
           style={{
-            backgroundColor: togglePressed ? "#fde68a" : "#fde68a",
+            backgroundColor: C.primaryLight,
             borderRadius: 999,
             paddingHorizontal: 12,
             paddingVertical: 6,
@@ -54,8 +54,10 @@ export function CategoryRankingCard({ type, segments, total, othersAmount, onTog
 
       {/* Dummy Top level category pill */}
       <View className="mt-2 flex-row justify-end">
-        <View style={{ backgroundColor: "#fde68a", borderRadius: 999 }} className="px-3 py-1">
-          <Text className="text-xs font-medium text-text-primary">Top level category ⇌</Text>
+        <View style={{ backgroundColor: C.primaryLight, borderRadius: 999 }} className="px-3 py-1">
+          <Text className="text-xs font-medium" style={{ color: C.textPrimary }}>
+            Top level category ⇌
+          </Text>
         </View>
       </View>
 
