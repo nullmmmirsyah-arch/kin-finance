@@ -1,0 +1,338 @@
+[
+  {
+    "name": "shopping_bag",
+    "file": "shopping_bag.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "groceries",
+    "file": "groceries.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "serving_dish",
+    "file": "serving_dish.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "coffee",
+    "file": "coffee.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "bubble_tea",
+    "file": "bubble_tea.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "cutlery",
+    "file": "cutlery.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "pizza",
+    "file": "pizza.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "burger",
+    "file": "burger.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "milk_fruit",
+    "file": "milk_fruit.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "bread",
+    "file": "bread.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "birthday_cake",
+    "file": "birthday_cake.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "donut",
+    "file": "donut.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "household_goods",
+    "file": "household_goods.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "clothing",
+    "file": "clothing.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "shoes",
+    "file": "shoes.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "shopping_cart",
+    "file": "shopping_cart.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "home",
+    "file": "home.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "electricity",
+    "file": "electricity.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "water",
+    "file": "water.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "gas",
+    "file": "gas.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "internet",
+    "file": "internet.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "phone",
+    "file": "phone.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "entertainment",
+    "file": "entertainment.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "insurance",
+    "file": "insurance.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "car",
+    "file": "car.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "motorcycle",
+    "file": "motorcycle.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "fuel",
+    "file": "fuel.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "train",
+    "file": "train.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "bus",
+    "file": "bus.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "flight",
+    "file": "flight.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "parking",
+    "file": "parking.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "taxi",
+    "file": "taxi.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "health",
+    "file": "health.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "medicine",
+    "file": "medicine.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "doctor",
+    "file": "doctor.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "fitness",
+    "file": "fitness.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "education",
+    "file": "education.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "graduation",
+    "file": "graduation.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "work",
+    "file": "work.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "laptop",
+    "file": "laptop.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "wallet",
+    "file": "wallet.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "savings",
+    "file": "savings.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "piggy_bank",
+    "file": "piggy_bank.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "income",
+    "file": "income.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "investment",
+    "file": "investment.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "gift",
+    "file": "gift.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "travel_ticket",
+    "file": "travel_ticket.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "vacation",
+    "file": "vacation.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "mosque",
+    "file": "mosque.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "charity",
+    "file": "charity.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "cash_wallet",
+    "file": "cash_wallet.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "bank",
+    "file": "bank.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "family",
+    "file": "family.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "pet",
+    "file": "pet.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "plant",
+    "file": "plant.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  },
+  {
+    "name": "other",
+    "file": "other.png",
+    "size": "56x56",
+    "icon_area_target": "32x32"
+  }
+]
