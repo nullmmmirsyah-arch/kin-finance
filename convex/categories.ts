@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateCategoryName } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
+import { isValidCategoryIcon } from "../constants/categoryIconNames";
 
 const categoryType = v.union(v.literal("income"), v.literal("expense"));
 
@@ -36,6 +37,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     type: categoryType,
+    icon: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -48,6 +50,12 @@ export const create = mutation({
 
     if (name === RESERVED_CATEGORY_NAME) {
       throw new ConvexError("This category name is reserved.");
+    }
+
+    if (args.icon !== undefined && args.icon !== "") {
+      if (!isValidCategoryIcon(args.icon)) {
+        throw new ConvexError("Invalid category icon.");
+      }
     }
 
     const existing = await ctx.db
@@ -68,6 +76,7 @@ export const create = mutation({
       householdId: membership.householdId,
       name,
       type: args.type,
+      icon: args.icon,
       hidden: args.hidden ?? false,
       createdAt: now,
       updatedAt: now,
@@ -82,6 +91,7 @@ export const update = mutation({
     categoryId: v.id("categories"),
     name: v.optional(v.string()),
     type: v.optional(categoryType),
+    icon: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -97,6 +107,7 @@ export const update = mutation({
     const patch: {
       name?: string;
       type?: "income" | "expense";
+      icon?: string;
       hidden?: boolean;
       updatedAt: number;
     } = { updatedAt: Date.now() };
@@ -160,6 +171,13 @@ export const update = mutation({
 
     if (args.hidden !== undefined) {
       patch.hidden = args.hidden;
+    }
+
+    if (args.icon !== undefined) {
+      if (args.icon !== "" && !isValidCategoryIcon(args.icon)) {
+        throw new ConvexError("Invalid category icon.");
+      }
+      patch.icon = args.icon || undefined;
     }
 
     await ctx.db.patch(args.categoryId, patch);

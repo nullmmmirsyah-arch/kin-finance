@@ -6,12 +6,3 @@ export const CATEGORY_TYPES: { id: CategoryType; label: string }[] = [
 ];
 
 export const RESERVED_CATEGORY_NAME = "Initial Balance";
-
-export {
-  DEFAULT_CATEGORY_ICON,
-  ALL_CATEGORY_ICONS,
-  CATEGORY_ICON_MAP,
-  isValidCategoryIcon,
-  getCategoryIconSource,
-} from "./categoryIcons";
-export type { CategoryIconName } from "./categoryIcons";
