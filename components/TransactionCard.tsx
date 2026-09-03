@@ -1,8 +1,10 @@
 import Feather from "@expo/vector-icons/Feather";
+import { Image } from "expo-image";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
+import { getCategoryIconSource } from "@/constants/categoryIcons";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "shopping-cart",
@@ -34,6 +36,7 @@ function getCategoryIcon(categoryName: string | null): string {
 
 type Props = {
   categoryName: string | null;
+  categoryIcon?: string | null;
   isTransfer: boolean;
   toAccountName?: string;
   accountName?: string;
@@ -47,6 +50,7 @@ type Props = {
 
 export function TransactionCard({
   categoryName,
+  categoryIcon,
   isTransfer,
   toAccountName,
   accountName,
@@ -108,13 +112,23 @@ export function TransactionCard({
           borderRadius: Radius.sm,
           backgroundColor: C.surface,
         }}
-        className="items-center justify-center"
+        className="items-center justify-center overflow-hidden"
       >
-        <Feather
-          name={(isTransfer ? "arrow-right" : getCategoryIcon(categoryName)) as any}
-          size={18}
-          color={isTransfer ? C.primary : type === "income" ? C.success : C.error}
-        />
+        {isTransfer ? (
+          <Feather name="arrow-right" size={18} color={C.primary} />
+        ) : categoryIcon ? (
+          <Image
+            source={getCategoryIconSource(categoryIcon)}
+            style={{ width: 28, height: 28 }}
+            contentFit="contain"
+          />
+        ) : (
+          <Feather
+            name={getCategoryIcon(categoryName) as any}
+            size={18}
+            color={type === "income" ? C.success : C.error}
+          />
+        )}
       </View>
       <View className="flex-1">
         <Text numberOfLines={1} className="text-base text-text-primary dark:text-text-primary-dark">

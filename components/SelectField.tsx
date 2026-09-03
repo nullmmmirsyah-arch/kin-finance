@@ -1,9 +1,11 @@
 import Feather from "@expo/vector-icons/Feather";
+import { Image } from "expo-image";
 import { Shadow, useThemeColors } from "@/constants/theme";
 import { useMemo, useState } from "react";
 import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { getCategoryIconSource } from "@/constants/categoryIcons";
 
-export type SelectOption = { id: string; label: string };
+export type SelectOption = { id: string; label: string; icon?: string };
 
 type Props = {
   label?: string;
@@ -32,8 +34,8 @@ export function SelectField({
 
   const overflowing = contentHeight > viewportHeight;
   const showSearch = options.length > SEARCH_THRESHOLD;
-  const selectedLabel =
-    options.find((o) => o.id === value)?.label ?? placeholder;
+  const selectedOption = options.find((o) => o.id === value);
+  const selectedLabel = selectedOption?.label ?? placeholder;
 
   const filteredOptions = useMemo(() => {
     if (!showSearch || search.trim() === "") return options;
@@ -58,11 +60,20 @@ export function SelectField({
         accessibilityLabel={selectedLabel}
         className={`h-12 flex-row items-center justify-between rounded-xl border bg-background px-4 dark:bg-background-dark ${error ? "border-error dark:border-error-dark" : "border-border dark:border-border-dark"}`}
       >
-        <Text
-          className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
-        >
-          {selectedLabel}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          {selectedOption?.icon ? (
+            <Image
+              source={getCategoryIconSource(selectedOption.icon)}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+            />
+          ) : null}
+          <Text
+            className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
+          >
+            {selectedLabel}
+          </Text>
+        </View>
         <Feather name="chevron-down" size={20} color={C.textSecondary} />
       </Pressable>
       {error ? (
@@ -121,9 +132,18 @@ export function SelectField({
                     accessibilityState={{ selected: option.id === value }}
                     className="min-h-12 flex-row items-center justify-between px-4 py-3"
                   >
-                    <Text className="text-base text-text-primary dark:text-text-primary-dark">
-                      {option.label}
-                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      {option.icon ? (
+                        <Image
+                          source={getCategoryIconSource(option.icon)}
+                          style={{ width: 24, height: 24 }}
+                          contentFit="contain"
+                        />
+                      ) : null}
+                      <Text className="text-base text-text-primary dark:text-text-primary-dark">
+                        {option.label}
+                      </Text>
+                    </View>
                     {option.id === value ? (
                       <Feather name="check" size={18} color={C.primary} />
                     ) : null}

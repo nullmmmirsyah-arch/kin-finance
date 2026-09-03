@@ -1,0 +1,73 @@
+import {
+  ALL_CATEGORY_ICONS,
+  DEFAULT_CATEGORY_ICON,
+  isValidCategoryIcon,
+  type CategoryIconName,
+} from "./categoryIconNames";
+
+export { ALL_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, isValidCategoryIcon };
+export type { CategoryIconName };
+
+export const CATEGORY_ICON_MAP: Record<CategoryIconName, number> = {
+  shopping_bag: (() => { try { return require("@/assets/icons/shopping_bag.png"); } catch { return 1; } })(),
+  groceries: (() => { try { return require("@/assets/icons/groceries.png"); } catch { return 2; } })(),
+  serving_dish: (() => { try { return require("@/assets/icons/serving_dish.png"); } catch { return 3; } })(),
+  coffee: (() => { try { return require("@/assets/icons/coffee.png"); } catch { return 4; } })(),
+  bubble_tea: (() => { try { return require("@/assets/icons/bubble_tea.png"); } catch { return 5; } })(),
+  cutlery: (() => { try { return require("@/assets/icons/cutlery.png"); } catch { return 6; } })(),
+  pizza: (() => { try { return require("@/assets/icons/pizza.png"); } catch { return 7; } })(),
+  burger: (() => { try { return require("@/assets/icons/burger.png"); } catch { return 8; } })(),
+  milk_fruit: (() => { try { return require("@/assets/icons/milk_fruit.png"); } catch { return 9; } })(),
+  bread: (() => { try { return require("@/assets/icons/bread.png"); } catch { return 10; } })(),
+  birthday_cake: (() => { try { return require("@/assets/icons/birthday_cake.png"); } catch { return 11; } })(),
+  donut: (() => { try { return require("@/assets/icons/donut.png"); } catch { return 12; } })(),
+  household_goods: (() => { try { return require("@/assets/icons/household_goods.png"); } catch { return 13; } })(),
+  clothing: (() => { try { return require("@/assets/icons/clothing.png"); } catch { return 14; } })(),
+  shoes: (() => { try { return require("@/assets/icons/shoes.png"); } catch { return 15; } })(),
+  shopping_cart: (() => { try { return require("@/assets/icons/shopping_cart.png"); } catch { return 16; } })(),
+  home: (() => { try { return require("@/assets/icons/home.png"); } catch { return 17; } })(),
+  electricity: (() => { try { return require("@/assets/icons/electricity.png"); } catch { return 18; } })(),
+  water: (() => { try { return require("@/assets/icons/water.png"); } catch { return 19; } })(),
+  gas: (() => { try { return require("@/assets/icons/gas.png"); } catch { return 20; } })(),
+  internet: (() => { try { return require("@/assets/icons/internet.png"); } catch { return 21; } })(),
+  phone: (() => { try { return require("@/assets/icons/phone.png"); } catch { return 22; } })(),
+  entertainment: (() => { try { return require("@/assets/icons/entertainment.png"); } catch { return 23; } })(),
+  insurance: (() => { try { return require("@/assets/icons/insurance.png"); } catch { return 24; } })(),
+  car: (() => { try { return require("@/assets/icons/car.png"); } catch { return 25; } })(),
+  motorcycle: (() => { try { return require("@/assets/icons/motorcycle.png"); } catch { return 26; } })(),
+  fuel: (() => { try { return require("@/assets/icons/fuel.png"); } catch { return 27; } })(),
+  train: (() => { try { return require("@/assets/icons/train.png"); } catch { return 28; } })(),
+  bus: (() => { try { return require("@/assets/icons/bus.png"); } catch { return 29; } })(),
+  flight: (() => { try { return require("@/assets/icons/flight.png"); } catch { return 30; } })(),
+  parking: (() => { try { return require("@/assets/icons/parking.png"); } catch { return 31; } })(),
+  taxi: (() => { try { return require("@/assets/icons/taxi.png"); } catch { return 32; } })(),
+  health: (() => { try { return require("@/assets/icons/health.png"); } catch { return 33; } })(),
+  medicine: (() => { try { return require("@/assets/icons/medicine.png"); } catch { return 34; } })(),
+  doctor: (() => { try { return require("@/assets/icons/doctor.png"); } catch { return 35; } })(),
+  fitness: (() => { try { return require("@/assets/icons/fitness.png"); } catch { return 36; } })(),
+  education: (() => { try { return require("@/assets/icons/education.png"); } catch { return 37; } })(),
+  graduation: (() => { try { return require("@/assets/icons/graduation.png"); } catch { return 38; } })(),
+  work: (() => { try { return require("@/assets/icons/work.png"); } catch { return 39; } })(),
+  laptop: (() => { try { return require("@/assets/icons/laptop.png"); } catch { return 40; } })(),
+  wallet: (() => { try { return require("@/assets/icons/wallet.png"); } catch { return 41; } })(),
+  savings: (() => { try { return require("@/assets/icons/savings.png"); } catch { return 42; } })(),
+  piggy_bank: (() => { try { return require("@/assets/icons/piggy_bank.png"); } catch { return 43; } })(),
+  income: (() => { try { return require("@/assets/icons/income.png"); } catch { return 44; } })(),
+  investment: (() => { try { return require("@/assets/icons/investment.png"); } catch { return 45; } })(),
+  gift: (() => { try { return require("@/assets/icons/gift.png"); } catch { return 46; } })(),
+  travel_ticket: (() => { try { return require("@/assets/icons/travel_ticket.png"); } catch { return 47; } })(),
+  vacation: (() => { try { return require("@/assets/icons/vacation.png"); } catch { return 48; } })(),
+  mosque: (() => { try { return require("@/assets/icons/mosque.png"); } catch { return 49; } })(),
+  charity: (() => { try { return require("@/assets/icons/charity.png"); } catch { return 50; } })(),
+  cash_wallet: (() => { try { return require("@/assets/icons/cash_wallet.png"); } catch { return 51; } })(),
+  bank: (() => { try { return require("@/assets/icons/bank.png"); } catch { return 52; } })(),
+  family: (() => { try { return require("@/assets/icons/family.png"); } catch { return 53; } })(),
+  pet: (() => { try { return require("@/assets/icons/pet.png"); } catch { return 54; } })(),
+  plant: (() => { try { return require("@/assets/icons/plant.png"); } catch { return 55; } })(),
+  other: (() => { try { return require("@/assets/icons/other.png"); } catch { return 56; } })(),
+};
+
+export function getCategoryIconSource(name?: string): number {
+  if (name && isValidCategoryIcon(name)) return CATEGORY_ICON_MAP[name];
+  return CATEGORY_ICON_MAP[DEFAULT_CATEGORY_ICON];
+}

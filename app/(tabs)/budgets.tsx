@@ -302,6 +302,7 @@ export default function Budgets() {
           renderItem={({ item }) => (
             <BudgetCard
               categoryName={item.category?.name ?? "Unknown"}
+              categoryIcon={item.category?.icon}
               categoryHidden={item.category?.hidden ?? false}
               budgetAmount={item.amount}
               spent={item.spent}

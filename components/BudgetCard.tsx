@@ -1,9 +1,12 @@
 import Feather from "@expo/vector-icons/Feather";
+import { Image } from "expo-image";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
+import { getCategoryIconSource } from "@/constants/categoryIcons";
 
 type Props = {
   categoryName: string;
+  categoryIcon?: string;
   categoryHidden: boolean;
   budgetAmount: number;
   spent?: number;
@@ -13,6 +16,7 @@ type Props = {
 
 export function BudgetCard({
   categoryName,
+  categoryIcon,
   categoryHidden,
   budgetAmount,
   spent,
@@ -39,6 +43,13 @@ export function BudgetCard({
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-1 flex-row items-center gap-2">
+          {categoryIcon ? (
+            <Image
+              source={getCategoryIconSource(categoryIcon)}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+            />
+          ) : null}
           <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
             {categoryName}
           </Text>

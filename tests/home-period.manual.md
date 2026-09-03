@@ -28,7 +28,7 @@ Task 5 — swipeable Home via PagerView
 
 - [ ] Tap `<` / `>` buttons navigates period, updates PagerView page, triggers haptic, disables `>` when future beyond current period
 
-- [ ] PERIOD BALANCE card: shows `currentClosing` (closingBalance) 28 bold + `currentLabel • Opening` caption, plus `Income +`/`Expense -` tinted circles (`trending-up`/`trending-down` with `${C.success}14`/`error14`); skeleton when `balances === undefined`, `0` when `null`
+- [ ] PERIOD BALANCE card: shows `currentClosing` (closingBalance) 28 bold + `currentLabel • Opening` caption, plus `Income +`/`Expense -` tinted circles (`trending-up`/`trending-down` with `${C.success}14`/`error14`); skeleton when `balances === undefined`, `No data for this period` when `balances === null` (per PRD §3.8)
 
 - [ ] Period net text matches snapshot `closingBalance` for that period (`fresh` closing=net, `carryOver` cumulative) without requiring `+` prefix for positive values
 

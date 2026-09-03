@@ -1,11 +1,14 @@
 import Feather from "@expo/vector-icons/Feather";
+import { Image } from "expo-image";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { CategoryType } from "@/constants/categories";
+import { getCategoryIconSource } from "@/constants/categoryIcons";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
   name: string;
   type: CategoryType;
+  icon?: string;
   hidden: boolean;
   onToggleVisibility?: () => void;
   onEdit?: () => void;
@@ -15,6 +18,7 @@ type Props = {
 export function CategoryCard({
   name,
   type,
+  icon,
   hidden,
   onToggleVisibility,
   onEdit,
@@ -43,9 +47,13 @@ export function CategoryCard({
           borderRadius: Radius.sm,
           backgroundColor: C.surface,
         }}
-        className="items-center justify-center"
+        className="items-center justify-center overflow-hidden"
       >
-        <Feather name="tag" size={20} color={C.primary} />
+        <Image
+          source={getCategoryIconSource(icon)}
+          style={{ width: 32, height: 32 }}
+          contentFit="contain"
+        />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">

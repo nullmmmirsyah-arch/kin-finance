@@ -14,7 +14,7 @@ type Props = {
 
 export function BillRankingCard({ type, segments }: Props) {
   const C = useThemeColors();
-  const top10 = segments.slice(0, 10);
+  const top10 = [...segments].sort((a, b) => b.amount - a.amount).slice(0, 10);
 
   return (
     <View

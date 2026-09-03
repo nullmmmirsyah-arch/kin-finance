@@ -61,6 +61,7 @@ export default defineSchema({
     householdId: v.id("households"),
     name: v.string(),
     type: v.union(v.literal("income"), v.literal("expense")),
+    icon: v.optional(v.string()),
     hidden: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -328,19 +328,6 @@ export default function Home() {
   }, [queryArgsKey]);
 
   useEffect(() => {
-    if (isConnected === false) {
-      setStale(true);
-      return;
-    }
-    if (result !== undefined) {
-      setStale(false);
-      return;
-    }
-    const t = setTimeout(() => setStale(true), 3000);
-    return () => clearTimeout(t);
-  }, [result, isConnected, refreshKey]);
-
-  useEffect(() => {
     if (result === undefined) return;
     if (result.transactions === null) {
       setPagedTransactions(null);
@@ -703,9 +690,13 @@ export default function Home() {
                             </View>
                             {balances === undefined ? (
                               <Skeleton style={{ width: 160, height: 32 }} />
+                            ) : balances === null ? (
+                              <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+                                No data for this period
+                              </Text>
                             ) : (
                               <Text className="text-center text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
-                                {formatNumber(balances === null ? 0 : currentClosing)}
+                                {formatNumber(currentClosing)}
                               </Text>
                             )}
                             <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
@@ -1138,6 +1129,7 @@ export default function Home() {
                     <View className="px-2">
                       <TransactionCard
                         categoryName={item.category?.name ?? null}
+                        categoryIcon={item.category?.icon ?? null}
                         isTransfer={item.type === "transfer"}
                         toAccountName={item.toAccount?.name}
                         accountName={item.account?.name}
