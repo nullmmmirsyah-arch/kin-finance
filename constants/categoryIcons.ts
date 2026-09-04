@@ -4,8 +4,9 @@ import {
   isValidCategoryIcon,
   type CategoryIconName,
 } from "./categoryIconNames";
+import { CATEGORY_STREAMLINE_MAP, getStreamlineIconName } from "./streamlineIconMap";
 
-export { ALL_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, isValidCategoryIcon };
+export { ALL_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, isValidCategoryIcon, CATEGORY_STREAMLINE_MAP, getStreamlineIconName };
 export type { CategoryIconName };
 
 export const CATEGORY_ICON_MAP: Record<CategoryIconName, number> = {

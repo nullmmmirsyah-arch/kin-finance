@@ -1,9 +1,8 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Image } from "expo-image";
 import { Shadow, useThemeColors } from "@/constants/theme";
 import { useMemo, useState } from "react";
 import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { getCategoryIconSource } from "@/constants/categoryIcons";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 export type SelectOption = { id: string; label: string; icon?: string };
 
@@ -61,13 +60,7 @@ export function SelectField({
         className={`h-12 flex-row items-center justify-between rounded-xl border bg-background px-4 dark:bg-background-dark ${error ? "border-error dark:border-error-dark" : "border-border dark:border-border-dark"}`}
       >
         <View className="flex-row items-center gap-2">
-          {selectedOption?.icon ? (
-            <Image
-              source={getCategoryIconSource(selectedOption.icon)}
-              style={{ width: 24, height: 24 }}
-              contentFit="contain"
-            />
-          ) : null}
+          {selectedOption?.icon ? <CategoryIcon name={selectedOption.icon} size={24} /> : null}
           <Text
             className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
           >
@@ -133,13 +126,7 @@ export function SelectField({
                     className="min-h-12 flex-row items-center justify-between px-4 py-3"
                   >
                     <View className="flex-row items-center gap-2">
-                      {option.icon ? (
-                        <Image
-                          source={getCategoryIconSource(option.icon)}
-                          style={{ width: 24, height: 24 }}
-                          contentFit="contain"
-                        />
-                      ) : null}
+                      {option.icon ? <CategoryIcon name={option.icon} size={24} /> : null}
                       <Text className="text-base text-text-primary dark:text-text-primary-dark">
                         {option.label}
                       </Text>

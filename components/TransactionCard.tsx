@@ -1,10 +1,9 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Image } from "expo-image";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
-import { getCategoryIconSource } from "@/constants/categoryIcons";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "shopping-cart",
@@ -117,11 +116,7 @@ export function TransactionCard({
         {isTransfer ? (
           <Feather name="arrow-right" size={18} color={C.primary} />
         ) : categoryIcon ? (
-          <Image
-            source={getCategoryIconSource(categoryIcon)}
-            style={{ width: 28, height: 28 }}
-            contentFit="contain"
-          />
+          <CategoryIcon name={categoryIcon} size={28} />
         ) : (
           <Feather
             name={getCategoryIcon(categoryName) as any}

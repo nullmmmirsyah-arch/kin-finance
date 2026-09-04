@@ -19,8 +19,7 @@ import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { formatAmountInput } from "@/utils/format";
-import { Image } from "expo-image";
-import { getCategoryIconSource } from "@/constants/categoryIcons";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { hapticSuccess, hapticError, hapticWarning } from "@/lib/haptics";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
@@ -219,11 +218,7 @@ export default function BudgetForm() {
                 className="h-12 flex-row items-center gap-2 border px-4"
               >
                 {existingBudget?.category?.icon ? (
-                  <Image
-                    source={getCategoryIconSource(existingBudget.category.icon)}
-                    style={{ width: 24, height: 24 }}
-                    contentFit="contain"
-                  />
+                  <CategoryIcon name={existingBudget.category.icon} size={24} />
                 ) : null}
                 <Text className="text-base text-text-primary dark:text-text-primary-dark">
                   {existingBudget?.category?.name ?? "Unknown"}
