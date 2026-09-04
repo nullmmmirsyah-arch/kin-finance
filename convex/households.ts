@@ -389,3 +389,128 @@ export const removeMember = mutation({
     await ctx.db.delete(targetMembership._id);
   },
 });
+
+async function cascadeDelete(ctx: any, householdId: any) {
+  const transactions = await ctx.db
+    .query("transactions")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of transactions) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const budgets = await ctx.db
+    .query("budgets")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of budgets) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const periodBalances = await ctx.db
+    .query("periodBalances")
+    .filter((q: any) => q.eq(q.field("householdId"), householdId))
+    .collect();
+  for (const doc of periodBalances) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const accounts = await ctx.db
+    .query("accounts")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of accounts) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const categories = await ctx.db
+    .query("categories")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of categories) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const invitations = await ctx.db
+    .query("invitations")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of invitations) {
+    await ctx.db.delete(doc._id);
+  }
+
+  const memberships = await ctx.db
+    .query("householdMemberships")
+    .withIndex("by_householdId", (q: any) => q.eq("householdId", householdId))
+    .collect();
+  for (const doc of memberships) {
+    await ctx.db.delete(doc._id);
+  }
+
+  await ctx.db.delete(householdId);
+}
+
+export const deleteHousehold = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+    if (membership.householdId !== args.householdId) {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+    const household = await ctx.db.get(args.householdId);
+    if (household === null) {
+      throw new ConvexError("Household not found.");
+    }
+    await cascadeDelete(ctx, args.householdId);
+    return null;
+  },
+});
+
+export const leaveHousehold = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    if (membership.householdId !== args.householdId) {
+      throw new ConvexError("You are not a member of this household.");
+    }
+    if (membership.role === "owner") {
+      throw new ConvexError(
+        "Owners cannot leave. Transfer ownership or delete the household.",
+      );
+    }
+    await ctx.db.delete(membership._id);
+    return null;
+  },
+});
+
+export const transferOwnership = mutation({
+  args: {
+    householdId: v.id("households"),
+    newOwnerUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+    if (membership.householdId !== args.householdId) {
+      throw new ConvexError("You are not the owner of this household.");
+    }
+    if (args.newOwnerUserId === membership.userId) {
+      throw new ConvexError("Cannot transfer to yourself.");
+    }
+    const target = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_householdId", (q) => q.eq("householdId", args.householdId))
+      .filter((q) => q.eq(q.field("userId"), args.newOwnerUserId))
+      .first();
+    if (target === null) {
+      throw new ConvexError("Member not found.");
+    }
+    if (target.role === "owner") {
+      throw new ConvexError("Target is already owner.");
+    }
+    await ctx.db.patch(membership._id, { role: "member" });
+    await ctx.db.patch(target._id, { role: "owner" });
+    return { oldOwnerId: membership.userId, newOwnerId: target.userId };
+  },
+});

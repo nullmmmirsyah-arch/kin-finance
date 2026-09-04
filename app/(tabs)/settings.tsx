@@ -10,7 +10,7 @@ import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/Button";
 import { useSnackbar } from "@/components/Snackbar";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { getConvexErrorMessage } from "@/lib/errors";
 
 const THEME_OPTIONS: {
@@ -40,6 +40,8 @@ export default function Settings() {
   );
   const me = useQuery(api.users.getMe);
   const updateBalanceMode = useMutation(api.households.updateBalanceMode);
+  const deleteHousehold = useMutation(api.households.deleteHousehold);
+  const leaveHousehold = useMutation(api.households.leaveHousehold);
 
   const memberCount = members?.members.length ?? 1;
 
@@ -47,6 +49,7 @@ export default function Settings() {
   const { show } = useSnackbar();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
+  const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
 
   const isOwner = (() => {
     if (me === undefined || members === undefined) return undefined;
@@ -76,6 +79,72 @@ export default function Settings() {
     },
     [household?._id, balanceMode, isUpdatingBalanceMode, updateBalanceMode, show],
   );
+
+  const handleDeleteOrLeave = useCallback(() => {
+    if (!household?._id || isDeletingHousehold) return;
+    if (isOwner) {
+      Alert.alert(
+        "Delete Household?",
+        "This will permanently delete all household data for everyone. This cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Transfer Ownership",
+            onPress: () => router.push("/members"),
+          },
+          {
+            text: "Delete All",
+            style: "destructive",
+            onPress: () => {
+              Alert.alert("Confirm Delete", "Are you absolutely sure? All accounts, categories, transactions, budgets and invites will be deleted.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    setIsDeletingHousehold(true);
+                    try {
+                      await deleteHousehold({ householdId: household._id });
+                      void hapticSuccess();
+                      show("Household deleted");
+                      router.replace("/onboarding");
+                    } catch (e: unknown) {
+                      void hapticError();
+                      show(getConvexErrorMessage(e, "Failed to delete household."));
+                    } finally {
+                      setIsDeletingHousehold(false);
+                    }
+                  },
+                },
+              ]);
+            },
+          },
+        ],
+      );
+    } else {
+      Alert.alert("Leave Household?", "You will lose access to all household data. Your transactions will remain in the household.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingHousehold(true);
+            try {
+              await leaveHousehold({ householdId: household._id });
+              void hapticSuccess();
+              show("Left household");
+              router.replace("/onboarding");
+            } catch (e: unknown) {
+              void hapticError();
+              show(getConvexErrorMessage(e, "Failed to leave household."));
+            } finally {
+              setIsDeletingHousehold(false);
+            }
+          },
+        },
+      ]);
+    }
+  }, [household?._id, isOwner, isDeletingHousehold, deleteHousehold, leaveHousehold, router, show]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -340,6 +409,48 @@ export default function Settings() {
           </View>
           <Feather name="chevron-right" size={20} color={C.textSecondary} />
         </Pressable>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+          Danger Zone
+        </Text>
+        <View
+          style={[
+            Shadow.card,
+            {
+              borderRadius: Radius.md,
+              backgroundColor: C.background,
+              borderWidth: 1,
+              borderColor: "#FCA5A5",
+            },
+          ]}
+          className="gap-3 px-4 py-4"
+        >
+          <View className="flex-row items-center gap-2">
+            <Feather name="alert-triangle" size={18} color="#DC2626" />
+            <Text className="text-sm font-semibold" style={{ color: "#DC2626" }}>
+              {isOwner ? "Delete Household" : "Leave Household"}
+            </Text>
+          </View>
+          <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+            {isOwner
+              ? "Permanently delete all household data for everyone. This cannot be undone."
+              : "You will lose access to all household data. Your transactions will remain in the household."}
+          </Text>
+          <Button
+            title={isOwner ? "Delete Household" : "Leave Household"}
+            variant="danger"
+            onPress={handleDeleteOrLeave}
+            loading={isDeletingHousehold}
+            disabled={isDeletingHousehold || isOwner === undefined}
+          />
+          {isOwner ? (
+            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+              To keep the household, transfer ownership in Members first.
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       <View className="mt-6 px-5">
