@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "."),
       "react-native": path.resolve(__dirname, "tests/__mocks__/react-native.ts"),
+      "react-native-svg": path.resolve(__dirname, "tests/__mocks__/react-native-svg.ts"),
       "@expo/vector-icons/Feather": path.resolve(__dirname, "tests/__mocks__/expo-feather.ts"),
       "@expo/vector-icons": path.resolve(__dirname, "tests/__mocks__/expo-feather.ts"),
     },

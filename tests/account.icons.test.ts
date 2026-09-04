@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import streamlineData from "@/constants/streamlineIconData.json";
 import { ACCOUNT_STREAMLINE_MAP, getAccountIconName } from "@/constants/accountIcons";
 import { ACCOUNT_TYPES } from "@/constants/accounts";
+import { getAccountIconXml } from "@/components/AccountIcon";
 
 describe("accountIcons", () => {
   it("maps all 4 AccountType to Iconify names with SVG bodies", () => {
@@ -20,5 +21,10 @@ describe("accountIcons", () => {
     expect(getAccountIconName("invalid" as any)).toBe("saving-bank-1");
     expect(getAccountIconName(undefined)).toBe("saving-bank-1");
     expect(getAccountIconName("cash")).toBe("cash-payment-bill");
+  });
+  it("AccountIcon xml contains svg wrapper + body", () => {
+    expect(getAccountIconXml("bank")).toContain("<svg");
+    expect(getAccountIconXml("cash")).toContain("cash-payment-bill");
+    expect(getAccountIconXml("invalid" as any)).toContain("saving-bank-1");
   });
 });
