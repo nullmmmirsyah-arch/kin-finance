@@ -26,7 +26,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PendingInviteCard } from "@/components/PendingInviteCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 
 type Screen = "list" | "invite";
 
@@ -45,6 +45,9 @@ export default function Members() {
   const removeMember = useMutation(api.households.removeMember);
   const createInvite = useMutation(api.invitations.create);
   const revokeInvite = useMutation(api.invitations.revoke);
+  const deleteHousehold = useMutation(api.households.deleteHousehold);
+  const leaveHousehold = useMutation(api.households.leaveHousehold);
+  const transferOwnership = useMutation(api.households.transferOwnership);
   const invites = useQuery(
     api.invitations.listActive,
     household?._id ? { householdId: household._id } : "skip",
@@ -84,6 +87,7 @@ export default function Members() {
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
 
   const isOwner =
     members?.members.some(
@@ -109,6 +113,137 @@ export default function Members() {
         ))}
       </View>
     );
+
+  const handleTransferOwnership = useCallback(
+    (newOwner: { userId: string; name?: string }) => {
+      if (!household?._id) return;
+      Alert.alert("Transfer Ownership?", `Make ${newOwner.name ?? "this member"} the new owner? You will become a member.`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Transfer",
+          onPress: async () => {
+            try {
+              await transferOwnership({
+                householdId: household._id,
+                newOwnerUserId: newOwner.userId as Id<"users">,
+              });
+              void hapticSuccess();
+              show(`Ownership transferred to ${newOwner.name ?? "member"}`);
+            } catch (e: any) {
+              void hapticError();
+              show(getConvexErrorMessage(e, "Failed to transfer ownership."));
+            }
+          },
+        },
+      ]);
+    },
+    [household, transferOwnership, show],
+  );
+
+  const handleDeleteOrLeave = useCallback(() => {
+    if (!household?._id || isDeletingHousehold) return;
+    if (isOwner) {
+      const memberOptions = members?.members.filter((m) => m.role !== "owner") ?? [];
+      if (memberOptions.length > 0) {
+        Alert.alert("Delete Household?", "Permanently delete all data for everyone, or transfer ownership to keep the household.", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete All",
+            style: "destructive",
+            onPress: () => {
+              Alert.alert("Confirm Delete", "Are you absolutely sure? All accounts, categories, transactions, budgets and invites will be deleted.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    setIsDeletingHousehold(true);
+                    try {
+                      await deleteHousehold({ householdId: household._id });
+                      void hapticSuccess();
+                      show("Household deleted");
+                      router.replace("/onboarding");
+                    } catch (e: any) {
+                      void hapticError();
+                      show(getConvexErrorMessage(e, "Failed to delete household."));
+                    } finally {
+                      setIsDeletingHousehold(false);
+                    }
+                  },
+                },
+              ]);
+            },
+          },
+          {
+            text: "Transfer",
+            onPress: () => {
+              const buttons: any[] = [{ text: "Cancel", style: "cancel" }];
+              for (const m of memberOptions) {
+                buttons.push({
+                  text: m.name ?? m.email ?? "Member",
+                  onPress: () => handleTransferOwnership({ userId: m.userId, name: m.name }),
+                });
+              }
+              Alert.alert("Transfer to...", "Choose new owner", buttons);
+            },
+          },
+        ]);
+      } else {
+        Alert.alert("Delete Household?", "This will permanently delete all household data. This cannot be undone.", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => {
+              Alert.alert("Confirm Delete", "Are you absolutely sure?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    setIsDeletingHousehold(true);
+                    try {
+                      await deleteHousehold({ householdId: household._id });
+                      void hapticSuccess();
+                      show("Household deleted");
+                      router.replace("/onboarding");
+                    } catch (e: any) {
+                      void hapticError();
+                      show(getConvexErrorMessage(e, "Failed to delete household."));
+                    } finally {
+                      setIsDeletingHousehold(false);
+                    }
+                  },
+                },
+              ]);
+            },
+          },
+        ]);
+      }
+    } else {
+      Alert.alert("Leave Household?", "You will lose access to all household data. Your transactions will remain in the household.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingHousehold(true);
+            try {
+              await leaveHousehold({ householdId: household._id });
+              void hapticSuccess();
+              show("Left household");
+              router.replace("/onboarding");
+            } catch (e: any) {
+              void hapticError();
+              show(getConvexErrorMessage(e, "Failed to leave household."));
+            } finally {
+              setIsDeletingHousehold(false);
+            }
+          },
+        },
+      ]);
+    }
+  }, [household, members, isOwner, isDeletingHousehold, deleteHousehold, leaveHousehold, handleTransferOwnership, router, show]);
 
   const handleGenerateCode = useCallback(async () => {
     if (isGenerating) return;
@@ -403,6 +538,41 @@ export default function Members() {
             Calendar months and budget periods use the household timezone so every
             member sees the same dates. Match device follows the device timezone.
           </Text>
+        </View>
+
+        <View className="mt-4">
+          <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
+          <View
+            style={[
+              Shadow.card,
+              {
+                borderRadius: Radius.md,
+                backgroundColor: C.background,
+                borderWidth: 1,
+                borderColor: C.error,
+              },
+            ]}
+            className="gap-3 px-4 py-4"
+          >
+            <View className="flex-row items-center gap-2">
+              <Feather name="alert-triangle" size={18} color={C.error} />
+              <Text className="text-sm font-semibold" style={{ color: C.error }}>
+                {isOwner ? "Delete Household" : "Leave Household"}
+              </Text>
+            </View>
+            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+              {isOwner
+                ? "Permanently delete all household data for everyone. Or transfer ownership to keep the household."
+                : "You will lose access to all household data. Your transactions will remain in the household."}
+            </Text>
+            <Button
+              title={isOwner ? "Delete Household" : "Leave Household"}
+              variant="danger"
+              onPress={handleDeleteOrLeave}
+              loading={isDeletingHousehold}
+              disabled={isDeletingHousehold}
+            />
+          </View>
         </View>
       </View>
 
