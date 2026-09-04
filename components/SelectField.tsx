@@ -2,9 +2,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { Shadow, useThemeColors } from "@/constants/theme";
 import { useMemo, useState } from "react";
 import { Keyboard, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { AccountIcon } from "@/components/AccountIcon";
-import { CategoryIcon } from "@/components/CategoryIcon";
-import { isAccountType } from "@/constants/accountIcons";
+import { Icon } from "@/modules/icon-registry";
 
 export type SelectOption = { id: string; label: string; icon?: string };
 
@@ -62,13 +60,7 @@ export function SelectField({
         className={`h-12 flex-row items-center justify-between rounded-xl border bg-background px-4 dark:bg-background-dark ${error ? "border-error dark:border-error-dark" : "border-border dark:border-border-dark"}`}
       >
         <View className="flex-row items-center gap-2">
-          {selectedOption?.icon ? (
-            isAccountType(selectedOption.icon) ? (
-              <AccountIcon type={selectedOption.icon} size={24} />
-            ) : (
-              <CategoryIcon name={selectedOption.icon} size={24} />
-            )
-          ) : null}
+          {selectedOption?.icon ? <Icon ref={selectedOption.icon} size={24} /> : null}
           <Text
             className={`text-base ${value ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
           >
@@ -134,13 +126,7 @@ export function SelectField({
                     className="min-h-12 flex-row items-center justify-between px-4 py-3"
                   >
                     <View className="flex-row items-center gap-2">
-                      {option.icon ? (
-                        isAccountType(option.icon) ? (
-                          <AccountIcon type={option.icon} size={24} />
-                        ) : (
-                          <CategoryIcon name={option.icon} size={24} />
-                        )
-                      ) : null}
+                      {option.icon ? <Icon ref={option.icon} size={24} /> : null}
                       <Text className="text-base text-text-primary dark:text-text-primary-dark">
                         {option.label}
                       </Text>

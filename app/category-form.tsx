@@ -14,14 +14,9 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
-import {
-  ALL_CATEGORY_ICONS,
-  DEFAULT_CATEGORY_ICON,
-  type CategoryIconName,
-  isValidCategoryIcon,
-} from "@/constants/categoryIcons";
+import { DEFAULT_CATEGORY_ICON, type CategoryIconName, isValidCategoryIcon } from "@/modules/icon-registry";
+import { IconPicker } from "@/modules/icon-registry";
 import { validateCategoryName, CATEGORY_NAME_MAX } from "@/constants/validation";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -217,31 +212,7 @@ export default function CategoryForm() {
             <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
               Icon
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {ALL_CATEGORY_ICONS.map((n) => {
-                const selected = icon === n;
-                return (
-                  <Pressable
-                    key={n}
-                    onPress={() => setIcon(n as CategoryIconName)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Select icon ${n}`}
-                    accessibilityState={{ selected }}
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 12,
-                      borderWidth: selected ? 2 : 1,
-                      borderColor: selected ? C.primary : C.border,
-                      backgroundColor: selected ? C.surface : C.background,
-                    }}
-                    className="items-center justify-center"
-                  >
-                    <CategoryIcon name={n} size={32} />
-                  </Pressable>
-                );
-              })}
-            </View>
+            <IconPicker value={icon} onChange={(v) => setIcon(v as CategoryIconName)} />
           </View>
 
           <View
