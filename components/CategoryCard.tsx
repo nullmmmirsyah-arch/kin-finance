@@ -1,8 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Image } from "expo-image";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { CategoryType } from "@/constants/categories";
-import { getCategoryIconSource } from "@/constants/categoryIcons";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
@@ -49,11 +48,7 @@ export function CategoryCard({
         }}
         className="items-center justify-center overflow-hidden"
       >
-        <Image
-          source={getCategoryIconSource(icon)}
-          style={{ width: 32, height: 32 }}
-          contentFit="contain"
-        />
+        <CategoryIcon name={icon} size={32} />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">

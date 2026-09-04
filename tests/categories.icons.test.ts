@@ -7,7 +7,10 @@ import {
   DEFAULT_CATEGORY_ICON,
   CATEGORY_ICON_MAP,
   ALL_CATEGORY_ICONS,
+  CATEGORY_STREAMLINE_MAP,
+  getStreamlineIconName,
 } from "@/constants/categoryIcons";
+import streamlineData from "@/constants/streamlineIconData.json";
 
 describe("categoryIcons", () => {
   it("accepts valid icons", () => {
@@ -31,12 +34,23 @@ describe("categoryIcons", () => {
       expect(isValidCategoryIcon(key)).toBe(true);
     }
   });
-  it("all icon files exist on disk (manifest + 56 PNG)", () => {
+  it("all icon files exist on disk (manifest + 56 PNG legacy fallback)", () => {
     const iconsDir = path.resolve(__dirname, "../assets/icons");
     expect(fs.existsSync(path.join(iconsDir, "manifest.json"))).toBe(true);
     for (const name of ALL_CATEGORY_ICONS) {
       const p = path.join(iconsDir, `${name}.png`);
       expect(fs.existsSync(p), `missing ${name}.png`).toBe(true);
     }
+  });
+  it("streamline map covers all allowlist + offline bundle", () => {
+    const icons = (streamlineData as { icons: Record<string, { body: string }> }).icons;
+    for (const name of ALL_CATEGORY_ICONS) {
+      const iconName = CATEGORY_STREAMLINE_MAP[name as keyof typeof CATEGORY_STREAMLINE_MAP];
+      expect(iconName, `missing streamline mapping for ${name}`).toBeTruthy();
+      expect(icons[iconName]?.body, `missing SVG body for ${iconName} (${name})`).toBeTruthy();
+    }
+    expect(getStreamlineIconName("groceries")).toBe(CATEGORY_STREAMLINE_MAP.groceries);
+    expect(getStreamlineIconName("invalid" as string)).toBe(CATEGORY_STREAMLINE_MAP.other);
+    expect(getStreamlineIconName(undefined)).toBe(CATEGORY_STREAMLINE_MAP.other);
   });
 });

@@ -16,13 +16,12 @@ import { useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import {
   ALL_CATEGORY_ICONS,
-  CATEGORY_ICON_MAP,
   DEFAULT_CATEGORY_ICON,
   type CategoryIconName,
   isValidCategoryIcon,
 } from "@/constants/categoryIcons";
 import { validateCategoryName, CATEGORY_NAME_MAX } from "@/constants/validation";
-import { Image } from "expo-image";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -238,11 +237,7 @@ export default function CategoryForm() {
                     }}
                     className="items-center justify-center"
                   >
-                    <Image
-                      source={CATEGORY_ICON_MAP[n as CategoryIconName]}
-                      style={{ width: 32, height: 32 }}
-                      contentFit="contain"
-                    />
+                    <CategoryIcon name={n} size={32} />
                   </Pressable>
                 );
               })}
