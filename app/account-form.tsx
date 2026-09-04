@@ -10,6 +10,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { validateAccountName, ACCOUNT_NAME_MAX } from "@/constants/validation";
+import { AccountIcon } from "@/components/AccountIcon";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -196,6 +197,12 @@ export default function AccountForm() {
                   onPress={() => setType(t.id)}
                 />
               ))}
+            </View>
+            <View className="flex-row items-center gap-2">
+              <AccountIcon type={type} size={24} />
+              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                {ACCOUNT_TYPES.find((t) => t.id === type)?.label} preview
+              </Text>
             </View>
           </View>
 

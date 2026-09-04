@@ -1,6 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
+import { AccountIcon } from "@/components/AccountIcon";
 import { formatNumber } from "@/utils/format";
 import { Pressable, Text, View } from "react-native";
 
@@ -39,7 +40,7 @@ export function AccountCard({ name, type, balance, hidden, onEdit, onDelete }: P
         }}
         className="items-center justify-center"
       >
-        <Feather name={meta.icon} size={20} color={C.primary} />
+        <AccountIcon type={type} size={32} />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">

@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import PagerView from "react-native-pager-view";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { ACCOUNT_TYPES, type AccountType } from "@/constants/accounts";
+import { AccountIcon } from "@/components/AccountIcon";
 import { GradientCard } from "@/components/GradientCard";
 import { TransactionCard } from "@/components/TransactionCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -44,13 +44,6 @@ import { MonthPicker } from "@/components/MonthPicker";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
 import { Id } from "@/convex/_generated/dataModel";
 import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
-
-const ACCOUNT_TYPE_THEME_KEY: Record<AccountType, keyof ReturnType<typeof useThemeColors>> = {
-  cash: "accountCash",
-  bank: "accountBank",
-  ewallet: "accountEwallet",
-  credit_card: "accountCreditCard",
-};
 
 const PAGE_SIZE = 30;
 
@@ -953,9 +946,6 @@ export default function Home() {
                               index,
                             })}
                             renderItem={({ item }) => {
-                              const meta = ACCOUNT_TYPES.find((t) => t.id === item.type) ?? ACCOUNT_TYPES[0];
-                              const tintKey = ACCOUNT_TYPE_THEME_KEY[item.type] ?? "primary";
-                              const tint = C[tintKey] ?? C.primary;
                               return (
                                 <Pressable
                                   onPress={() =>
@@ -985,11 +975,11 @@ export default function Home() {
                                       width: 40,
                                       height: 40,
                                       borderRadius: Radius.sm,
-                                      backgroundColor: `${tint}15`,
+                                      backgroundColor: C.surface,
                                     }}
                                     className="items-center justify-center"
                                   >
-                                    <Feather name={meta.icon} size={18} color={tint} />
+                                    <AccountIcon type={item.type} size={28} />
                                   </View>
                                   <Text
                                     numberOfLines={1}
