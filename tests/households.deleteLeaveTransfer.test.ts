@@ -106,23 +106,129 @@ describe("households delete/leave/transfer", () => {
     return { householdId, ownerId, memberId };
   }
 
-  it("owner can hard delete cascade", async () => {
+  it("owner can hard delete cascade — isolated to target household", async () => {
     const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
-    const { householdId } = await t.run(async (ctx) => seed(ctx));
+    const { householdId, householdId2 } = await t.run(async (ctx) => {
+      const { householdId } = await seed(ctx);
+      // second isolated household — should survive delete
+      const householdId2 = await ctx.db.insert("households", {
+        name: "HH2",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const otherUser = await ctx.db.insert("users", {
+        tokenIdentifier: "other|hh-iso",
+        clerkUserId: "c-other-iso",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId: householdId2,
+        userId: otherUser,
+        role: "owner",
+      });
+      const acc2 = await ctx.db.insert("accounts", {
+        householdId: householdId2,
+        name: "Cash2",
+        type: "cash",
+        balance: 0,
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const cat2 = await ctx.db.insert("categories", {
+        householdId: householdId2,
+        name: "Food2",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("transactions", {
+        householdId: householdId2,
+        accountId: acc2,
+        categoryId: cat2,
+        amount: -50,
+        type: "expense",
+        date: 1,
+        createdBy: otherUser,
+        updatedBy: otherUser,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("budgets", {
+        householdId: householdId2,
+        categoryId: cat2,
+        periodStart: 1,
+        amount: 500,
+        createdBy: otherUser,
+        updatedBy: otherUser,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("periodBalances", {
+        householdId: householdId2,
+        periodType: "monthly",
+        periodStart: 1,
+        periodEnd: 2,
+        income: 0,
+        expense: 50,
+        openingBalance: 0,
+        closingBalance: -50,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("invitations", {
+        householdId: householdId2,
+        codeHash: "iso",
+        createdBy: otherUser,
+        expiresAt: Date.now() + 100000,
+        maxUses: 1,
+        useCount: 0,
+        revoked: false,
+        redemptionAttempts: 0,
+        lastAttemptAt: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return { householdId, householdId2 };
+    });
     await owner.mutation(api.households.deleteHousehold, { householdId });
-    const counts = await t.run(async (ctx) => {
+    const result = await t.run(async (ctx: any) => {
+      const allHh = await ctx.db.query("households").collect();
+      const allMem = await ctx.db.query("householdMemberships").collect();
+      const allAcc = await ctx.db.query("accounts").collect();
+      const allCat = await ctx.db.query("categories").collect();
+      const allTx = await ctx.db.query("transactions").collect();
+      const allBud = await ctx.db.query("budgets").collect();
+      const allPer = await ctx.db.query("periodBalances").collect();
+      const allInv = await ctx.db.query("invitations").collect();
+      // verify target household records are gone
+      const targetHh = await ctx.db.get(householdId);
+      const targetAcc = allAcc.filter((a: any) => a.householdId === householdId);
+      const isolatedHh = await ctx.db.get(householdId2);
+      const isolatedAcc = allAcc.filter((a: any) => a.householdId === householdId2);
       return {
-        hh: (await ctx.db.query("households").collect()).length,
-        mem: (await ctx.db.query("householdMemberships").collect()).length,
-        acc: (await ctx.db.query("accounts").collect()).length,
-        cat: (await ctx.db.query("categories").collect()).length,
-        tx: (await ctx.db.query("transactions").collect()).length,
-        bud: (await ctx.db.query("budgets").collect()).length,
-        per: (await ctx.db.query("periodBalances").collect()).length,
-        inv: (await ctx.db.query("invitations").collect()).length,
+        counts: {
+          hh: allHh.length,
+          mem: allMem.length,
+          acc: allAcc.length,
+          cat: allCat.length,
+          tx: allTx.length,
+          bud: allBud.length,
+          per: allPer.length,
+          inv: allInv.length,
+        },
+        targetHh,
+        targetAccLen: targetAcc.length,
+        isolatedHhExists: isolatedHh !== null,
+        isolatedAccLen: isolatedAcc.length,
       };
     });
-    expect(counts).toEqual({ hh: 0, mem: 0, acc: 0, cat: 0, tx: 0, bud: 0, per: 0, inv: 0 });
+    // global counts should be exactly the isolated household's 1-per-table
+    expect(result.counts).toEqual({ hh: 1, mem: 1, acc: 1, cat: 1, tx: 1, bud: 1, per: 1, inv: 1 });
+    expect(result.targetHh).toBeNull();
+    expect(result.targetAccLen).toBe(0);
+    expect(result.isolatedHhExists).toBe(true);
+    expect(result.isolatedAccLen).toBe(1);
   });
 
   it("member cannot delete household", async () => {

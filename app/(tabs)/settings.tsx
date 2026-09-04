@@ -422,14 +422,14 @@ export default function Settings() {
               borderRadius: Radius.md,
               backgroundColor: C.background,
               borderWidth: 1,
-              borderColor: "#FCA5A5",
+              borderColor: C.error,
             },
           ]}
           className="gap-3 px-4 py-4"
         >
           <View className="flex-row items-center gap-2">
-            <Feather name="alert-triangle" size={18} color="#DC2626" />
-            <Text className="text-sm font-semibold" style={{ color: "#DC2626" }}>
+            <Feather name="alert-triangle" size={18} color={C.error} />
+            <Text className="text-sm font-semibold" style={{ color: C.error }}>
               {isOwner ? "Delete Household" : "Leave Household"}
             </Text>
           </View>
