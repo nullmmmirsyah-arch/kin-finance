@@ -1,22 +1,7 @@
-import { getMonthBounds, formatMonthLabel } from "./date";
-
-export function buildSixMonthWindow(
-  now: number,
-  timezone: string,
-): { startDate: number; endDate: number; months: Array<{ periodStart: number; label: string }> } {
-  const cur = getMonthBounds(now, timezone);
-  let start = cur.start;
-  for (let i = 0; i < 5; i++) {
-    start = getMonthBounds(start - 1, timezone).start;
-  }
-  const months: Array<{ periodStart: number; label: string }> = [];
-  let cursor = start;
-  for (let i = 0; i < 6; i++) {
-    months.push({ periodStart: cursor, label: formatMonthLabel(cursor, timezone) });
-    cursor = getMonthBounds(cursor, timezone).end;
-  }
-  return { startDate: start, endDate: cur.end, months };
-}
+// buildSixMonthWindow is duplicate of window(...,6) — deep Period module owns it.
+// Keep shim for backward compat; new code should use window(now,tz,6) from @/utils/periodTime.
+import { buildSixMonthWindow as _buildSixMonthWindow } from "./periodTime";
+export const buildSixMonthWindow = _buildSixMonthWindow;
 
 export function calcDelta(
   currentNet: number,

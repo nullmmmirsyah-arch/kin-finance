@@ -3,35 +3,7 @@ import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatNumber } from "@/utils/format";
-import { CategoryIcon } from "@/components/CategoryIcon";
-
-const CATEGORY_ICONS: Record<string, string> = {
-  Groceries: "shopping-cart",
-  Food: "coffee",
-  Dining: "coffee",
-  Transport: "truck",
-  Rent: "home",
-  Utilities: "zap",
-  Salary: "briefcase",
-  Freelance: "briefcase",
-  Shopping: "shopping-bag",
-  Entertainment: "film",
-  Health: "heart",
-  Education: "book",
-  Savings: "dollar-sign",
-  Gifts: "gift",
-  Travel: "map",
-  Subscriptions: "repeat",
-  Insurance: "shield",
-  Debt: "credit-card",
-  Investments: "trending-up",
-  Other: "tag",
-};
-
-function getCategoryIcon(categoryName: string | null): string {
-  if (!categoryName) return "tag";
-  return CATEGORY_ICONS[categoryName] ?? "tag";
-}
+import { Icon } from "@/modules/icon-registry";
 
 type Props = {
   categoryName: string | null;
@@ -115,14 +87,8 @@ export function TransactionCard({
       >
         {isTransfer ? (
           <Feather name="arrow-right" size={18} color={C.primary} />
-        ) : categoryIcon ? (
-          <CategoryIcon name={categoryIcon} size={28} />
         ) : (
-          <Feather
-            name={getCategoryIcon(categoryName) as any}
-            size={18}
-            color={type === "income" ? C.success : C.error}
-          />
+          <Icon ref={categoryIcon ?? "other"} size={28} />
         )}
       </View>
       <View className="flex-1">
