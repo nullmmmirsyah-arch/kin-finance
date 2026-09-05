@@ -12,11 +12,11 @@ import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Chip } from "@/components/Chip";
-import { Fab } from "@/components/Fab";
-import { CategoryCard } from "@/components/CategoryCard";
+import { PlushCategoryCard } from "@/components/CategoryCard";
+import { Bear } from "@/components/Bear";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
@@ -36,6 +36,7 @@ export default function Categories() {
   const removeCategory = useMutation(api.categories.remove);
   const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
+  const [addPressed, setAddPressed] = useState(false);
   const C = useThemeColors();
 
   const categories = result?.categories ?? null;
@@ -140,18 +141,58 @@ export default function Categories() {
           <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
             Categories
           </Text>
+          <View
+            style={{
+              marginLeft: 8,
+              backgroundColor: "#FDE68A",
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+              borderRadius: 999,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "800", color: C.primary }}>56 icons</Text>
+          </View>
         </View>
       </View>
 
-      <View className="mt-4 flex-row flex-wrap gap-2 px-5">
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.label}
-            active={filter === f.id}
-            onPress={() => setFilter(f.id)}
-          />
-        ))}
+      {/* Filter chips: All/Income/Expense + Add button terra */}
+      <View className="mt-4 flex-row items-center gap-2 px-5">
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, flex: 1 }}>
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.id}
+              label={f.label}
+              active={filter === f.id}
+              onPress={() => setFilter(f.id)}
+            />
+          ))}
+        </View>
+        {isOwner ? (
+          <Pressable
+            onPress={() => router.push("/category-form")}
+            onPressIn={() => setAddPressed(true)}
+            onPressOut={() => setAddPressed(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Add category"
+            style={{
+              backgroundColor: addPressed ? "#B45309" : C.primary,
+              borderRadius: 999,
+              paddingHorizontal: 14,
+              height: 40,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+            }}
+          >
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>Add</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {visibleCategories !== null && visibleCategories.length === 0 ? (
@@ -170,16 +211,46 @@ export default function Categories() {
               }
             />
           </View>
+          {/* reserved footer even when empty */}
+          <View
+            testID="reserved-footer"
+            style={[
+              Shadow.card,
+              {
+                marginTop: 12,
+                backgroundColor: "#FFE9C9",
+                borderWidth: 2.5,
+                borderColor: "#FFFFFF",
+                borderRadius: 18,
+                padding: 12,
+                flexDirection: "row",
+                gap: 10,
+                alignItems: "center",
+              },
+            ]}
+          >
+            <Bear size="small" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", color: C.textPrimary }}>
+                2 reserved “Initial Balance”
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>
+                Tidak bisa dihapus — dipakai untuk opening balance
+              </Text>
+            </View>
+          </View>
         </View>
       ) : (
         <FlatList
           className="mt-4 flex-1"
-          contentContainerClassName="gap-3 px-5 pb-28"
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 28 }}
+          columnWrapperStyle={{ gap: 8 }}
+          numColumns={2}
           data={visibleCategories ?? []}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) =>
             isOwner ? (
-              <CategoryCard
+              <PlushCategoryCard
                 name={item.name}
                 type={item.type}
                 icon={item.icon}
@@ -194,7 +265,7 @@ export default function Categories() {
                 onDelete={() => handleDelete(item)}
               />
             ) : (
-              <CategoryCard
+              <PlushCategoryCard
                 name={item.name}
                 type={item.type}
                 icon={item.icon}
@@ -202,15 +273,37 @@ export default function Categories() {
               />
             )
           }
+          ListFooterComponent={
+            <View
+              testID="reserved-footer"
+              style={[
+                Shadow.card,
+                {
+                  marginTop: 12,
+                  backgroundColor: "#FFE9C9",
+                  borderWidth: 2.5,
+                  borderColor: "#FFFFFF",
+                  borderRadius: 18,
+                  padding: 12,
+                  flexDirection: "row",
+                  gap: 10,
+                  alignItems: "center",
+                },
+              ]}
+            >
+              <Bear size="small" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: C.textPrimary }}>
+                  2 reserved “Initial Balance”
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>
+                  Tidak bisa dihapus — dipakai untuk opening balance
+                </Text>
+              </View>
+            </View>
+          }
         />
       )}
-
-      {isOwner ? (
-        <Fab
-          onPress={() => router.push("/category-form")}
-          accessibilityLabel="Add category"
-        />
-      ) : null}
     </SafeAreaView>
   );
 }
