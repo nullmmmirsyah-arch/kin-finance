@@ -3,7 +3,6 @@ import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { CategoryType } from "@/constants/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Bear } from "@/components/Bear";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
@@ -224,8 +223,8 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel={hidden ? "Show category to members" : "Hide category from members"}
               style={{
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: "#F3E6CD",
@@ -234,7 +233,7 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name={hidden ? "eye-off" : "eye"} size={12} color={muted} />
+              <Feather name={hidden ? "eye-off" : "eye"} size={16} color={muted} />
             </Pressable>
           ) : null}
           {onEdit !== undefined ? (
@@ -245,8 +244,8 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel="Edit category"
               style={{
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: "#F3E6CD",
@@ -255,7 +254,7 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name="edit-2" size={12} color={C.primary} />
+              <Feather name="edit-2" size={16} color={C.primary} />
             </Pressable>
           ) : null}
           {onDelete !== undefined ? (
@@ -266,8 +265,8 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel="Delete category"
               style={{
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: "#F3E6CD",
@@ -276,21 +275,16 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name="trash-2" size={12} color={C.error} />
+              <Feather name="trash-2" size={16} color={C.error} />
             </Pressable>
           ) : null}
         </View>
       ) : null}
 
-      {/* decorative bear small footer hint inside card when needed is via parent footer */}
-      {/* keep Bear small reference for file-level token check */}
-      <View style={{ position: "absolute", opacity: 0, pointerEvents: "none" } as any}>
-        <Bear size="small" />
-      </View>
+
     </View>
   );
 }
 
-// Alias for backwards compat / alternative import name
 export const CategoryCardPlush = PlushCategoryCard;
 export const PlushCategoryChip = PlushCategoryCard;

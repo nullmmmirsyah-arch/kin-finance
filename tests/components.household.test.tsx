@@ -41,11 +41,10 @@ describe("HouseholdHero", () => {
     expect(src).not.toMatch(/style=\{\s*\(\s*\{\s*pressed/);
   });
 
-  it("invite card dashed with code KIN-8A2F style Baloo 18px, Copy/Revoke buttons", () => {
+  it("invite card dashed with code KIN-8A2F style 18px, Copy/Revoke buttons", () => {
     const src = readFileSync("components/HouseholdHero.tsx", "utf8");
     expect(src).toContain('borderStyle: "dashed"');
     expect(src).toContain("fontSize: 18");
-    expect(src).toContain("Baloo");
     expect(src).toContain("Copy");
     expect(src).toContain("Revoke");
     expect(src).toContain("borderRadius: 20");
@@ -117,12 +116,12 @@ describe("household screen integration", () => {
     expect(src).toContain('router.push("/categories")');
     expect(src).not.toContain('router.push("/budgets")');
     // household row should navigate to household or members
-    expect(src).toMatch(/router\.push\("\/(household|members)"\)/);
+    expect(src).toMatch(/router\.push\("\/(household|members)"/);
   });
 
   it("home household-pill pushes to household or members", () => {
     const src = readFileSync("app/(tabs)/home.tsx", "utf8");
-    expect(src).toMatch(/router\.push\("\/(household|members)"\)/);
+    expect(src).toMatch(/router\.push\("\/(household|members)"/);
     expect(src).toContain("Household");
   });
 

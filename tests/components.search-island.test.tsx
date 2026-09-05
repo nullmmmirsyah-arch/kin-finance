@@ -47,8 +47,8 @@ describe("SearchIsland", () => {
     expect(src).toContain("bear-peek");
     // field 46px height
     expect(src).toContain("height: 46");
-    // search button terra 36px
-    expect(src).toContain("height: 36");
+    // search button terra 48px (≥48 touch target)
+    expect(src).toContain("height: 48");
     // quick filters 2.5 border
     expect(src).toContain("borderWidth: 2.5");
     // drawer cream 2.5 border radius 20

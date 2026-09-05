@@ -152,8 +152,8 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
                 accessibilityRole="button"
                 accessibilityLabel="Edit account"
                 style={{
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: creamBorder,
@@ -173,8 +173,8 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
                 accessibilityRole="button"
                 accessibilityLabel="Delete account"
                 style={{
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: creamBorder,

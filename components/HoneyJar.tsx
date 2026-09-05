@@ -150,8 +150,8 @@ export function HoneyJar({
                 accessibilityRole="button"
                 accessibilityLabel="Edit budget"
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: 48,
+                  height: 48,
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: "#F3E6CD",
@@ -160,7 +160,7 @@ export function HoneyJar({
                   justifyContent: "center",
                 }}
               >
-                <Feather name="edit-2" size={14} color={C.primary} />
+                <Feather name="edit-2" size={16} color={C.primary} />
               </Pressable>
             ) : null}
             {onDelete ? (
@@ -171,8 +171,8 @@ export function HoneyJar({
                 accessibilityRole="button"
                 accessibilityLabel="Delete budget"
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: 48,
+                  height: 48,
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: "#F3E6CD",
@@ -181,7 +181,7 @@ export function HoneyJar({
                   justifyContent: "center",
                 }}
               >
-                <Feather name="trash-2" size={14} color={C.error} />
+                <Feather name="trash-2" size={16} color={C.error} />
               </Pressable>
             ) : null}
           </View>

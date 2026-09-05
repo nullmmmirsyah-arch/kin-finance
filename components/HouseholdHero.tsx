@@ -79,8 +79,8 @@ export function HouseholdHero({ name, subtitle, memberCount, onEdit }: Household
               accessibilityRole="button"
               accessibilityLabel="Edit household"
               style={{
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 borderRadius: 12,
                 backgroundColor: isDark ? C.background : "#FFFFFF",
                 borderWidth: 2,
@@ -182,8 +182,6 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
               fontWeight: "800",
               letterSpacing: 1.5,
               color: C.textPrimary,
-              // Baloo style — use system bold as fallback
-              fontFamily: "Baloo_800ExtraBold" as any,
             }}
           >
             {code}
@@ -201,7 +199,8 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
             backgroundColor: copyPressed ? "#B45309" : C.primary,
             borderRadius: 999,
             paddingHorizontal: 14,
-            paddingVertical: 10,
+            height: 48,
+            minHeight: 48,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
@@ -226,7 +225,8 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
               borderColor: C.border,
               borderRadius: 999,
               paddingHorizontal: 14,
-              paddingVertical: 8,
+              height: 48,
+              minHeight: 48,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -324,8 +324,8 @@ export function HouseholdMemberRow({ name, email, role, onRemove }: MemberRowPro
             accessibilityRole="button"
             accessibilityLabel="Remove member"
             style={{
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 12,

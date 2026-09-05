@@ -101,7 +101,8 @@ function PresetPill({
           borderWidth: 2,
           borderColor: C.border,
           backgroundColor: "#FFFFFF",
-          height: 36,
+          height: 48,
+          minHeight: 48,
         }}
       >
         <Text className="text-xs font-bold text-text-primary dark:text-text-primary-dark">

@@ -566,8 +566,7 @@ export default function Home() {
         </View>
 
         <Pressable
-          // @ts-ignore — typed routes not yet generated for new household route
-          onPress={() => router.push("/household")}
+          onPress={() => router.push("/household" as never)}
           accessibilityRole="button"
           accessibilityLabel="Household"
           style={{

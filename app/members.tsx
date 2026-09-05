@@ -642,23 +642,18 @@ export default function Members() {
             ) : null}
           </View>
         }
-        renderItem={({ item }) =>
-          members.members.length === 1 ? null : (
-            <HouseholdMemberRow
-              name={item.name ?? "User"}
-              email={item.email ?? "No email"}
-              role={item.role}
-              onRemove={
-                isOwner && item.role !== "owner"
-                  ? () => handleRemoveMember({ userId: item.userId, name: item.name })
-                  : undefined
-              }
-            />
-          )
-        }
-        ListEmptyComponent={
-          members.members.length > 1 ? null : undefined
-        }
+        renderItem={({ item }) => (
+          <HouseholdMemberRow
+            name={item.name ?? "User"}
+            email={item.email ?? "No email"}
+            role={item.role}
+            onRemove={
+              isOwner && item.role !== "owner"
+                ? () => handleRemoveMember({ userId: item.userId, name: item.name })
+                : undefined
+            }
+          />
+        )}
       />
 
       {isOwner && (

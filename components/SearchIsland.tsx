@@ -236,8 +236,8 @@ export function SearchIsland({
           accessibilityRole="button"
           accessibilityLabel="Search"
           style={{
-            height: 36,
-            minHeight: 36,
+            height: 48,
+            minHeight: 48,
             paddingHorizontal: 16,
             borderRadius: 999,
             backgroundColor: searchPressed ? "#7A3410" : C.primary,
@@ -266,11 +266,6 @@ export function SearchIsland({
       >
         {TYPE_PILLS.map((pill) => {
           const active = typeFilter === pill.id;
-          const [pressed, setPressed] = [false, (_v: boolean) => {}] as const;
-          // use per-pill pressed? simplified: no per-pill pressed state to avoid hook in loop.
-          // We'll use static style with conditional.
-          void pressed;
-          void setPressed;
           return (
             <Pressable
               key={pill.id}
@@ -283,7 +278,8 @@ export function SearchIsland({
                 borderColor: active ? C.primary : C.border,
                 backgroundColor: active ? C.primary : "#FFFFFF",
                 borderRadius: 999,
-                paddingVertical: 7,
+                height: 48,
+                minHeight: 48,
                 paddingHorizontal: 12,
                 flexDirection: "row",
                 alignItems: "center",
@@ -345,7 +341,8 @@ export function SearchIsland({
             borderColor: activeCount > 0 ? C.primary : C.border,
             backgroundColor: activeCount > 0 ? `${C.primary}14` : "#FFFFFF",
             borderRadius: 999,
-            paddingVertical: 7,
+            height: 48,
+            minHeight: 48,
             paddingHorizontal: 12,
             flexDirection: "row",
             alignItems: "center",
@@ -564,7 +561,8 @@ export function SearchIsland({
               accessibilityLabel="Reset filter"
               style={{
                 flex: 1,
-                height: 44,
+                height: 48,
+                minHeight: 48,
                 borderRadius: 999,
                 borderWidth: 2.5,
                 borderColor: C.border,
@@ -588,7 +586,8 @@ export function SearchIsland({
               accessibilityLabel="Terapkan"
               style={{
                 flex: 1,
-                height: 44,
+                height: 48,
+                minHeight: 48,
                 borderRadius: 999,
                 borderWidth: 2.5,
                 borderColor: applyPressed ? "#7A3410" : C.primary,
