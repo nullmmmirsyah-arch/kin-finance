@@ -49,6 +49,19 @@ export function useThemeColors() {
   return scheme === "dark" ? DarkColors : Colors;
 }
 
+// Bear / plush world — non-breaking extension of the stone/amber palette.
+// Keeps existing Colors intact; new tokens are warm clay/honey only.
+export const BearColors = {
+  teddy: "#D9A679",
+  teddyMid: "#DEB08A",
+  teddyLight: "#E8B48E",
+  honey: "#FDE68A",
+  honeyDeep: "#F59E0B",
+} as const;
+
+// Alias for Vault context — same values, semantic name.
+export const BearVaultColors = BearColors;
+
 export const Gradients = {
   card: ["#FFFBF5", "#FEF3C7"],
 } as const;
