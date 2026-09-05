@@ -565,11 +565,48 @@ export default function Home() {
           </Text>
         </View>
 
-        <View className="mb-3 items-center gap-1.5">
-          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            {household.name} Household
-          </Text>
-        </View>
+        <Pressable
+          // @ts-ignore — typed routes not yet generated for new household route
+          onPress={() => router.push("/household")}
+          accessibilityRole="button"
+          accessibilityLabel="Household"
+          style={{
+            borderWidth: 2.5,
+            borderColor: C.border,
+            borderRadius: 999,
+            backgroundColor: C.background,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            paddingVertical: 7,
+            paddingHorizontal: 10,
+            paddingLeft: 8,
+            marginBottom: 10,
+          }}
+          className="flex-row items-center"
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              backgroundColor: "#FFE9C9",
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="home" size={16} color={C.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: "800", color: C.textPrimary }} numberOfLines={1}>
+              {household.name} Household
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>Tap to manage • Household</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color={C.textSecondary} />
+        </Pressable>
 
         <View className="flex-row items-center justify-between">
           <Pressable

@@ -195,7 +195,8 @@ export default function Settings() {
         </Text>
 
         <Pressable
-          onPress={() => router.push("/members")}
+          // @ts-ignore — typed routes not yet generated for new household route
+          onPress={() => router.push("/household")}
           accessibilityLabel={`${household?.name}, ${memberCount} member${memberCount === 1 ? "" : "s"}`}
           style={[
             Shadow.card,
