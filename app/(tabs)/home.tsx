@@ -848,7 +848,7 @@ export default function Home() {
                           onCategoryToggle={handleCategoryToggle}
                           activeCount={activeFilterCount}
                           accounts={accountOptions}
-                          categories={categoriesResult?.categories ?? []}
+                          categories={contextualCategoryOptions}
                           onReset={handleFilterReset}
                         />
                       </View>
@@ -1186,7 +1186,7 @@ export default function Home() {
         accountIds={accountIds}
         categoryIds={categoryIds}
         accounts={accountData?.accounts ?? []}
-        categories={categoriesResult?.categories ?? []}
+        categories={contextualCategoryOptions}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
           setAccountIds(aIds);

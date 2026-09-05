@@ -12,10 +12,10 @@ describe("VaultCard", () => {
     const src = readFileSync("components/VaultCard.tsx", "utf8");
     expect(src).toContain('top-bar-cash');
     expect(src).toContain('top-bar-');
-    expect(src).toContain("#10B981");
-    expect(src).toContain("#3B82F6");
-    // bank terra mapped to primary #92400E or Colors.primary
-    expect(src).toContain("92400E");
+    // theme-driven colors via useThemeColors, not hardcoded literals
+    expect(src).toContain("useThemeColors");
+    expect(src).toContain('testID={`top-bar-${type}`}');
+    expect(src).toContain("vault-card");
   });
 
   it("vault card renders all types", () => {
@@ -43,15 +43,28 @@ describe("VaultCard", () => {
     expect(src).toContain("fontSize: 17");
     expect(src).toContain("fontSize: 11");
     expect(src).toContain("borderWidth: 2");
-    // mini-btns cream border
-    expect(src).toContain("F3E6CD");
+    // mini-btns cream border via theme
+    expect(src).toMatch(/F3E6CD|plushCreamBorder/);
     // no Pressable style callback
     expect(src).not.toMatch(/style=\{\s*\(\s*\{\s*pressed/);
   });
 
   it("vault card supports onEdit/onDelete", () => {
-    const fn = () => {};
-    expect(render(<VaultCard name="X" type="cash" balance={1} onEdit={fn} onDelete={fn} />).toJSON()).toBeTruthy();
+    const onEdit = () => {};
+    const onDelete = () => {};
+    let editSpy = 0;
+    let deleteSpy = 0;
+    const editFn = () => { editSpy++; };
+    const deleteFn = () => { deleteSpy++; };
+    const { getByTestId } = render(<VaultCard name="X" type="cash" balance={1} onEdit={editFn} onDelete={deleteFn} />);
+    // trigger via testIDs exposed by component, assert callbacks invoked
+    const editEl = getByTestId("vault-edit") as unknown as { props: { onPress: () => void } };
+    const delEl = getByTestId("vault-delete") as unknown as { props: { onPress: () => void } };
+    editEl.props.onPress();
+    delEl.props.onPress();
+    expect(editSpy).toBe(1);
+    expect(deleteSpy).toBe(1);
+    expect(render(<VaultCard name="X" type="cash" balance={1} onEdit={onEdit} onDelete={onDelete} />).toJSON()).toBeTruthy();
     expect(render(<VaultCard name="X" type="cash" balance={1} />).toJSON()).toBeTruthy();
   });
 
@@ -68,8 +81,8 @@ describe("VaultHero", () => {
     expect(toJSON()).toBeTruthy();
     const src = readFileSync("components/VaultCard.tsx", "utf8");
     expect(src).toContain("VaultHero");
-    expect(src).toContain("#FFF6D6");
-    expect(src).toContain("#FFFFFF");
+    expect(src).toMatch(/FFF6D6|Gradients\.card|useThemeGradients/);
+    expect(src).toMatch(/FFFFFF|G\.card|useThemeGradients/);
     expect(src).toContain("borderRadius: 26");
     expect(src).toContain("borderWidth: 2.5");
     expect(src).toContain('Bear size="mid"');

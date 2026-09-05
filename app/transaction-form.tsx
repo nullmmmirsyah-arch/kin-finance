@@ -194,12 +194,8 @@ export default function TransactionForm() {
   );
 
   const handleAmountChange = useCallback((text: string) => {
-    // AmountRegister already formats via formatAmountInput; accept formatted text directly
-    // but also support raw keyboard input by re-formatting if needed
-    const formatted = formatAmountInput(text);
-    // Avoid overwrite loop: if caller already formatted, formatAmountInput is idempotent
-    const next = formatted !== "" || text === "" ? formatted : text;
-    setAmountText(next);
+    // formatAmountInput is idempotent, so re-formatting already formatted text is safe
+    setAmountText(formatAmountInput(text));
     if (amountError) setAmountError(null);
     if (error) setError(null);
   }, [amountError, error]);

@@ -59,13 +59,14 @@ describe("SearchIsland", () => {
 
   it("calls onCommit when Search pressed via props wiring", () => {
     const fn = vi.fn();
-    const props = { ...baseProps, onCommit: fn };
-    // invoke component and check that source wires onCommit to both field submit and button
+    const { getByTestId } = render(React.createElement(SearchIsland, { ...baseProps, onCommit: fn } as any));
     const src = readFileSync("components/SearchIsland.tsx", "utf8");
     expect(src).toContain("onCommit");
     expect(src).toContain('accessibilityLabel="Search"');
-    // simulate call
-    props.onCommit();
+    expect(src).toContain('testID="search-commit"');
+    // trigger the Search control through rendered UI
+    const btn = getByTestId("search-commit") as unknown as { props: { onPress: () => void } };
+    btn.props.onPress();
     expect(fn).toHaveBeenCalled();
   });
 

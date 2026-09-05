@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
-import { Shadow, useThemeColors } from "@/constants/theme";
+import { BearColors, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { Bear } from "@/components/Bear";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { formatNumber } from "@/utils/format";
@@ -25,16 +25,17 @@ export function HoneyJar({
   onDelete,
 }: HoneyJarProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
   const cardBg = isDark ? C.surface : "#FFFFFF";
   const muted = C.textSecondary;
   const over = spent !== undefined && spent > amount;
-  const progress = spent === undefined ? 0 : amount > 0 ? Math.min(spent / amount, 1) : 0;
+  const progress = spent === undefined ? 0 : amount > 0 ? Math.min(spent / amount, 1) : spent > 0 ? 1 : 0;
   const fillHeight = `${progress * 100}%`;
   const isRedacted = spent === undefined;
 
-  // honey gradient #FDE68A -> #F59E0B ; cherry for over is C.error
-  const honeyColors: [string, string] = ["#FDE68A", "#F59E0B"];
+  // honey gradient via BearColors; cherry for over is C.error
+  const honeyColors: [string, string] = [BearColors.honey, BearColors.honeyDeep];
   const cherryColor = C.error;
 
   const [editPressed, setEditPressed] = useState(false);
@@ -252,11 +253,13 @@ type HoneyHeroProps = {
 
 export function HoneyHero({ budgeted, spent, hasRedacted }: HoneyHeroProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
-  const gradientColors: [string, string] = isDark ? [C.surface, "#3A3224"] : ["#FFFFFF", "#FFF6D6"];
+  const G = useThemeGradients();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const gradientColors = G.card as unknown as [string, string];
   const over = !hasRedacted && spent > budgeted;
-  const progress = hasRedacted ? 0 : budgeted > 0 ? Math.min(spent / budgeted, 1) : 0;
-  const honeyColors: [string, string] = ["#FDE68A", "#F59E0B"];
+  const progress = hasRedacted ? 0 : budgeted > 0 ? Math.min(spent / budgeted, 1) : spent > 0 ? 1 : 0;
+  const honeyColors: [string, string] = [BearColors.honey, BearColors.honeyDeep];
 
   return (
     <View

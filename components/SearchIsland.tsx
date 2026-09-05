@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
-import { Shadow, useThemeColors } from "@/constants/theme";
+import { BearColors, Shadow, useThemeColors } from "@/constants/theme";
 import { Bear } from "@/components/Bear";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { TypeFilter } from "@/components/FilterSheet";
@@ -88,7 +88,7 @@ export function SearchIsland({
       style={[
         Shadow.card,
         {
-          backgroundColor: C.background === "#FFFBF5" ? "#FFFFFF" : C.background,
+          backgroundColor: C.background === "#FFFBF5" ? C.card : C.background,
           borderWidth: 2.5,
           borderColor: "#FFFFFF",
           borderRadius: 26,
@@ -107,7 +107,7 @@ export function SearchIsland({
           width: 18,
           height: 18,
           borderRadius: 999,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: C.card,
           borderWidth: 2.5,
           borderColor: C.border,
         }}
@@ -121,7 +121,7 @@ export function SearchIsland({
           width: 18,
           height: 18,
           borderRadius: 999,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: C.card,
           borderWidth: 2.5,
           borderColor: C.border,
         }}
@@ -136,17 +136,13 @@ export function SearchIsland({
             width: 34,
             height: 34,
             borderRadius: 12,
-            backgroundColor: "#FFE9C9",
+            backgroundColor: C.plushPeek,
             borderWidth: 2.5,
             borderColor: "#FFFFFF",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            elevation: 2,
+            ...Shadow.card,
           }}
         >
           {/* ears on peek */}
@@ -158,7 +154,7 @@ export function SearchIsland({
               width: 8,
               height: 8,
               borderRadius: 999,
-              backgroundColor: "#D9A679",
+              backgroundColor: BearColors.teddy,
               borderWidth: 2,
               borderColor: "#FFFFFF",
             }}
@@ -171,7 +167,7 @@ export function SearchIsland({
               width: 8,
               height: 8,
               borderRadius: 999,
-              backgroundColor: "#D9A679",
+              backgroundColor: BearColors.teddy,
               borderWidth: 2,
               borderColor: "#FFFFFF",
             }}
@@ -184,9 +180,9 @@ export function SearchIsland({
           style={{
             flex: 1,
             height: 46,
-            backgroundColor: isFocused ? "#FFFFFF" : "#FFF8EC",
+            backgroundColor: isFocused ? C.card : C.plushSurfaceAlt,
             borderWidth: 2.5,
-            borderColor: isFocused ? C.primary : "#F3E6CD",
+            borderColor: isFocused ? C.primary : C.plushCreamBorder,
             borderRadius: 999,
             flexDirection: "row",
             alignItems: "center",
@@ -218,7 +214,7 @@ export function SearchIsland({
                 width: 26,
                 height: 26,
                 borderRadius: 999,
-                backgroundColor: "#F3E6CD",
+                backgroundColor: C.plushCreamBorder,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -230,6 +226,7 @@ export function SearchIsland({
 
         {/* Search button terra 36px */}
         <Pressable
+          testID="search-commit"
           onPress={onCommit}
           onPressIn={() => setSearchPressed(true)}
           onPressOut={() => setSearchPressed(false)}
@@ -276,7 +273,7 @@ export function SearchIsland({
               style={{
                 borderWidth: 2.5,
                 borderColor: active ? C.primary : C.border,
-                backgroundColor: active ? C.primary : "#FFFFFF",
+                backgroundColor: active ? C.primary : C.card,
                 borderRadius: 999,
                 height: 48,
                 minHeight: 48,
@@ -297,7 +294,7 @@ export function SearchIsland({
                     width: 8,
                     height: 8,
                     borderRadius: 999,
-                    backgroundColor: active ? "#FFFFFF" : "#991B1B",
+                    backgroundColor: active ? "#FFFFFF" : C.error,
                   }}
                 />
               )}
@@ -307,7 +304,7 @@ export function SearchIsland({
                     width: 8,
                     height: 8,
                     borderRadius: 999,
-                    backgroundColor: active ? "#FFFFFF" : "#065F46",
+                    backgroundColor: active ? "#FFFFFF" : C.success,
                   }}
                 />
               )}
@@ -339,7 +336,7 @@ export function SearchIsland({
           style={{
             borderWidth: 2.5,
             borderColor: activeCount > 0 ? C.primary : C.border,
-            backgroundColor: activeCount > 0 ? `${C.primary}14` : "#FFFFFF",
+            backgroundColor: activeCount > 0 ? `${C.primary}14` : C.card,
             borderRadius: 999,
             height: 48,
             minHeight: 48,
@@ -397,9 +394,9 @@ export function SearchIsland({
           testID="filter-drawer"
           style={{
             marginTop: 10,
-            backgroundColor: "#FFF8EC",
+            backgroundColor: C.plushSurfaceAlt,
             borderWidth: 2.5,
-            borderColor: "#F3E6CD",
+            borderColor: C.plushCreamBorder,
             borderRadius: 20,
             padding: 12,
             gap: 10,
@@ -450,7 +447,7 @@ export function SearchIsland({
                     style={{
                       borderWidth: 2.5,
                       borderColor: active ? C.primary : C.border,
-                      backgroundColor: active ? C.primary : "#FFFFFF",
+                      backgroundColor: active ? C.primary : C.card,
                       borderRadius: 999,
                       paddingVertical: 7,
                       paddingHorizontal: 12,
@@ -525,7 +522,7 @@ export function SearchIsland({
                     style={{
                       borderWidth: 2.5,
                       borderColor: active ? C.primary : C.border,
-                      backgroundColor: active ? C.primary : "#FFFFFF",
+                      backgroundColor: active ? C.primary : C.card,
                       borderRadius: 999,
                       paddingVertical: 7,
                       paddingHorizontal: 12,
@@ -566,7 +563,7 @@ export function SearchIsland({
                 borderRadius: 999,
                 borderWidth: 2.5,
                 borderColor: C.border,
-                backgroundColor: resetPressed ? "#FFF8EC" : "#FFFFFF",
+                backgroundColor: resetPressed ? C.plushSurfaceAlt : C.card,
                 alignItems: "center",
                 justifyContent: "center",
                 shadowColor: "#000",

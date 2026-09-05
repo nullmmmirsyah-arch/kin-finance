@@ -1,10 +1,10 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useColorScheme } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { BearRow } from "@/components/Bear";
-import { Shadow, useThemeColors } from "@/constants/theme";
+import { BearColors, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { useSnackbar } from "@/components/Snackbar";
 
 type HouseholdHeroProps = {
@@ -16,8 +16,10 @@ type HouseholdHeroProps = {
 
 export function HouseholdHero({ name, subtitle, memberCount, onEdit }: HouseholdHeroProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
-  const gradientColors: [string, string] = isDark ? [C.surface, "#3A3224"] : ["#FFFFFF", "#FFF6D6"];
+  const G = useThemeGradients();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const gradientColors = G.card as unknown as [string, string];
 
   return (
     <View
@@ -47,7 +49,7 @@ export function HouseholdHero({ name, subtitle, memberCount, onEdit }: Household
               width: 56,
               height: 56,
               borderRadius: 18,
-              backgroundColor: isDark ? C.background : "#FFE9C9",
+              backgroundColor: isDark ? C.background : C.plushPeek,
               borderWidth: 2.5,
               borderColor: "#FFFFFF",
               alignItems: "center",
@@ -82,7 +84,7 @@ export function HouseholdHero({ name, subtitle, memberCount, onEdit }: Household
                 width: 48,
                 height: 48,
                 borderRadius: 12,
-                backgroundColor: isDark ? C.background : "#FFFFFF",
+                backgroundColor: isDark ? C.background : C.card,
                 borderWidth: 2,
                 borderColor: "#FFFFFF",
                 alignItems: "center",
@@ -125,8 +127,9 @@ type InviteCardProps = {
 
 export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
-  const cardBg = isDark ? C.surface : "#FFFFFF";
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const cardBg = C.card;
   const { show } = useSnackbar();
   const [copyPressed, setCopyPressed] = useState(false);
   const [revokePressed, setRevokePressed] = useState(false);
@@ -167,9 +170,9 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
           style={{
             marginTop: 6,
             alignSelf: "flex-start",
-            backgroundColor: isDark ? C.background : "#FFFBF5",
+            backgroundColor: isDark ? C.background : C.plushCream,
             borderWidth: 2,
-            borderColor: isDark ? C.border : "#F3E6CD",
+            borderColor: isDark ? C.border : C.plushCreamBorder,
             borderRadius: 12,
             paddingHorizontal: 10,
             paddingVertical: 6,
@@ -190,6 +193,7 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
       </View>
       <View style={{ gap: 6, minWidth: 110 }}>
         <Pressable
+          testID="invite-copy"
           onPress={handleCopy}
           onPressIn={() => setCopyPressed(true)}
           onPressOut={() => setCopyPressed(false)}
@@ -214,13 +218,14 @@ export function HouseholdInviteCard({ code, onCopy, onRevoke }: InviteCardProps)
         </Pressable>
         {onRevoke ? (
           <Pressable
+            testID="invite-revoke"
             onPress={onRevoke}
             onPressIn={() => setRevokePressed(true)}
             onPressOut={() => setRevokePressed(false)}
             accessibilityRole="button"
             accessibilityLabel="Revoke invite"
             style={{
-              backgroundColor: revokePressed ? "#FFE9C9" : cardBg,
+              backgroundColor: revokePressed ? C.plushPeek : cardBg,
               borderWidth: 2.5,
               borderColor: C.border,
               borderRadius: 999,
@@ -250,11 +255,12 @@ type MemberRowProps = {
 
 export function HouseholdMemberRow({ name, email, role, onRemove }: MemberRowProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
-  const cardBg = isDark ? C.surface : "#FFFFFF";
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const cardBg = C.card;
 
   // role pill owner terra / member butter
-  const pillBg = role === "owner" ? C.primary : "#FDE68A";
+  const pillBg = role === "owner" ? C.primary : BearColors.honey;
   const pillTextColor = role === "owner" ? "#FFFFFF" : C.primary;
 
   return (
@@ -280,7 +286,7 @@ export function HouseholdMemberRow({ name, email, role, onRemove }: MemberRowPro
           width: 44,
           height: 44,
           borderRadius: 14,
-          backgroundColor: isDark ? C.background : "#FFE9C9",
+          backgroundColor: isDark ? C.background : C.plushPeek,
           borderWidth: 2.5,
           borderColor: "#FFFFFF",
           alignItems: "center",
@@ -351,7 +357,8 @@ type BalanceModeProps = {
 
 export function HouseholdBalanceMode({ mode, isOwner, onChange, isUpdating }: BalanceModeProps) {
   const C = useThemeColors();
-  const isDark = C.background === "#1C1917";
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
   if (isOwner === false) {
     // Read-only for member with Owner only label
     return (

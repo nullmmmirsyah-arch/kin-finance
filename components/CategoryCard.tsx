@@ -130,8 +130,8 @@ export function PlushCategoryCard({
 }: Props) {
   const C = useThemeColors();
   const isDark = C.background === "#1C1917";
-  const cardBg = isDark ? C.surface : "#FFFFFF";
-  const creamBorder = "#FFFFFF";
+  const cardBg = C.card;
+  const creamBorder = C.plushCreamBorder;
   const muted = C.textSecondary;
   const [eyePressed, setEyePressed] = useState(false);
   const [editPressed, setEditPressed] = useState(false);
@@ -163,7 +163,7 @@ export function PlushCategoryCard({
           width: 36,
           height: 36,
           borderRadius: 12,
-          backgroundColor: "#FFE9C9",
+          backgroundColor: C.plushPeek,
           borderWidth: 2,
           borderColor: "#FFFFFF",
           alignItems: "center",
@@ -199,9 +199,9 @@ export function PlushCategoryCard({
             width: 28,
             height: 28,
             borderRadius: 999,
-            backgroundColor: isDark ? C.background : "#FFF8EC",
+            backgroundColor: isDark ? C.background : C.plushSurfaceAlt,
             borderWidth: 1,
-            borderColor: isDark ? C.border : "#F3E6CD",
+            borderColor: isDark ? C.border : C.plushCreamBorder,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -227,8 +227,8 @@ export function PlushCategoryCard({
                 height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
-                borderColor: "#F3E6CD",
-                backgroundColor: eyePressed ? "#FFF8EC" : cardBg,
+                borderColor: C.plushCreamBorder,
+                backgroundColor: eyePressed ? C.plushSurfaceAlt : cardBg,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -248,8 +248,8 @@ export function PlushCategoryCard({
                 height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
-                borderColor: "#F3E6CD",
-                backgroundColor: editPressed ? "#FFF8EC" : cardBg,
+                borderColor: C.plushCreamBorder,
+                backgroundColor: editPressed ? C.plushSurfaceAlt : cardBg,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -269,8 +269,8 @@ export function PlushCategoryCard({
                 height: 48,
                 borderRadius: 999,
                 borderWidth: 2,
-                borderColor: "#F3E6CD",
-                backgroundColor: deletePressed ? "#FFF8EC" : cardBg,
+                borderColor: C.plushCreamBorder,
+                backgroundColor: deletePressed ? C.plushSurfaceAlt : cardBg,
                 alignItems: "center",
                 justifyContent: "center",
               }}

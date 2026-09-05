@@ -248,7 +248,6 @@ export default function Accounts() {
           contentContainerClassName="gap-3 px-5 pb-28"
           numColumns={2}
           columnWrapperStyle={{ gap: 10 }}
-          contentContainerStyle={{ gap: 10, paddingHorizontal: 20, paddingBottom: 112 } as any}
           removeClippedSubviews
           windowSize={5}
           initialNumToRender={6}
@@ -265,7 +264,7 @@ export default function Accounts() {
               tintColor={C.primary}
             />
           }
-          data={isOwner ? [{ _id: "__add__", __add: true } as GridItem] : []}
+          data={[] as GridItem[]}
           keyExtractor={(item) => String(item._id)}
           renderItem={({ item }) => {
             const isAdd = (item as { __add?: boolean }).__add;
@@ -274,9 +273,13 @@ export default function Accounts() {
             }
             return null as any;
           }}
-          ListEmptyComponent={
-            !isOwner ? (
+          ListEmptyComponent={(
               <View style={{ gap: 12, alignItems: "center", paddingTop: 8, flex: 1, width: "100%" } as any}>
+                {isOwner ? (
+                  <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                    <VaultAdd onPress={() => router.push("/account-form")} />
+                  </View>
+                ) : null}
                 <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: "center" }}>
                   <Bear size="mid" />
                   <Bear size="normal" />
@@ -302,13 +305,11 @@ export default function Accounts() {
                   />
                 </View>
               </View>
-            ) : null
-          }
+            )}
         />
       ) : (
         <FlatList
           className="mt-4 flex-1"
-          contentContainerStyle={{ gap: 10, paddingHorizontal: 20, paddingBottom: 112 } as any}
           columnWrapperStyle={gridData.length > 1 ? ({ gap: 10 } as any) : undefined}
           numColumns={2}
           removeClippedSubviews

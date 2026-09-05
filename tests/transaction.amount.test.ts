@@ -30,7 +30,7 @@ describe("formatAmountInput", () => {
   it("ignores non-digits", () => {
     expect(formatAmountInput("abc123def")).toBe("123");
     expect(formatAmountInput("1,000")).toBe("1,000");
-    expect(formatAmountInput(" Rp 1.250.000 ")).toBe("1");
+    expect(formatAmountInput(" Rp 1.250.000 ")).toBe("1,250,000");
   });
 
   it("returns empty for empty or non-digit only", () => {

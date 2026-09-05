@@ -56,18 +56,18 @@ describe("HoneyJar", () => {
     expect(src).toContain("borderRadius: 24");
     expect(src).toContain("width: 64");
     expect(src).toContain("height: 72");
-    expect(src).toContain("#FDE68A");
-    expect(src).toContain("#F59E0B");
+    expect(src).toMatch(/FDE68A|BearColors\.honey/);
+    expect(src).toMatch(/F59E0B|BearColors\.honeyDeep/);
     expect(src).toContain("height: 6");
     expect(src).toContain("fontSize: 22");
     // cap terra via C.primary #92400E
     expect(src).toContain("C.primary");
     expect(src).toContain("LinearGradient");
     expect(src).toContain("Shadow.card");
-    expect(src).toContain("useThemeColors");
+    expect(src).toMatch(/useThemeColors|BearColors/);
     expect(src).not.toMatch(/style=\{\s*\(\s*\{\s*pressed/);
-    // cream border
-    expect(src).toContain("F3E6CD");
+    // cream border via theme
+    expect(src).toMatch(/F3E6CD|plushCreamBorder/);
   });
 
   it("renders with icon and supports onEdit/onDelete", () => {
@@ -83,8 +83,8 @@ describe("HoneyHero", () => {
     expect(toJSON()).toBeTruthy();
     const src = readFileSync("components/HoneyJar.tsx", "utf8");
     expect(src).toContain("HoneyHero");
-    expect(src).toContain("#FFF6D6");
-    expect(src).toContain("#FFFFFF");
+    expect(src).toMatch(/FFF6D6|Gradients\.card|useThemeGradients/);
+    expect(src).toMatch(/FFFFFF|G\.card|useThemeGradients/);
     expect(src).toContain("borderRadius: 26");
     expect(src).toContain("borderWidth: 2.5");
     expect(src).toContain('Bear size="small"');

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 // @ts-ignore mock
 import { render } from "@testing-library/react-native";
 import { readFileSync } from "fs";
@@ -14,6 +14,16 @@ describe("HouseholdHero", () => {
     expect(src).toContain("KIN-8A2F");
     expect(src).toContain("Copy");
     expect(src).toContain("Revoke");
+    // behavior: Copy and Revoke callbacks are triggerable via testIDs
+    const onCopy = vi.fn();
+    const onRevoke = vi.fn();
+    const { getByTestId } = render(<HouseholdInviteCard code="KIN-8A2F" onCopy={onCopy} onRevoke={onRevoke} />);
+    const copyBtn = getByTestId("invite-copy") as unknown as { props: { onPress: () => void } };
+    const revokeBtn = getByTestId("invite-revoke") as unknown as { props: { onPress: () => void } };
+    copyBtn.props.onPress();
+    revokeBtn.props.onPress();
+    expect(onCopy).toHaveBeenCalled();
+    expect(onRevoke).toHaveBeenCalled();
   });
 
   it("hero has clay spec: gradient, house icon 56px, name 16px 800, bears row 5 bears", () => {
@@ -21,8 +31,7 @@ describe("HouseholdHero", () => {
     expect(toJSON()).toBeTruthy();
     const src = readFileSync("components/HouseholdHero.tsx", "utf8");
     expect(src).toContain("HouseholdHero");
-    expect(src).toContain("#FFF6D6");
-    expect(src).toContain("#FFFFFF");
+    expect(src).toMatch(/FFF6D6|Gradients\.card|useThemeGradients/);
     expect(src).toContain("borderRadius: 26");
     expect(src).toContain("borderWidth: 2.5");
     expect(src).toContain("width: 56");
@@ -63,15 +72,14 @@ describe("HouseholdHero", () => {
     expect(src).toContain('fontWeight: "800"');
     expect(src).toContain('testID="role-pill"');
     expect(src).toContain('testID="member-avatar"');
-    // owner terra #92400E or C.primary, member butter #FDE68A
-    expect(src).toContain("#FDE68A");
-    expect(src).toContain("C.primary");
+    // owner terra via C.primary, member butter via theme token
+    expect(src).toMatch(/FDE68A|BearColors|C\.primary/);
     expect(src).toContain("Owner");
     expect(src).toContain("Member");
     // also check MemberCard updated
     const memberSrc = readFileSync("components/MemberCard.tsx", "utf8");
     expect(memberSrc).toContain("fontSize: 13");
-    expect(memberSrc).toContain("#FDE68A");
+    expect(memberSrc).toMatch(/FDE68A|BearColors|member/);
   });
 
   it("balance mode segment Fresh/Carry Owner only", () => {

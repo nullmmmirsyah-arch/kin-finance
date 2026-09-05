@@ -41,6 +41,8 @@ function NumpadButton({
 }) {
   const [pressed, setPressed] = useState(false);
   const C = useThemeColors();
+  const isDark = C.background === "#1C1917";
+  const cardBg = isDark ? C.surface : "#FFFFFF";
   return (
     <Pressable
       testID={testID}
@@ -53,11 +55,11 @@ function NumpadButton({
       className="items-center justify-center rounded-2xl border bg-white dark:bg-surface-dark"
     >
       <View
-        className="w-full items-center justify-center rounded-2xl border"
+        className="w-full items-center justify-center rounded-2xl"
         style={{
           borderWidth: 2,
           borderColor: C.border,
-          backgroundColor: isBackspace ? C.surface : "#FFFFFF",
+          backgroundColor: isBackspace ? C.surface : cardBg,
           height: 52,
         }}
       >
@@ -84,6 +86,8 @@ function PresetPill({
 }) {
   const [pressed, setPressed] = useState(false);
   const C = useThemeColors();
+  const isDark = C.background === "#1C1917";
+  const cardBg = isDark ? C.surface : "#FFFFFF";
   return (
     <Pressable
       testID={testID}
@@ -96,11 +100,11 @@ function PresetPill({
       className="flex-1 items-center justify-center rounded-full border px-2 py-2"
     >
       <View
-        className="w-full items-center justify-center rounded-full border px-2"
+        className="w-full items-center justify-center rounded-full px-2"
         style={{
           borderWidth: 2,
           borderColor: C.border,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: cardBg,
           height: 48,
           minHeight: 48,
         }}
@@ -125,6 +129,8 @@ export function AmountRegister({
   onAddPreset,
 }: AmountRegisterProps) {
   const C = useThemeColors();
+  const isDark = C.background === "#1C1917";
+  const cardBg = isDark ? C.surface : "#FFFFFF";
 
   const badgeConfig = (() => {
     switch (type) {
@@ -220,9 +226,9 @@ export function AmountRegister({
         style={[
           Shadow.card,
           {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: cardBg,
             borderWidth: 2.5,
-            borderColor: "#FFFFFF",
+            borderColor: isDark ? C.border : "#FFFFFF",
             borderRadius: 20,
           },
         ]}

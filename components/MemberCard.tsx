@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { BearColors, Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 type Props = {
   name: string;
@@ -66,9 +66,9 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
           testID="role-pill"
           style={{
             borderRadius: 999,
-            backgroundColor: role === "owner" ? C.primary : "#FDE68A",
+            backgroundColor: role === "owner" ? C.primary : BearColors.honey,
             borderWidth: 2,
-            borderColor: "#FFFFFF",
+            borderColor: C.card,
           }}
           className="px-2.5 py-1"
         >
@@ -76,7 +76,7 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
             style={{
               fontSize: 11,
               fontWeight: "800",
-              color: role === "owner" ? "#FFFFFF" : C.primary,
+              color: role === "owner" ? C.card : C.primary,
             }}
           >
             {role === "owner" ? "Owner" : "Member"}

@@ -586,13 +586,7 @@ export default function Members() {
               </Text>
             </View>
 
-            {/* Members header */}
-            <View className="mt-2 flex-row items-center justify-between">
-              <Text className="text-xs font-bold tracking-widest text-text-secondary dark:text-text-secondary-dark">MEMBERS</Text>
-              <Text className="text-xs font-semibold text-text-secondary dark:text-text-secondary-dark">{memberCount} members</Text>
-            </View>
-
-            {/* Danger zone kept but compact */}
+            {/* Danger zone — moved before members header to avoid interleaving */}
             <View className="mt-1">
               <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
               <View
@@ -626,6 +620,12 @@ export default function Members() {
                   disabled={isDeletingHousehold}
                 />
               </View>
+            </View>
+
+            {/* Members header */}
+            <View className="mt-2 flex-row items-center justify-between">
+              <Text className="text-xs font-bold tracking-widest text-text-secondary dark:text-text-secondary-dark">MEMBERS</Text>
+              <Text className="text-xs font-semibold text-text-secondary dark:text-text-secondary-dark">{memberCount} members</Text>
             </View>
 
             {/* Empty state handling inside list */}

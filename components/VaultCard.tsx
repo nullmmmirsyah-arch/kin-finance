@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
-import { Shadow, useThemeColors } from "@/constants/theme";
+import { Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
 import { AccountType } from "@/constants/accounts";
 import { AccountIcon } from "@/components/AccountIcon";
 import { Bear } from "@/components/Bear";
@@ -18,14 +18,13 @@ type VaultCardProps = {
 };
 
 function topBarColor(type: AccountType, C: ReturnType<typeof useThemeColors>): string {
-  // palette: cash #10B981, bank #92400E terra, ewallet #3B82F6, credit #991B1B
   switch (type) {
     case "cash":
-      return "#10B981";
+      return C.vaultCash;
     case "bank":
-      return C.primary; // #92400E
+      return C.primary;
     case "ewallet":
-      return "#3B82F6";
+      return C.vaultEwallet;
     case "credit_card":
       return C.error;
     default:
@@ -54,8 +53,8 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
   const [editPressed, setEditPressed] = useState(false);
   const [deletePressed, setDeletePressed] = useState(false);
   const isDark = C.background === "#1C1917";
-  const cardBg = isDark ? C.surface : "#FFFFFF";
-  const creamBorder = "#F3E6CD";
+  const cardBg = C.card;
+  const creamBorder = C.plushCreamBorder;
   const muted = C.textSecondary;
 
   return (
@@ -93,7 +92,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
             width: 54,
             height: 54,
             borderRadius: 16,
-            backgroundColor: isDark ? C.background : "#FFF8EC",
+            backgroundColor: isDark ? C.background : C.plushSurfaceAlt,
             borderWidth: 1,
             borderColor: isDark ? C.border : creamBorder,
             alignItems: "center",
@@ -126,7 +125,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
               paddingHorizontal: 8,
               paddingVertical: 3,
               borderRadius: 999,
-              backgroundColor: isDark ? C.background : "#FFF8EC",
+              backgroundColor: isDark ? C.background : C.plushSurfaceAlt,
               borderWidth: 1,
               borderColor: isDark ? C.border : creamBorder,
             }}
@@ -146,6 +145,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
           <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
             {onEdit !== undefined ? (
               <Pressable
+                testID="vault-edit"
                 onPress={onEdit}
                 onPressIn={() => setEditPressed(true)}
                 onPressOut={() => setEditPressed(false)}
@@ -157,7 +157,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: creamBorder,
-                  backgroundColor: editPressed ? "#FFF8EC" : cardBg,
+                  backgroundColor: editPressed ? C.plushSurfaceAlt : cardBg,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -167,6 +167,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
             ) : null}
             {onDelete !== undefined ? (
               <Pressable
+                testID="vault-delete"
                 onPress={onDelete}
                 onPressIn={() => setDeletePressed(true)}
                 onPressOut={() => setDeletePressed(false)}
@@ -178,7 +179,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
                   borderRadius: 999,
                   borderWidth: 2,
                   borderColor: creamBorder,
-                  backgroundColor: deletePressed ? "#FFF8EC" : cardBg,
+                  backgroundColor: deletePressed ? C.plushSurfaceAlt : cardBg,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -195,9 +196,9 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
 
 export function VaultHero({ total, count }: { total: number; count: number }) {
   const C = useThemeColors();
+  const G = useThemeGradients();
   const isDark = C.background === "#1C1917";
-  // gradient white->#FFF6D6 ; dark fallback via theme surface
-  const gradientColors: [string, string] = isDark ? [C.surface, "#3A3224"] : ["#FFFFFF", "#FFF6D6"];
+  const gradientColors = G.card as unknown as [string, string];
 
   return (
     <View
@@ -252,7 +253,7 @@ export function VaultHero({ total, count }: { total: number; count: number }) {
             width: 44,
             height: 44,
             borderRadius: 999,
-            backgroundColor: isDark ? C.background : "#FFFFFF",
+            backgroundColor: isDark ? C.background : C.card,
             borderWidth: 2,
             borderColor: "#FFFFFF",
             alignItems: "center",
@@ -269,7 +270,7 @@ export function VaultHero({ total, count }: { total: number; count: number }) {
 export function VaultAdd({ onPress }: { onPress: () => void }) {
   const C = useThemeColors();
   const isDark = C.background === "#1C1917";
-  const cardBg = isDark ? C.surface : "#FFFFFF";
+  const cardBg = C.card;
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -287,7 +288,7 @@ export function VaultAdd({ onPress }: { onPress: () => void }) {
         borderWidth: 2.5,
         borderColor: C.border,
         borderStyle: "dashed",
-        backgroundColor: pressed ? (isDark ? C.background : "#FFF8EC") : cardBg,
+        backgroundColor: pressed ? (isDark ? C.background : C.plushSurfaceAlt) : cardBg,
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
@@ -300,7 +301,7 @@ export function VaultAdd({ onPress }: { onPress: () => void }) {
           width: 54,
           height: 54,
           borderRadius: 16,
-          backgroundColor: isDark ? C.background : "#FFF8EC",
+          backgroundColor: isDark ? C.background : C.plushSurfaceAlt,
           borderWidth: 2,
           borderColor: "#FFFFFF",
           alignItems: "center",
