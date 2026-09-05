@@ -133,191 +133,241 @@ components:
     height: "56px"
 ---
 
-# Design System: Kin Finance
+# Design System: Kin Finance — Plush Ledger v2.1 (Bear Family)
 
 ## Overview
 
-**Creative North Star: "The Family Ledger"**
+**Creative North Star: "Plush Ledger — The Bear Family Vault & Honey Jars"**
 
-Kin Finance feels like a well-worn ledger kept by the kitchen table -- warm, trustworthy, and always within reach. The design system draws from the quiet reliability of family financial tools: surfaces that feel like paper and wood, colors that evoke candlelight on amber, and typography that reads clearly without shouting. Every interaction should feel like opening a familiar notebook, not operating a financial terminal.
+Kin Finance is now a **plush claymorphism** household ledger guarded by a **faceless bear family** (Papa, Mama, and cubs). The world is tactile and edible: **honey/butter/peach/terra** on a warm parchment canvas. Every surface feels squeezable — **2.5px white clay borders + `Shadow.card`** give plush elevation without cold shadows, **22–28px radii** keep everything soft, **52–56px touch targets** keep it chunky and kid-friendly. The bear never shows a face (head + ears + body only); its silence keeps the brand calm and universal.
 
-The personality is friendly and approachable -- money doesn't have to be intimidating. Buttons invite touch with soft warmth, cards breathe with generous spacing, and gradients add just enough depth to feel substantial without heaviness. The system rejects the cold blue-and-white corporate finance aesthetic in favor of stone and amber -- earth tones that say "this is ours, this is home."
+The previous "Family Ledger" warmth remains, but the visual weight has shifted from flat paper to **floating clay islands**: `SearchIsland` on Home, `Vault` grid on Accounts, `HoneyJar` on Budgets, `BearRegister` for amounts, and `HouseholdHero` for the family header. All financial invariants are preserved — only presentation changed.
 
 **Key Characteristics:**
-- Warm stone and amber palette grounded in earth tones
-- Tactile components with generous touch targets and soft edges
-- Flat surfaces with subtle ambient lift, never heavy shadows
-- Gradient cards that add warmth and visual hierarchy
-- Clean typography that prioritizes scannability over decoration
+- Faceless bear family as the only mascot (no eyes/nose/mouth, teddy palette)
+- Honey/butter/peach/terra warm family — no cold blues ever
+- Clay: 2.5px white border + `Shadow.card` is the plush elevation system
+- Chunky: 52–56px touch (pill/chip 44–52h), 22–28px radii, 2.5px borders
+- Floating islands: SearchIsland (26r), VaultCard (24r), HoneyJar (24r), HouseholdHero (26r), AmountRegister display (20r)
+- Primary Warm Stone ≤15% per screen — rarity is its power
+- NativeWind `className` only; never `Pressable` `style` callbacks (v4 gotcha)
 
 ## Colors
 
-The palette is earthy and warm -- stone, amber, and deep browns -- with semantic greens and reds for financial states. Every color earns its warmth from the same amber family.
+The palette stays earthy-stone/amber, extended with **honey/butter/peach** for the plush world. Everything still traces back to the amber family.
 
 ### Primary
-- **Warm Stone** (#92400E): The defining color. Used on primary buttons, active chips, FABs, icon tints, and budget progress bars. It carries the weight of every interactive element.
-- **Warm Stone Light** (#FDE68A): A soft amber tint used on empty state icon backgrounds and the light side of gradient cards. Never used for interactive elements.
+- **Warm Stone (Terra)** (#92400E): Primary interactive — buttons, active chips, FAB, terra caps, invite Copy. Light mode; dark is #F59E0B. ≤15% per screen.
+- **Warm Stone Light** (#FDE68A): Empty icon bg, gradient-card light end, honey gradient start. Also `BearColors.honey`.
+
+### Plush Extensions — `BearColors` / `BearVaultColors` (`constants/theme.ts:54`)
+- **Teddy** (#D9A679): Papa bear, main teddy fill.
+- **TeddyMid** (#DEB08A): Mama bear.
+- **TeddyLight** (#E8B48E): Cub bear + inner ear.
+- **Honey** (#FDE68A): Honey gradient start / butter pill / type label bg.
+- **HoneyDeep** (#F59E0B): Honey gradient end / terra dark / primary-dark.
+
+All three teddies stay inside the stone/amber lineage — warm clay only, never cool.
+
+### Accent — Butter / Peach / Cream
+- **Butter** (#FEF3C7 / #FFF6D6 / #FFF8EC): Surfaces, pressed states, card gradients (white→#FFF6D6), drawer cream (#FFF8EC), peach chip bg (#FFE9C9). Dark surfaces use #292524 / #3A3224 instead.
+- **Peach2** (#FFE9C9): Category icon container, Vacant avatar, small bear footer.
+- **Cream Border** (#F3E6CD): Plush card inner strokes (icon containers, tracks, input focus unfocused). White 2.5px is the outer clay border; #F3E6CD is the inner detail stroke.
+- **White Clay Border** (#FFFFFF) 2.5px: The defining plush edge on every island/card/jar/hero — paired with `Shadow.card`.
+
+### Type Top Bars & Semantic
+- **Cash** (#10B981 emerald): Vault top 8px bar for `cash`.
+- **Bank** (Terra #92400E / #F59E0B dark): Vault top bar for `bank`.
+- **E-Wallet** (#3B82F6 blue — warm-muted, no cold bias): Vault top bar for `ewallet`.
+- **Credit/Cherry** (#991B1B / #F87171 dark): Vault top bar for `credit_card`, expense/crimson, over-budget fill.
+- **Forest** (#065F46 / #34D399 dark): Income, success.
+- **Chart Amber** (#D97706): Budget threshold 80–100% fill.
 
 ### Neutral
-- **Parchment** (#FFFBF5): The light mode background. A warm off-white that feels like aged paper -- the canvas everything rests on.
-- **Amber Surface** (#FEF3C7): Light amber surface used on card backgrounds in light mode, icon container backgrounds, and pressed states. Subtly warmer than the background.
-- **Ink** (#1C1917): Primary text color in light mode. A near-black with warm undertones -- never cold or blue.
-- **Slate** (#6E675F): Secondary text, timestamps, and muted labels. A warm gray that recedes without disappearing.
-- **Stone Border** (#E7E5E4): Dividers, input borders, and card borders in light mode. A barely-there warm gray that defines edges.
-
-### Semantic
-- **Forest** (#065F46): Income amounts and success states. A deep, trustworthy green.
-- **Crimson** (#991B1B): Expense amounts, error states, and delete actions. A rich, serious red.
+- **Parchment** (#FFFBF5) / **Ink** (#1C1917) — background/text light; dark is #1C1917 bg / #FAF9F7 text.
+- **Amber Surface** (#FEF3C7 / #292524) — light card bg.
+- **Slate** (#6E675F / #A8A29E) — secondary text.
+- **Stone Border** (#E7E5E4 / #44403C) — neutral border; plush inner uses #F3E6CD instead.
 
 ### Named Rules
-**The Amber Family Rule.** Every color in the palette traces back to the same amber lineage. Primary, surface, background -- they share the same warm undertone. Never introduce a color that breaks this family.
+**The Amber Family Rule.** Every color traces to the same amber lineage (stone→honey→peach→terra). Never introduce a cold blue; even ewallet blue is muted and paired with terra/honey.
 
-**The Rarity Rule.** The primary accent appears on less than or equal to 15% of any given screen. Its rarity is its power -- buttons, active chips, FABs, and budget progress bars earn it. Everything else uses neutral surfaces.
+**The Rarity Rule (≤15%).** Primary terra appears on <15% of any screen — active chips, primary buttons, FAB, top-bar for bank, invite Copy, cap on honey jar. Everything else is white/cream/butter/peach with terra as accent only.
+
+**The Clay Rule.** Any plush surface must have **2.5px white border + `Shadow.card`** (or `Shadow.elevated` for FAB only). Unbordered flat cards are legacy only; plush islands always use clay.
 
 ## Typography
 
-**Display Font:** System (San Francisco on iOS, Roboto on Android)
-**Body Font:** System (San Francisco on iOS, Roboto on Android)
-
-**Character:** Clean, readable, and modern -- the system font ensures native feel on every platform. No decorative choices; the typography earns its personality through weight and spacing, not font selection.
+**Display/Body:** System (San Francisco / Roboto). Weight vocabulary 400/500/600/800 — 800 used only for plush hero numbers & card titles (16–34px) to feel extra-bold clay.
 
 ### Hierarchy
-- **Display** (600 weight, 28px, line-height 1.2): Screen titles on entry and auth screens — the brand's largest voice. Use sparingly; one per screen.
-- **Heading** (600 weight, 18px, line-height 1.3): Screen titles, section headers. Bold enough to anchor a screen without shouting.
-- **Body** (400 weight, 16px, line-height 1.5): Primary content, transaction descriptions, labels. The workhorse -- reads clearly at any length.
-- **Label** (500 weight, 14px, line-height 1.4): Button text, input labels, chip text, navigation labels. Medium weight ensures interactive elements feel deliberate.
-- **Caption** (400 weight, 12px, line-height 1.3): Timestamps, secondary metadata, over-budget warnings. Small but never invisible.
+- **Display** (600, 28px): Screen titles (`Accounts`→`Bear Vault`, `Budgets`→`Honey Jars` hero). One per screen.
+- **Hero Numbers**: **26px 800** (`VaultHero` total, `HoneyHero` labels) and **34px 800** (`AmountRegister` input) — Baloo-style extra-bold, `letterSpacing 1.5` for invite code `KIN-8A2F`.
+- **Heading** (600, 18px): Section headers (`Budgets`, `My Accounts`, `Transactions`).
+- **Body** (400, 16px): Descriptions.
+- **Label** (500→800 in plush, 14px): Chips, buttons — plush elevates to 800 for tactile feel (chip 12–13px 800).
+- **Caption** (400, 12px): Timestamps, `Whole number ≥1` hints, `hidden` pills.
 
 ### Named Rules
-**The Two-Weight Rule.** The system uses exactly two weights: 400 (body) and 600 (headings). 500 appears only on interactive elements (buttons, chips, labels). No other weights exist. This restraint keeps the hierarchy clear.
+**Two-Weight → Plush Extra-Bold.** Legacy 400/600 + 500 on interactive; plush adds **800** for hero numbers, card names (14px 800), and chip pills (12–13px 800). No other weights.
 
 ## Layout
 
-The layout is single-column, vertically scrolling, with consistent horizontal padding. Every screen follows the same spatial rhythm: 16px horizontal padding, 16px vertical gaps between cards, 24px section spacing.
+Single-column, vertically scrolling, 16px horizontal padding (20px for vault grid). Plush islands stack with **10–12px gaps** (grid gap 10px on vault 2-col).
 
-- **Horizontal padding:** 16px on all content areas
-- **Card spacing:** 16px vertical gaps between sequential cards
-- **Section spacing:** 24px between major screen sections
-- **Touch targets:** 48px minimum on all interactive elements
-- **FAB positioning:** Bottom-right, 6px inset from edges
-- **Tab bar:** Bottom navigation with 5 tabs, 22px icons
-
-Content breathes. Empty states get 24px vertical padding. Cards use 16px internal padding. No screen should feel crowded -- if it does, there is too much content.
+- **Horizontal padding:** 16px default; 20px for Vault grid (`paddingHorizontal: 20`), 16px inner for SearchIsland/HouseholdHero.
+- **Card spacing:** 10–16px vertical gaps (10px grid, 12px heroes, 16px sections).
+- **Section spacing:** 24px between major blocks (budgets, accounts, transactions on Home).
+- **Touch targets:** **52–56px** plush standard (Numpad 52px, Pill 44–52h, mini-btn 44px, Vault icon 54px); enforce **≥48px** minimum everywhere.
+- **FAB:** Bottom-right, 6px inset, 56px circle, `Shadow.elevated`.
+- **Tab bar:** 5 tabs (`home`, `reports`, `transactions→search`, `accounts`, `settings`), 22px Feather. Plush note: visual is floating clay (white border + shadow) when applicable; keep `edgeToEdgeEnabled true` so bar never hides behind system bars/IME.
+- **Grids:** Accounts vault **2-col gap 10px** `FlatList numColumns=2`; Categories **2-col gap 8px**; Budgets honey list single-column 10px gap.
 
 ## Elevation & Depth
 
-The system is flat by design. Shadows exist as ambient lift -- barely visible, felt more than seen. Two tiers: card for resting surfaces (2px blur, 4% opacity) and elevated for FABs and floating elements (4px blur, 8% opacity). Shadows never compete with content; they only hint that a surface sits slightly above the canvas.
+Flat-by-default with **plush clay lift**: `Shadow.card` (2px/4%/8r) for resting islands, `Shadow.elevated` (4px/8%/16r) for FAB only. The **2.5px white border** is what makes clay read as plush — shadow alone is not enough.
 
 ### Shadow Vocabulary
-- **Card** (shadowOffset: 0 2px, shadowOpacity: 0.04, shadowRadius: 8px, elevation: 2): Resting cards, containers, and bordered surfaces. A whisper of depth.
-- **Elevated** (shadowOffset: 0 4px, shadowOpacity: 0.08, shadowRadius: 16px, elevation: 4): FABs and floating action elements. The only surface allowed visible lift.
+- **Card** (`shadowOffset 0 2, opacity 0.04, radius 8, elevation 2`): SearchIsland, VaultCard, HoneyJar/Hero, HouseholdHero, AmountRegister display, PlushCategoryCard, BudgetPill, white pills.
+- **Elevated** (`0 4, 0.08, 16, 4`): FAB, Search CTA.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest. Shadows appear only on resting cards and floating elements -- never on pressed states, never on transitions, never as decoration. Depth is structural, not decorative.
+**Flat-By-Default → Clay-By-Default for Plush.** Legacy surfaces flat; plush islands always clay (2.5px white + card shadow). Pressed uses `0.92 opacity` or `#FFF8EC` bg, never extra shadow.
+
+**No Cold Shadows.** Shadow color is `#000` at 4–8% only — no colored shadows, no stacking.
 
 ### Plush Tokens (Bear Family)
-- **BearColors** (non-breaking `constants/theme.ts`): `teddy #D9A679`, `teddyMid #DEB08A`, `teddyLight #E8B48E`, `honey #FDE68A`, `honeyDeep #F59E0B` — warm clay/honey only, aliased as `BearVaultColors`. Keeps stone/amber family and ≤15% primary rule.
+- **BearColors** (`constants/theme.ts:54`): `teddy #D9A679`, `teddyMid #DEB08A`, `teddyLight #E8B48E`, `honey #FDE68A`, `honeyDeep #F59E0B` — aliased as `BearVaultColors`. Warm clay/honey only.
+- **Cream** `#F3E6CD` / `#FFE9C9` / `#FFF8EC` / `#FFF6D6`: Detail strokes, honey track, chip peach.
 - **Clay border** 2.5px white + `Shadow.card` is the plush elevation; no cold blues.
 
 ## Shapes
 
-The form language is gently curved -- no sharp corners, no perfect circles. Three radius steps define everything: 12px for small elements (icon containers, inputs), 16px for medium elements (cards, buttons), 24px for large elements (empty state icon containers). Chips and FABs use full rounding (9999px) -- the only exception to the gentle curve language.
+Gently curved clay — no sharp corners, no perfect circles except FAB (56r). Plush radius scale is **18–28px**.
 
-- **12px (sm):** Input fields, icon containers, small interactive elements
-- **16px (md):** Cards, buttons, budget progress bar segments -- the default radius
-- **24px (lg):** Empty state icon containers, large decorative surfaces
-- **9999px (full):** Chips, FABs -- pill shapes for filters and floating actions
+- **12px (sm):** Legacy inputs, icon containers (40–44px). Plush uses 14–16r for jar track/details.
+- **16px (md):** Legacy cards/buttons. Plush inner: icon 12–16r.
+- **18px:** PlushCategoryCard (plush grid chip), category icon container is 12r inside.
+- **20px:** AmountRegister display (reg-display), Household Member row.
+- **22–24px:** Plush card default — VaultCard 24r, HoneyJar 24r, VaultAdd 24r, empty states 16r.
+- **26px:** Island heroes — SearchIsland 26r, VaultHero 26r, HoneyHero 26r, HouseholdHero 26r.
+- **28px:** Display numbers (optional hero extra). Chips/pills/FAB use **9999px** (full).
 
 ## Components
 
-### Buttons
-- **Shape:** 16px radius, 48px height, full width
-- **Primary:** Warm Stone (#92400E) background, Parchment (#FFFBF5) text. The default action button.
-- **Secondary:** Parchment (#FFFBF5) background, Ink (#1C1917) text, Stone Border (#E7E5E4) 1px border. For secondary actions.
-- **Ghost:** Transparent background, Warm Stone (#92400E) text. For subtle actions that don't need visual weight.
-- **Danger:** Transparent background, Crimson (#991B1B) text, Crimson border. For destructive actions only.
-- **States:** Pressed state uses 0.92 opacity. Disabled state uses 0.5 opacity.
-- **Badge:** optional pill to the right of the label (e.g. "Last used" on the login CTA). Surface background, Primary text, 12px/500 — adapts in dark mode via the same tokens.
-- **Icon:** optional leading icon inside the label row (e.g. the Google glyph).
+### Bear — Plush Primitive (`components/Bear.tsx:37`)
+
+- **Bear** (`size small 34×28 / mid 40×32 / normal 46×38`, `variant papa|mama|cub` → teddy family, inner ear `teddyLight`). Structure: head `borderRadius headH` + ears absolute `top -0.38*ear` left/right `-2` with inner ear `0.55*ear` centered, body `borderRadius bodyW/2.2` overlapping head `marginTop -6`. **Faceless** — no eyes/nose/mouth. **2.5px white border + `Shadow.card`**, NativeWind `className` for layout, `testID bear-{size}`.
+- **BearRow** (`components/Bear.tsx:147`): `count` or `bears: BearProps[]` row, `flex-row items-end gap-8/6`, centered. Used for vault hero / empty states / household family (5 bears: papa normal, mama mid, 3 cubs small).
+
+### SearchIsland — Home Clay Island (`components/SearchIsland.tsx:33`)
+
+- **Outer:** White 2.5px border, **26r**, `Shadow.card`, bear ears absolute `top -10 left 18/38` (white 2.5px border), padding 10. `testID search-island`.
+- **Top row:** Bear peek 34×34 12r `#FFE9C9` + ears 8r terra, field **46h cream `#FFF8EC` 2.5px `#F3E6CD` → focus terra** with `search` 16 Slate + `TextInput` 14 700 Ink `placeholder "Cari catatan, nominal, akun…"` + clear `x` 26r, search CTA **terra 36h** `search` + `Cari` 13 800.
+- **Quick filters:** Horizontal `ScrollView` gap 8, pills `Semua/Expense/Income/Transfer` + `Filter` badge — **2.5px border** active terra/Ink vs inactive white/Slate, 7/12 pad, dots 8r for expense/income.
+- **Drawer:** When `Filter` pressed, inner **cream `#FFF8EC` 2.5px `#F3E6CD` 20r** with `ACCOUNT`/`CATEGORY` headers 11 800 Slate, horizontal chip scrolls (selected terra), `Reset` 44h white vs `Terapkan` 44h terra, footer **Bear small** + `"Bear family bantu pilah transaksi"`.
+- **Props:** `searchDraft, onSearchDraft, onCommit, onClear, typeFilter, onTypeChange, accountIds, categoryIds, onAccountToggle, onCategoryToggle, activeCount, accounts, categories, onReset`. Wired in `app/(tabs)/home.tsx:839` replacing legacy search-row. No `Pressable` style callback — `useState` pressed for terra depth.
+
+### Vault — Accounts as Bear Vault (`components/VaultCard.tsx:51`, `app/(tabs)/accounts.tsx:112`)
+
+- **VaultCard:** White 2.5px border **24r**, `Shadow.card`, `overflow hidden`, **top 8h bar** color per type `testID top-bar-{cash|bank|ewallet|credit_card}` (`cash #10B981, bank terra, ewallet #3B82F6, credit cherry`), icon **54×54 16r** cream/dark `AccountIcon 30`, name **14 800** centered, type label **11 700** muted, hidden pill `eye-off` 10, balance **17 800**, mini-btns **44×44 999r 2px cream** `edit-2` terra / `trash-2` cherry (useState pressed `#FFF8EC`). `testID vault-card`. Grid **2-col gap 10** via `numColumns=2`.
+- **VaultHero** (`components/VaultCard.tsx:196`): Gradient **white→#FFF6D6** (dark `surface→#3A3224`), 2.5px white **26r**, `Bear mid+normal` row, `BEAR VAULT` 11 800 Slate, total **26 800** Ink `vault-hero-total`, count muted 12 600, `archive` 18 terra in 44r white circle. `testID vault-hero`.
+- **VaultAdd** (`components/VaultCard.tsx:269`): Dashed 2.5px `C.border` **24r** `minH 168`, `plus` 22 terra in 54r cream, `Add Vault` 14 800 + `Create new account` 11 600 + Bear small. Owner only. `testID vault-add`.
+- **Page:** `Bear Vault` title + `Your accounts, guarded by bears`, reconcile banner, filter `All/Cash/Bank/E-Wallet/Credit`, empty via Bear mid+normal + `VaultAdd` for Owner. Preserves `api.accounts.list/verify/reconcile`, `isOwner` matrix, hidden visibility.
+
+### HoneyJar — Budgets as Honey Jars (`components/HoneyJar.tsx:19`, `app/(tabs)/budgets.tsx:191`)
+
+- **HoneyJar:** White 2.5px border **24r** `Shadow.card`, row 14 pad gap 12. Left **jar-jar 64×72**: cap **64×14 6r terra 2.5px white** `jar-cap`, body **64×72 16r** `#FFFBF5`/dark + `jar-body`, fill `testID fill` **height `progress*100%`** honey `LinearGradient #FDE68A→#F59E0B` (over → cherry `#991B1B`), emoji **22 centered** `CategoryIcon 22` or `🍯`. Right meta: name **14 800** + edit/delete **36 999r cream**, spent/amount **12 600** (cherry when over, `—` when `spent undefined`), track **6h 3r** `C.border` + fill `honey-track-fill` honey gradient or cherry, width `progress*100%`.
+- **HoneyHero** (`components/HoneyJar.tsx:253`): White→#FFF6D6 gradient 2.5px white **26r**, bear header `small+mid` + `Honey Jars` 11 800 + `Budget overview` 13 700 + `droplet` 16 terra in 40r white, stats 2-col white cards **Budgeted/Spent 16 800** (Spent `—` when `hasRedacted`), progress **10h 5r cream** honey/cherry fill `progress*100%`. `testID honey-hero`.
+- **Page:** Month nav `< >` + `formatMonthLabel`, `hasRedacted` (any `spent===undefined` → Member redacted) hides tracks/fills and shows `—`. Preserves `api.budgets.list`, summary `budgeted/spent/hasRedacted`, `getMonthBounds`.
+
+### Household — Bear Family Home (`components/HouseholdHero.tsx:17`, `app/members.tsx:430`, `app/household.tsx:1`)
+
+- **HouseholdHero:** Gradient white→#FFF6D6 2.5px white **26r** `Shadow.card`, top row house **56×56 18r `#FFE9C9`** terra `home` 26 + name **16 800** + subtitle 12 600 + `bears` count 11 700 + edit **44 12r** if Owner, `BearRow` **5 bears** `papa normal + mama mid + 3 cubs small` gap 6 + caption `Faceless bear family — Papa, Mama & 3 cubs` 11 700. `testID household-hero`.
+- **HouseholdInviteCard:** White dashed 2.5px `C.border` **20r** 14 pad, `Invite code` 13 800 + `7-day • single-use • auto-revoke` 11 700 + code pill `testID invite-code` `#FFFBF5` 12r with **18 800 Baloo 1.5 ls** `KIN-8A2F` style, `Copy` terra pill + `Revoke` white pill. Uses `expo-clipboard`.
+- **HouseholdMemberRow:** White 2.5px **20r** 12 pad, avatar **44×44 14r `#FFE9C9`** `shield/user` 20 terra, name 13 800, email 11 600, role pill `owner terra white / member #FDE68A terra` 999r, remove `x-circle` 18 cherry if Owner. `testID household-member`.
+- **HouseholdBalanceMode:** Owner segment **Fresh/Carry** 999r 2.5px border, selected terra; Member readonly `Owner only` banner.
+- **Page `app/members.tsx` (also `/household` alias):** Lists `HouseholdHero` → rename inline → rank `InviteCard` → `BalanceMode` → `Timezone` → `Members` → rename `timezonePickerOptions`, danger zone, pending invites, single-member empty. Settings `Household` row and Home household-pill both push `/household`.
+
+### AmountRegister — Bear Register (`components/AmountRegister.tsx:115`, `app/transaction-form.tsx:659`)
+
+Replaces amount `Input` with a clay register.
+
+- **Top:** 2 small bears `mama+cub` row + type badge **Expense − `#FEE2E2/#991B1B` / Income + `#DCFCE7/#065F46` / Transfer ⇄ `#FEF3C7/terra`** 999r 2px white `testID type-badge`.
+- **Display:** White 2.5px **20r** row 12 pad, sign pill **46×52 14r** badge bg + **22 extra-bold** sign (`−`/`+`/`⇄`) `testID sign-pill`, `TextInput` **34 800** Ink `amount-input` (physical keyboard) with `formatAmountInput` (thousands `,`), `x` clear `#FEF3C7` when filled, sub `Rp • Whole number ≥1` 11 700. `testID amount-register`, `Shadow.card`.
+- **Presets:** Row `+50k/+100k/+500k/+1jt` pills **36h 999r 2px** white 12 800 (`preset-{value}`).
+- **Numpad:** **3×4 grid gap 8**: `1–9, 000, 0, ⌫` each **52h 2px** `C.border` **16r** (backspace `#FFF8EC` with `delete` 20). `numpad-{1-9,0,000,backspace}`. Helpers `pressDigit/backspace/clear/addPreset` update `amountText` via `formatNumber/formatAmountInput` and preserve `checkDuplicate`, `handleAmountBlur` validation, `validateTransactionAmount(signedAmount, type)`. Signed logic intact: `expense → −abs`, others `+abs`.
+- **Hints:** `Whole number ≥1` 11 600; error 14 `C.error` `testID amount-error`.
+- **Preserved:** Type `Chip`, Repeat last `pressable`, `SelectField` Account/Category, `DateField`, `Note`, duplicate 24h window `Alert`, `canSubmit` + `hasInteracted` guards, submit haptics. No Pressable style callback.
+
+### Categories — Plush Grid (`components/CategoryCard.tsx:123`, `app/categories.tsx:141`)
+
+- **PlushCategoryCard:** White 2.5px **18r** 10 pad row gap 8 `testID plush-category-card`, icon **36×36 12r `#FFE9C9` 2px white** `CategoryIcon 22`, name **13 800** + type **11 700** (`hidden • hidden`), hidden `eye-off` 28r cream when hidden `testID plush-hidden`, owner mini pills **32 999r 2px cream** `eye/edit-2/trash-2` 12 (pressed `#FFF8EC`). Hidden Bear reference for token coverage.
+- **Page:** **2-col gap 8** 16 horiz, chips `All/Income/Expense` + `Add` terra `plus` 14 (Owner only), `56 icons` butter pill, reserved footer **12 gap** `#FFE9C9` 2.5px white **18r** `Bear small` + `2 reserved "Initial Balance"` 12 800 / `Tidak bisa dihapus` 11 700 `testID reserved-footer`. Legacy `CategoryCard` (44×44 surface) kept for compat; plush grid uses new variant.
+
+### Buttons (Plush-aware)
+- **Shape:** 16r default, **48h** min (plush 52–56h for register/hero). **2–2.5px** border where clay demands (primary terra 2.5, dashed invite 2.5).
+- **Primary:** Terra #92400E bg, Parchment #FFFBF5 text, 16r. Pressed `0.92` or `#7A3410`.
+- **Secondary:** Parchment bg, Ink text, Stone 1px.
+- **Ghost/Danger:** Transparent + terra/cherry text.
+- **States:** Pressed via `useState` + static style/className — never `style={({pressed})=>}`.
+- **Register preset/numpad:** White 2px border cream, 36–52h, 999/16r.
 
 ### Chips
-- **Style:** Full-rounded pills (9999px), 48px minimum height, 16px horizontal padding
-- **Active:** Warm Stone background, Parchment text. Used for selected filters.
-- **Inactive:** Parchment background, Slate text, Stone Border. For unselected options.
+- **Style:** 999r, **44–48h**, 16h pad, 2.5px border when plush. Active terra+white, inactive white+slate+Stone/Cream.
 
 ### Inputs
-- **Style:** 12px radius, 48px height, 1px Stone Border, Parchment background, 16px horizontal padding
-- **Focus:** Border color shifts to Warm Stone
-- **Error:** Border color shifts to Crimson, error text appears below in Crimson
-- **Label:** 14px, 500 weight, Ink text, positioned above input with 6px gap
-- **Label badge:** optional pill next to the label (e.g. "Last used" on the login Email field). Surface background, Primary text, 12px/500.
+- **Legacy Input:** 12r, 48h, 1px Stone, Parchment, 16 pad, focus terra, error cherry.
+- **Plush fields:** SearchIsland 46h cream 2.5px → terra focus, AmountRegister 52h register trio, SelectField 48h 12r + bottom-sheet `Modal bg-black/40 24r Shadow.card`.
 
-### Cards
-- **GradientCard:** LinearGradient background (Parchment to Amber Surface), 16px radius, 16px padding, ambient card shadow. Used for hero cards and summary displays (Period Balance, onboarding hero).
-- **Bordered Card:** Parchment background, Stone Border, 16px radius, 16px padding, ambient card shadow. Base for list items (AccountCard, CategoryCard, BudgetCard).
+### Cards & Gradients
+- **GradientCard:** `LinearGradient` white→#FEF3C7 (plush hero white→#FFF6D6), 16r (hero 26r), 16 pad, card shadow. Used for Period Balance, onboarding hero, Household/Vault/Honey heroes.
+- **Bordered Card:** Legacy `AccountCard/CategoryCard/BudgetCard` bases; plush replaces with Vault/Honey/Plush variants.
 
-### List Items — The Ledger Rows
-Signature rows reuse the bordered card shell but add their own icon + action grammar. All maintain 48×48 touch targets on icon actions and 16px inner padding.
-
-- **AccountCard** (`components/AccountCard.tsx:22`): 44×44 icon container (12r, `C.surface`) with `AccountIcon` 32px (Streamline `SvgXml` palette:true, type-fixed: cash/bank/ewallet/credit_card) — neutral surface, never tinted circles. Right side 16px `formatNumber(balance)`. Hidden badge: pill `border + eye-off 12px`. Actions: `edit-2` Warm Stone / `trash-2` Crimson, 48×48.
-- **CategoryCard** (`components/CategoryCard.tsx:42`): Same 44×44 surface container + `CategoryIcon` 32px (56-name allowlist via `modules/icon-registry`, fallback `other` → `tags-1`). Type pill `Income` Forest / `Expense` Crimson. Visibility toggle `eye/eye-off` Slate 18px, then edit/trash.
-- **BudgetCard** (`components/BudgetCard.tsx:30`): Bordered card with header (CategoryIcon 24px + name + `eye-off` if hidden) → 48px edit/trash. Spending line `spent / budget` (Slate, Crimson when `overBudget`). Progress track: 8px height, 4r, `C.border` background, fill `C.primary` → `C.error` when over (width `progress*100%`, capped). When `spent === undefined` (Member redacted for hidden category) → track omitted, spent shows `—`.
-- **TransactionCard** (`components/TransactionCard.tsx:70`): *Not* a card — transparent row `flex-row gap-3 px-4 py-3` 16r, pressed `C.surface`. Left: 40×40 12r `C.surface` container with `Icon 28px` (category) or `arrow-right` 18px Warm Stone for transfers. Middle: note (base Ink) + subtitle (xs Slate) `Category • Account` or `Account → ToAccount`. Right: 16px 600 amount — `+` Forest, `−` Crimson, transfer Ink, `formatNumber(Math.abs)`. No time is displayed; `date` prop is retained but not rendered.
+### List Items — Ledger Rows (Legacy shells; plush uses new cards)
+- **TransactionCard** (`components/TransactionCard.tsx:70`): Transparent row `flex-row gap-3 px-4 py-3` 16r, pressed `C.surface`, 40×40 12r surface + `CategoryIcon 28` or `arrow-right` 18 terra, note + `Category • Account` subtitle, amount 16 600 `+` Forest/`−` Cherry/transfer Ink.
 
 ### Icons — Streamline Offline Registry
-Primary iconography is **Streamline Ultimate Color 998 via Iconify, CC BY 4.0** — offline bundle `constants/streamlineIconData.json` + `constants/streamlineIconMap.ts` → `modules/icon-registry` (`react-native-svg` `SvgXml`, 24×24 `palette:true`, `Size 24/28/32`). `CategoryIcon`/`AccountIcon` are shims to the registry. Fallback `other` → `tags-1`. Legacy PNG `assets/icons` + `getCategoryIconSource` retained only as offline fallback. Feather (`@expo/vector-icons/Feather`) handles UI chrome only (eye, edit-2, trash-2, chevrons, plus, search). Never mix Feather tints into category/account icon containers.
+Primary **Streamline Ultimate Color 998 via Iconify, CC BY 4.0** — `constants/streamlineIconData.json` + `streamlineIconMap.ts` → `modules/icon-registry` (`SvgXml` 24×24 `palette:true`, Size 24/28/32). `CategoryIcon`/`AccountIcon` shims. Feather handles chrome only (`eye`, `edit-2`, `trash-2`, `chevrons`, `plus`, `search`, `filter`, `copy`, `home`, `shield`, `delete`, `droplet`, `archive`). Never mix Feather tints into category/account icon containers.
 
 ### SelectField & Bottom Sheet
-- **SelectField** (`components/SelectField.tsx:52`): 48h 12r bordered field (`C.background`, 16px pad) showing selected `Icon 24px` + label; `chevron-down` 20 Slate. Press opens bottom-sheet `Modal` (`bg-black/40`, `rounded-2xl`  `Shadow.card`, `max-h 60%`). Header `Select {label}`, optional search input when `options>8`. Rows 48h `flex-row justify-between` with check 18 Warm Stone when selected. Footer hint `Scroll for more options` when `contentHeight > viewportHeight`.
-- **FilterSheet / MonthPicker / Members sheets** share the same bottom-sheet treatment: `Pressable bg-black/40` backdrop, `Shadow.card`, 16–24r corners, `Feather chevron-down` affordances.
+- **SelectField** (`components/SelectField.tsx:52`): 48h 12r field showing `Icon 24` + label; `chevron-down` 20 Slate → bottom-sheet `Modal bg-black/40 24r Shadow.card max-h 60%` with search when >8 options, rows 48h `check` 18 terra, footer hint `Scroll for more options`.
 
 ### Progress & Charts
-- **Budget progress:** 8×4r track as above; fill uses semantic threshold (`C.success`→`C.chartAmber #D97706`→`C.error`) via `BudgetPill` in `app/(tabs)/home.tsx:88` for the 3-pill variant. Reports donut via `SpendingDonut` (`react-native-svg` `Circle` `strokeDasharray`, r15.915, selected `strokeWidth 8.5` vs 6.5, `opacity 0.35` dim).
-- **Skeleton** (`components/Skeleton.tsx:10`): `Animated.loop` 700ms `0.45→0.85→0.45`, `C.border` bg, 12r, used for Period Balance / ranking loading states.
+- **Honey progress:** 6–10h, `#F3E6CD`/`C.border` track, fill honey gradient or cherry (over). Reports donut `SpendingDonut` (`Circle strokeDasharray r15.915`, selected 8.5 vs 6.5, `opacity 0.35` dim).
+- **Skeleton** (`components/Skeleton.tsx:10`): `Animated.loop` 700ms `0.45→0.85`, `C.border` bg, 12r.
 
-### EmptyState
-- **Shape:** 88px icon container, 24px radius, Amber Surface background, Warm Stone Light border
-- **Icon:** 36px Feather icon in Warm Stone
-- **Text:** 18px heading (600 weight), 14px description (400 weight, Slate)
-- **Action:** Full-width Primary button below text
-- **Today card variant** (Home ledger): `Shadow.card` 16r per-period empty (`No record for today` + `+`  `Feather plus` on `bg #facc15`) when `today ∈ [selectedPeriodStart, periodEnd)` and no rows.
+### EmptyState & Brand Mark
+- **EmptyState:** 88px 24r Amber Surface + Warm Light border, 36 Feather terra, 18 600 heading + 14 Slate desc, full-width Primary button. Today variant: `Shadow.card` 16r `No record for today` + `+` on `#facc15`.
+- **Brand Mark:** 96sq 24r GradientCard 1px Warm Light, card shadow, 40 Feather terra (`home`/`users`) — identical on `app/index.tsx` and `app/onboarding.tsx`.
 
-### Auth Brand Mark
-- **Shape:** 96px square tile, 24px radius, GradientCard background, 1px Warm Stone Light border, card shadow
-- **Icon:** 40px Feather icon in Warm Stone (home on login, users on onboarding)
-- Identical across `app/index.tsx` and `app/onboarding.tsx` to anchor the brand at the top of the auth flow.
-
-### FAB (Floating Action Button)
-- **Shape:** 56px circle, full rounding, Warm Stone background (Elevated shadow)
-- **Icon:** 26px Feather "plus" in Parchment (24px when extended with label `px-5 gap-2`)
-- **Motion:** `react-native-reanimated` spring `scale 0.92→1` (damping 15, stiffness 400) on pressIn/pressOut (`components/Fab.tsx:26`). Never stack FABs; one primary action per screen.
-- **Extended:** 56px height, pill with label 16/600 text, same elevated lift.
+### FAB
+- **Shape:** 56r circle (elevated), `plus` 26 Parchment (24 when extended `px-5 gap-2`). Spring `scale 0.92→1` (damping 15, stiffness 400) on press (`components/Fab.tsx:26`). One per screen.
 
 ### Tab Bar
-- **Style:** Bottom navigation, Parchment background, 5 tabs (`home`, `reports`, `transactions`→`search`, `accounts`, `settings`)
-- **Icons:** 22px Feather icons
-- **Active:** Warm Stone tint
-- **Inactive:** Slate tint
-- **Android note:** Navigation bar 3–5 destinations on compact width per `reference/android.md`; `edgeToEdgeEnabled true` + window insets so bar never hides behind system bars/IME.
+- **Style:** Bottom 5 tabs, Parchment, 22 Feather. Active terra, inactive Slate. **Plush floating variant:** when clay islands are used, tab container is white clay (2.5px + card shadow) with 999r inset — visual only, layout unchanged. `edgeToEdgeEnabled true` + insets so bar never under system bars/IME.
 
-### Bear (Plush Primitive)
-- **Bear** (`components/Bear.tsx:10`): Faceless — head + ears + body only, no eyes/nose/mouth. Sizes `small 34×28 / mid 40×32 / normal 46×38`, variants `papa|mama|cub` map to `BearColors` teddy family, 2.5px white border, `Shadow.card`, NativeWind `className` for layout. Pure view, no logic.
-- **BearRow** (`components/Bear.tsx:80`): `count` or `bears: BearProps[]` row, `flex-row items-end gap-8` — used for vault hero / empty states.
+### Bear (Plush Primitive) — Summary
+Already detailed above; the single source of faceless plush identity. Every bear is **head+ears+body, 2.5px white, `Shadow.card`, teddy palette, no face**.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** use Warm Stone (#92400E) as the primary interactive color -- it carries every action
-- **Do** maintain 48px minimum touch targets on all interactive elements
-- **Do** use GradientCard for hero/summary displays that need visual warmth
-- **Do** keep card spacing at 16px vertical gaps
-- **Do** use semantic colors (Forest for income, Crimson for expense) consistently
-- **Do** let screens breathe -- generous padding and spacing
+- **Do** use Bear `papa/mama/cub` with teddy `D9A679/DEB08A/E8B48E` + honey `FDE68A/F59E0B` + cream `#F3E6CD/#FFE9C9` — all amber family
+- **Do** apply **2.5px white clay border + `Shadow.card`** on every plush island/card/jar/hero
+- **Do** keep **22–28r** for plush islands (18r category chip, 20r register display, 24r cards, 26r heroes)
+- **Do** maintain **52–56h** chunky touch (Numpad 52h, mini 44h, icon 54h, pills 44–52h) — never <48h
+- **Do** keep **Primary ≤15%** — terra for active states and a few accents only; rest is white/cream/butter
+- **Do** reuse `useThemeColors()` / `useThemeGradients()` and `BearColors` — never hardcode outside `constants/theme.ts`
+- **Do** use `useState` pressed + static `style`/`className` for Pressable — never `style={({pressed})=>}`
+- **Do** let Home/Accounts/Budgets/Household breathe with generous padding and bear family accents
 
 ### Don't:
-- **Don't** introduce cold blues or corporate gradients -- the palette is warm stone and amber
-- **Don't** stack shadows or use heavy elevation -- flat is the default
-- **Don't** use the primary accent on more than 15% of any screen
-- **Don't** crowd screens with too much content -- if it feels tight, there is too much
-- **Don't** use decorative typography weights -- 400, 500, and 600 are the only options
-- **Don't** mix sharp corners with the gentle curve language -- radius follows the 12/16/24 scale
+- **Don't** give the bear a face — faceless is the identity (head+ears+body only)
+- **Don't** introduce cold blues/corporate gradients — warm stone/honey/peach only
+- **Don't** drop the clay border — unbordered flat is legacy, plush must have 2.5px white + shadow
+- **Don't** use radius outside 12/16/18/20/24/26 or 999r — the gentle scale is deliberate
+- **Don't** stack shadows or heavy elevation — card vs elevated only, never pressed shadows
+- **Don't** break signed amount, hidden visibility, or owner/member matrix — presentation only, invariants intact
+- **Don't** use tiny 32h controls — chunky clay demands 44h minimum, 52–56h preferred
+- **Don't** mix Feather tints into category/account icon containers — Streamline palette only
