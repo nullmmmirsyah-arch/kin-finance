@@ -10,6 +10,9 @@ export function render(element: React.ReactElement) {
     getByText: () => element,
     getByTestId: () => element,
     queryByText: () => null,
+    queryByTestId: () => null,
+    getAllByTestId: () => [element],
+    queryAllByTestId: () => [],
   };
 }
 export const screen = {};
