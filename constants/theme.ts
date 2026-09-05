@@ -20,6 +20,14 @@ export const Colors = {
   deltaNegativeBorder: "#991B1B33",
   chartAmber: "#D97706",
   chartEmerald: "#059669",
+  // plush / vault semantic tokens (non-breaking extension)
+  vaultCash: "#10B981",
+  vaultEwallet: "#3B82F6",
+  card: "#FFFFFF",
+  plushCream: "#FFFBF5",
+  plushCreamBorder: "#F3E6CD",
+  plushSurfaceAlt: "#FFF8EC",
+  plushPeek: "#FFE9C9",
 } as const;
 
 export const DarkColors = {
@@ -42,12 +50,32 @@ export const DarkColors = {
   deltaNegativeBorder: "rgba(248,113,113,0.25)",
   chartAmber: "#F59E0B",
   chartEmerald: "#34D399",
+  vaultCash: "#34D399",
+  vaultEwallet: "#60A5FA",
+  card: "#292524",
+  plushCream: "#1C1917",
+  plushCreamBorder: "#44403C",
+  plushSurfaceAlt: "#292524",
+  plushPeek: "#3A3224",
 } as const;
 
 export function useThemeColors() {
   const scheme = useColorScheme();
   return scheme === "dark" ? DarkColors : Colors;
 }
+
+// Bear / plush world — non-breaking extension of the stone/amber palette.
+// Keeps existing Colors intact; new tokens are warm clay/honey only.
+export const BearColors = {
+  teddy: "#D9A679",
+  teddyMid: "#DEB08A",
+  teddyLight: "#E8B48E",
+  honey: "#FDE68A",
+  honeyDeep: "#F59E0B",
+} as const;
+
+// Alias for Vault context — same values, semantic name.
+export const BearVaultColors = BearColors;
 
 export const Gradients = {
   card: ["#FFFBF5", "#FEF3C7"],

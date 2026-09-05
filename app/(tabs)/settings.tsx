@@ -195,7 +195,7 @@ export default function Settings() {
         </Text>
 
         <Pressable
-          onPress={() => router.push("/members")}
+          onPress={() => router.push("/household" as never)}
           accessibilityLabel={`${household?.name}, ${memberCount} member${memberCount === 1 ? "" : "s"}`}
           style={[
             Shadow.card,

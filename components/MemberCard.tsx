@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { BearColors, Radius, Shadow, useThemeColors } from "@/constants/theme";
 
 type Props = {
   name: string;
@@ -46,10 +46,16 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
           />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 13, fontWeight: "800", color: C.textPrimary }}
+          >
             {name}
           </Text>
-          <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 11, fontWeight: "600", color: C.textSecondary }}
+          >
             {email}
           </Text>
         </View>
@@ -57,19 +63,21 @@ export function MemberCard({ name, email, role, onRemove }: Props) {
 
       <View className="flex-row items-center gap-2">
         <View
+          testID="role-pill"
           style={{
             borderRadius: 999,
-            backgroundColor:
-              role === "owner" ? C.primaryLight : C.surface,
+            backgroundColor: role === "owner" ? C.primary : BearColors.honey,
+            borderWidth: 2,
+            borderColor: C.card,
           }}
           className="px-2.5 py-1"
         >
           <Text
-            className={`text-xs font-medium ${
-              role === "owner"
-                ? "text-primary dark:text-primary-dark"
-                : "text-text-secondary dark:text-text-secondary-dark"
-            }`}
+            style={{
+              fontSize: 11,
+              fontWeight: "800",
+              color: role === "owner" ? C.card : C.primary,
+            }}
           >
             {role === "owner" ? "Owner" : "Member"}
           </Text>

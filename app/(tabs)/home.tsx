@@ -11,7 +11,6 @@ import {
   RefreshControl,
   SectionList,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -42,6 +41,7 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
 import { MonthPicker } from "@/components/MonthPicker";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
+import { SearchIsland } from "@/components/SearchIsland";
 import { Id } from "@/convex/_generated/dataModel";
 import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
 
@@ -225,6 +225,36 @@ export default function Home() {
   const clearSearch = useCallback(() => {
     setSearchDraft("");
     setSearchCommitted("");
+  }, []);
+
+  const handleTypeChange = useCallback(
+    (type: TypeFilter) => {
+      setTypeFilter(type);
+      setCategoryIds((current) => {
+        if (current.length === 0 || type === "all") return current;
+        if (type === "transfer") return [];
+        const cats = categoriesResult?.categories ?? [];
+        return current.filter((id) => {
+          const cat = cats.find((c) => c._id === id);
+          return cat !== undefined && cat.type === type;
+        });
+      });
+    },
+    [categoriesResult],
+  );
+
+  const handleAccountToggle = useCallback((id: Id<"accounts">) => {
+    setAccountIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }, []);
+
+  const handleCategoryToggle = useCallback((id: Id<"categories">) => {
+    setCategoryIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setTypeFilter("all");
+    setAccountIds([]);
+    setCategoryIds([]);
   }, []);
 
   const accountOptions = useMemo(() => accountData?.accounts ?? [], [accountData]);
@@ -535,11 +565,47 @@ export default function Home() {
           </Text>
         </View>
 
-        <View className="mb-3 items-center gap-1.5">
-          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
-            {household.name} Household
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => router.push("/household" as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Household"
+          style={{
+            borderWidth: 2.5,
+            borderColor: C.border,
+            borderRadius: 999,
+            backgroundColor: C.background,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            paddingVertical: 7,
+            paddingHorizontal: 10,
+            paddingLeft: 8,
+            marginBottom: 10,
+          }}
+          className="flex-row items-center"
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              backgroundColor: "#FFE9C9",
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="home" size={16} color={C.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: "800", color: C.textPrimary }} numberOfLines={1}>
+              {household.name} Household
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>Tap to manage • Household</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color={C.textSecondary} />
+        </Pressable>
 
         <View className="flex-row items-center justify-between">
           <Pressable
@@ -768,76 +834,23 @@ export default function Home() {
                         </View>
                       </GradientCard>
 
-                      <View className="mt-4 flex-row gap-2">
-                        <View className="flex-1 flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
-                          <Feather name="search" size={16} color={C.textSecondary} />
-                          <TextInput
-                            value={searchDraft}
-                            onChangeText={setSearchDraft}
-                            placeholder="Search notes, amounts, accounts…"
-                            placeholderTextColor={C.textSecondary}
-                            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
-                            accessibilityLabel="Search notes, amounts, accounts and categories"
-                            returnKeyType="search"
-                            onSubmitEditing={commitSearch}
-                          />
-                          {searchDraft.length > 0 && (
-                            <Pressable
-                              onPress={clearSearch}
-                              accessibilityLabel="Clear search"
-                              className="h-10 w-10 items-center justify-center"
-                            >
-                              <Feather name="x" size={16} color={C.textSecondary} />
-                            </Pressable>
-                          )}
-                        </View>
-                        <Pressable
-                          onPress={commitSearch}
-                          accessibilityRole="button"
-                          accessibilityLabel="Search"
-                          style={{ backgroundColor: C.primary, borderRadius: 999 }}
-                          className="min-h-12 items-center justify-center px-5"
-                        >
-                          <Text className="text-sm font-semibold" style={{ color: C.background }}>
-                            Search
-                          </Text>
-                        </Pressable>
-                      </View>
-
-                      <View className="mt-2 flex-row">
-                        <Pressable
-                          onPress={() => setFilterOpen(true)}
-                          accessibilityRole="button"
-                          accessibilityLabel="Filter"
-                          style={{
-                            borderWidth: 1,
-                            borderColor: activeFilterCount > 0 ? C.primary : C.border,
-                            backgroundColor: activeFilterCount > 0 ? `${C.primary}14` : C.background,
-                            borderRadius: 999,
-                            paddingHorizontal: 16,
-                            paddingVertical: 8,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <Feather
-                            name="filter"
-                            size={14}
-                            color={activeFilterCount > 0 ? C.primary : C.textSecondary}
-                          />
-                          <Text
-                            className="text-sm font-medium"
-                            style={{ color: activeFilterCount > 0 ? C.primary : C.textSecondary }}
-                          >
-                            {activeFilterCount > 0 ? `Filter · ${activeFilterCount}` : "Filter"}
-                          </Text>
-                          <Feather
-                            name="chevron-down"
-                            size={14}
-                            color={activeFilterCount > 0 ? C.primary : C.textSecondary}
-                          />
-                        </Pressable>
+                      <View className="mt-4">
+                        <SearchIsland
+                          searchDraft={searchDraft}
+                          onSearchDraft={setSearchDraft}
+                          onCommit={commitSearch}
+                          onClear={clearSearch}
+                          typeFilter={typeFilter}
+                          onTypeChange={handleTypeChange}
+                          accountIds={accountIds}
+                          categoryIds={categoryIds}
+                          onAccountToggle={handleAccountToggle}
+                          onCategoryToggle={handleCategoryToggle}
+                          activeCount={activeFilterCount}
+                          accounts={accountOptions}
+                          categories={contextualCategoryOptions}
+                          onReset={handleFilterReset}
+                        />
                       </View>
 
                       {monthBudgets === undefined ? (
@@ -1173,7 +1186,7 @@ export default function Home() {
         accountIds={accountIds}
         categoryIds={categoryIds}
         accounts={accountData?.accounts ?? []}
-        categories={categoriesResult?.categories ?? []}
+        categories={contextualCategoryOptions}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
           setAccountIds(aIds);

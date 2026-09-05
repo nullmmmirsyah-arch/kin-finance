@@ -17,7 +17,8 @@ import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
-import { AccountCard } from "@/components/AccountCard";
+import { VaultCard, VaultHero, VaultAdd } from "@/components/VaultCard";
+import { Bear } from "@/components/Bear";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
@@ -102,6 +103,20 @@ export default function Accounts() {
       : accounts.filter((a) => a.type === filter);
   }, [accounts, filter]);
 
+  const vaultTotal = useMemo(() => {
+    if (!accounts) return 0;
+    return accounts.reduce((sum, a) => sum + a.balance, 0);
+  }, [accounts]);
+
+  type GridItem = NonNullable<typeof accounts>[number] | { _id: "__add__"; __add: true };
+  const gridData: GridItem[] = useMemo(() => {
+    const base = (visibleAccounts ?? []) as GridItem[];
+    if (isOwner) return [...base, { _id: "__add__", __add: true } as GridItem];
+    return base;
+  }, [visibleAccounts, isOwner]);
+
+  const isEmptyFiltered = visibleAccounts !== null && visibleAccounts.length === 0;
+
   const handleDelete = useCallback(
     (account: { _id: Id<"accounts">; name: string }) => {
       Alert.alert(
@@ -148,9 +163,9 @@ export default function Accounts() {
             <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
           ))}
         </View>
-        <View className="mt-4 gap-3 px-5">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} style={{ height: 72, borderRadius: Radius.md }} />
+        <View className="mt-4 flex-row flex-wrap gap-2.5 px-5">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} style={{ flex: 1, minWidth: 150, height: 168, borderRadius: 24 }} />
           ))}
         </View>
       </SafeAreaView>
@@ -170,7 +185,8 @@ export default function Accounts() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
+        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Bear Vault</Text>
+        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Your accounts, guarded by bears</Text>
       </View>
 
       {stale && (
@@ -210,6 +226,11 @@ export default function Accounts() {
         </View>
       ) : null}
 
+      {/* VaultHero */}
+      <View className="mt-4 px-5">
+        <VaultHero total={vaultTotal} count={accounts.length} />
+      </View>
+
       <View className="mt-4 flex-row flex-wrap gap-2 px-5">
         {FILTERS.map((f) => (
           <Chip
@@ -221,10 +242,12 @@ export default function Accounts() {
         ))}
       </View>
 
-      {visibleAccounts !== null && visibleAccounts.length === 0 ? (
+      {isEmptyFiltered ? (
         <FlatList
-          className="mt-6 flex-1"
+          className="mt-4 flex-1"
           contentContainerClassName="gap-3 px-5 pb-28"
+          numColumns={2}
+          columnWrapperStyle={{ gap: 10 }}
           removeClippedSubviews
           windowSize={5}
           initialNumToRender={6}
@@ -241,34 +264,54 @@ export default function Accounts() {
               tintColor={C.primary}
             />
           }
-          data={[]}
-          keyExtractor={() => "empty"}
-          renderItem={() => null}
-          ListEmptyComponent={
-            <View
-              style={{ backgroundColor: C.background }}
-              className="rounded-[16px]"
-            >
-              <EmptyState
-                icon="credit-card"
-                title="No accounts yet"
-                description={
-                  isOwner
-                    ? "Add your first account to start tracking your money."
-                    : "Only the Owner can add accounts. Contact your household Owner to set up your first account."
-                }
-                actionLabel={isOwner ? "Add Account" : undefined}
-                onAction={
-                  isOwner ? () => router.push("/account-form") : undefined
-                }
-              />
-            </View>
-          }
+          data={[] as GridItem[]}
+          keyExtractor={(item) => String(item._id)}
+          renderItem={({ item }) => {
+            const isAdd = (item as { __add?: boolean }).__add;
+            if (isAdd) {
+              return <VaultAdd onPress={() => router.push("/account-form")} />;
+            }
+            return null as any;
+          }}
+          ListEmptyComponent={(
+              <View style={{ gap: 12, alignItems: "center", paddingTop: 8, flex: 1, width: "100%" } as any}>
+                {isOwner ? (
+                  <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                    <VaultAdd onPress={() => router.push("/account-form")} />
+                  </View>
+                ) : null}
+                <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: "center" }}>
+                  <Bear size="mid" />
+                  <Bear size="normal" />
+                </View>
+                <View
+                  style={{ backgroundColor: C.background, borderRadius: 16, width: "100%" }}
+                  className="rounded-[16px]"
+                >
+                  <EmptyState
+                    icon="credit-card"
+                    title={filter === "all" ? "No accounts yet" : `No ${filter} accounts`}
+                    description={
+                      filter === "all"
+                        ? isOwner
+                          ? "Add your first vault to start tracking your money."
+                          : "Only the Owner can add vaults. Contact your household Owner."
+                        : `No accounts match "${filter}". Try another filter.`
+                    }
+                    actionLabel={isOwner && filter === "all" ? "Add Vault" : undefined}
+                    onAction={
+                      isOwner && filter === "all" ? () => router.push("/account-form") : undefined
+                    }
+                  />
+                </View>
+              </View>
+            )}
         />
       ) : (
         <FlatList
           className="mt-4 flex-1"
-          contentContainerClassName="gap-3 px-5 pb-28"
+          columnWrapperStyle={gridData.length > 1 ? ({ gap: 10 } as any) : undefined}
+          numColumns={2}
           removeClippedSubviews
           windowSize={7}
           initialNumToRender={10}
@@ -286,32 +329,37 @@ export default function Accounts() {
               tintColor={C.primary}
             />
           }
-          data={visibleAccounts ?? []}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) =>
-            isOwner ? (
-              <AccountCard
-                name={item.name}
-                type={item.type}
-                balance={item.balance}
-                hidden={item.hidden}
+          data={gridData}
+          keyExtractor={(item) => String(item._id)}
+          renderItem={({ item }) => {
+            const isAdd = (item as { __add?: boolean }).__add;
+            if (isAdd) {
+              return <VaultAdd onPress={() => router.push("/account-form")} />;
+            }
+            const acc = item as typeof accounts[number];
+            return isOwner ? (
+              <VaultCard
+                name={acc.name}
+                type={acc.type}
+                balance={acc.balance}
+                hidden={acc.hidden}
                 onEdit={() =>
                   router.push({
                     pathname: "/account-form",
-                    params: { id: item._id },
+                    params: { id: acc._id },
                   })
                 }
-                onDelete={() => handleDelete(item)}
+                onDelete={() => handleDelete(acc)}
               />
             ) : (
-              <AccountCard
-                name={item.name}
-                type={item.type}
-                balance={item.balance}
-                hidden={item.hidden}
+              <VaultCard
+                name={acc.name}
+                type={acc.type}
+                balance={acc.balance}
+                hidden={acc.hidden}
               />
-            )
-          }
+            );
+          }}
         />
       )}
 

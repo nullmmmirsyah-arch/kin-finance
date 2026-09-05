@@ -14,13 +14,11 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { Fab } from "@/components/Fab";
-import { BudgetCard } from "@/components/BudgetCard";
+import { HoneyJar, HoneyHero } from "@/components/HoneyJar";
 import { EmptyState } from "@/components/EmptyState";
-import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
-import { formatNumber } from "@/utils/format";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -81,9 +79,6 @@ export default function Budgets() {
     }
     return { budgeted, spent, hasRedacted };
   }, [budgets]);
-
-  const overallProgress =
-    summary.hasRedacted ? 0 : summary.budgeted > 0 ? summary.spent / summary.budgeted : 0;
 
   const handlePrevMonth = useCallback(() => {
     setSelectedMonthStart((prev) => {
@@ -200,59 +195,7 @@ export default function Budgets() {
 
       {budgets.length > 0 ? (
         <View className="mt-4 px-5">
-          <GradientCard>
-            <View className="gap-2">
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                    Budgeted
-                  </Text>
-                  <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                    {formatNumber(summary.budgeted)}
-                  </Text>
-                </View>
-                <View className="items-end">
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                    Spent
-                  </Text>
-                  {summary.hasRedacted ? (
-                    <Text className="text-base font-semibold text-text-secondary dark:text-text-secondary-dark">
-                      —
-                    </Text>
-                  ) : (
-                    <Text
-                      className={`text-base font-semibold ${
-                        summary.spent > summary.budgeted
-                          ? "text-error dark:text-error-dark"
-                          : "text-text-primary dark:text-text-primary-dark"
-                      }`}
-                    >
-                      {formatNumber(summary.spent)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              {summary.hasRedacted ? null : (
-                <View
-                  style={{
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: C.border,
-                    overflow: "hidden",
-                  }}
-                >
-                  <View
-                    style={{
-                      height: "100%",
-                      width: `${Math.min(overallProgress, 1) * 100}%`,
-                      backgroundColor: summary.spent > summary.budgeted ? C.error : C.primary,
-                      borderRadius: 4,
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-          </GradientCard>
+          <HoneyHero budgeted={summary.budgeted} spent={summary.spent} hasRedacted={summary.hasRedacted} />
         </View>
       ) : null}
 
@@ -300,11 +243,10 @@ export default function Budgets() {
           data={budgets}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <BudgetCard
+            <HoneyJar
               categoryName={item.category?.name ?? "Unknown"}
-              categoryIcon={item.category?.icon}
-              categoryHidden={item.category?.hidden ?? false}
-              budgetAmount={item.amount}
+              icon={item.category?.icon}
+              amount={item.amount}
               spent={item.spent}
               onEdit={() =>
                 router.push({

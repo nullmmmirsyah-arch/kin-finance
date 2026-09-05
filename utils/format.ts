@@ -8,6 +8,19 @@ export function formatAmountInput(value: string): string {
   // Whole numbers only — explicitly truncate decimals/signs, do not silently reinterpret.
   // "1.500" -> "1" (truncate after "."), not "1,500"; "12.34" -> "12"; "-12" -> "12".
   // Normal unsigned integers are formatted with thousand separators; validation surfaces errors.
+  // Currency-aware: "Rp 1.250.000" preserves full value by normalizing grouping separators before decimal handling.
+  const trimmed = value.trim();
+  const isCurrency = /rp/i.test(trimmed);
+  if (isCurrency) {
+    const withoutRp = trimmed.replace(/^rp\s*/i, "").trim();
+    // Preserve comma-grouped Rp 1,250,000 while still handling decimal comma 1.250,50
+    const decimalMatch = withoutRp.match(/^(.*),(\d{1,2})\s*$/);
+    const wholeCurrencyValue = decimalMatch ? decimalMatch[1] : withoutRp;
+    const digits = wholeCurrencyValue.replace(/[^0-9]/g, "");
+    if (digits === "") return "";
+    const normalized = digits.replace(/^0+(?=\d)/, "");
+    return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
   const beforeDecimal = value.split(".")[0] ?? "";
   const digits = beforeDecimal.replace(/[^0-9]/g, "");
   if (digits === "") return "";

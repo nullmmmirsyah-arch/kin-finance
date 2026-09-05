@@ -29,7 +29,8 @@ import { DateField } from "@/components/DateField";
 import { useSnackbar } from "@/components/Snackbar";
 import { Skeleton } from "@/components/Skeleton";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
-import { formatNumber } from "@/utils/format";
+import { AmountRegister } from "@/components/AmountRegister";
+import { formatAmountInput, formatNumber } from "@/utils/format";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import {
@@ -193,10 +194,47 @@ export default function TransactionForm() {
   );
 
   const handleAmountChange = useCallback((text: string) => {
-    setAmountText(text);
+    // formatAmountInput is idempotent, so re-formatting already formatted text is safe
+    setAmountText(formatAmountInput(text));
     if (amountError) setAmountError(null);
     if (error) setError(null);
   }, [amountError, error]);
+
+  const pressDigit = useCallback((digit: string) => {
+    const raw = amountText.replace(/,/g, "");
+    let nextRaw: string;
+    if (raw === "" && (digit === "0" || digit === "000")) {
+      nextRaw = "0";
+    } else {
+      nextRaw = `${raw}${digit}`;
+    }
+    const formatted = formatAmountInput(nextRaw);
+    setAmountText(formatted);
+    if (amountError) setAmountError(null);
+    if (error) setError(null);
+  }, [amountText, amountError, error]);
+
+  const handleBackspace = useCallback(() => {
+    const raw = amountText.replace(/,/g, "");
+    if (raw.length === 0) return;
+    const nextRaw = raw.slice(0, -1);
+    const formatted = formatAmountInput(nextRaw);
+    setAmountText(formatted);
+  }, [amountText]);
+
+  const clearAmount = useCallback(() => {
+    setAmountText("");
+    setAmountError(null);
+  }, []);
+
+  const addPreset = useCallback((value: number) => {
+    const current = Number(amountText.replace(/,/g, "") || "0");
+    const next = current + value;
+    const safeNext = Math.min(next, Number.MAX_SAFE_INTEGER);
+    setAmountText(formatNumber(safeNext));
+    if (amountError) setAmountError(null);
+    if (error) setError(null);
+  }, [amountText, amountError, error]);
 
   const parsedAmount = amountText.replace(/,/g, "");
   const amountValue =
@@ -614,23 +652,17 @@ export default function TransactionForm() {
                 </Pressable>
               ) : null}
 
-              <View className="gap-1.5">
-                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-                  Amount
-                </Text>
-                <Input
-                  placeholder="0"
-                  value={amountText}
-                  onChangeText={handleAmountChange}
-                  onBlur={handleAmountBlur}
-                  keyboardType="number-pad"
-                  amount
-                  error={amountError}
-                />
-                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                  Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
-                </Text>
-              </View>
+              <AmountRegister
+                amountText={amountText}
+                onAmountTextChange={handleAmountChange}
+                type={type}
+                amountError={amountError}
+                onBlur={handleAmountBlur}
+                onPressDigit={pressDigit}
+                onBackspace={handleBackspace}
+                onClear={clearAmount}
+                onAddPreset={addPreset}
+              />
             </View>
           </View>
 

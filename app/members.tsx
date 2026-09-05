@@ -20,13 +20,13 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
-import { MemberCard } from "@/components/MemberCard";
 import { InviteCodeDisplay } from "@/components/InviteCodeDisplay";
 import { EmptyState } from "@/components/EmptyState";
 import { PendingInviteCard } from "@/components/PendingInviteCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { HouseholdHero, HouseholdInviteCard, HouseholdMemberRow, HouseholdBalanceMode } from "@/components/HouseholdHero";
 
 type Screen = "list" | "invite";
 
@@ -54,6 +54,28 @@ export default function Members() {
   );
   const updateHousehold = useMutation(api.households.update);
   const updateTimezone = useMutation(api.households.updateTimezone);
+  const updateBalanceMode = useMutation(api.households.updateBalanceMode);
+  const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
+  const balanceMode = ((household as unknown as { balanceMode?: "fresh" | "carryOver" })?.balanceMode ?? "fresh") as
+    | "fresh"
+    | "carryOver";
+
+  const handleBalanceModeChange = useCallback(
+    async (mode: "fresh" | "carryOver") => {
+      if (!household?._id || mode === balanceMode || isUpdatingBalanceMode) return;
+      setIsUpdatingBalanceMode(true);
+      try {
+        await updateBalanceMode({ householdId: household._id, balanceMode: mode });
+        void hapticSuccess();
+        show(`Balance mode: ${mode === "fresh" ? "Fresh" : "Carry Over"}`);
+      } catch (e: any) {
+        show(getConvexErrorMessage(e, "Failed to update balance mode."));
+      } finally {
+        setIsUpdatingBalanceMode(false);
+      }
+    },
+    [household, updateBalanceMode, balanceMode, isUpdatingBalanceMode, show],
+  );
 
   const handleTimezoneSelect = useCallback(
     async (id: string) => {
@@ -413,6 +435,9 @@ export default function Members() {
     );
   }
 
+  const subtitle = `Created ${new Date(household.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })} • ${formatTimezoneLabel(resolveTimezone(household.timezone))}`;
+  const memberCount = members.members.length;
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
@@ -427,205 +452,212 @@ export default function Members() {
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
           <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-            Household Members
+            Household
           </Text>
+          <View
+            style={{
+              marginLeft: "auto",
+              backgroundColor: C.surface,
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "800", color: C.primary }}>{memberCount} bears</Text>
+          </View>
         </View>
       </View>
 
-      <View className="mt-4 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-          Household
-        </Text>
+      <FlatList
+        className="mt-4 flex-1"
+        contentContainerClassName="gap-3 px-5 pb-28"
+        data={members.members}
+        keyExtractor={(item) => item.userId}
+        ListHeaderComponent={
+          <View className="gap-3">
+            {/* Hero */}
+            <HouseholdHero
+              name={household.name ?? "Household"}
+              subtitle={subtitle}
+              memberCount={memberCount}
+              onEdit={isOwner ? handleStartRename : undefined}
+            />
 
-        <View
-          style={[
-            Shadow.card,
-            {
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-            },
-          ]}
-          className="gap-3 px-4 py-4"
-        >
-          {isRenaming ? (
-            <>
-              <Input
-                value={renameValue}
-                onChangeText={setRenameValue}
-                placeholder="Household name"
-                maxLength={HOUSEHOLD_NAME_MAX}
-                error={renameError}
+            {/* Rename inline when editing */}
+            {isRenaming ? (
+              <View
+                style={[
+                  Shadow.card,
+                  {
+                    borderRadius: Radius.md,
+                    backgroundColor: C.background,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                  },
+                ]}
+                className="gap-3 px-4 py-4"
+              >
+                <Input
+                  value={renameValue}
+                  onChangeText={setRenameValue}
+                  placeholder="Household name"
+                  maxLength={HOUSEHOLD_NAME_MAX}
+                  error={renameError}
+                />
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <Button title="Save" onPress={handleSaveRename} loading={isSaving} />
+                  </View>
+                  <View className="flex-1">
+                    <Button title="Cancel" variant="secondary" onPress={handleCancelRename} disabled={isSaving} />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Invite card dashed with code KIN-8A2F style */}
+            {isOwner ? (
+              <HouseholdInviteCard
+                code={inviteCode ?? "KIN-8A2F"}
+                onCopy={() => {
+                  if (inviteCode) {
+                    // already have code, copy is handled inside card
+                  } else {
+                    void handleGenerateCode();
+                  }
+                }}
+                onRevoke={
+                  pendingInvites && pendingInvites.length > 0
+                    ? () => handleRevoke(pendingInvites[0]._id as Id<"invitations">)
+                    : undefined
+                }
               />
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <Button
-                    title="Save"
-                    onPress={handleSaveRename}
-                    loading={isSaving}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Button
-                    title="Cancel"
-                    variant="secondary"
-                    onPress={handleCancelRename}
-                    disabled={isSaving}
-                  />
-                </View>
-              </View>
-            </>
-          ) : (
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                  Household name
-                </Text>
-                <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                  {household?.name ?? "Household"}
-                </Text>
-              </View>
+            ) : null}
+
+            {/* Pending invites list if not using invite card revocation */}
+            {pendingInvitesSection ? <View className="gap-3">{pendingInvitesSection}</View> : null}
+
+            {/* Balance mode segment Fresh/Carry Owner only */}
+            <View className="mt-1">
+              <HouseholdBalanceMode
+                mode={balanceMode}
+                isOwner={isOwner}
+                onChange={handleBalanceModeChange}
+                isUpdating={isUpdatingBalanceMode}
+              />
+            </View>
+
+            {/* Timezone */}
+            <View className="mt-1">
               {isOwner ? (
-                <Pressable
-                  onPress={handleStartRename}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rename household"
-                  style={{ width: 48, height: 48 }}
-                  className="items-center justify-center"
+                <SelectField
+                  label="Timezone"
+                  placeholder="Select a timezone"
+                  value={timezonePickerValue(household?.timezone)}
+                  options={timezonePickerOptions()}
+                  onSelect={handleTimezoneSelect}
+                />
+              ) : (
+                <View
+                  style={[
+                    Shadow.card,
+                    {
+                      borderRadius: Radius.md,
+                      backgroundColor: C.background,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                    },
+                  ]}
+                  className="px-4 py-4"
                 >
-                  <Feather name="edit-2" size={18} color={C.primary} />
-                </Pressable>
-              ) : null}
+                  <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Timezone</Text>
+                  <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
+                    {formatTimezoneLabel(resolveTimezone(household?.timezone))}
+                  </Text>
+                  <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+                    Only the household owner can change the timezone.
+                  </Text>
+                </View>
+              )}
+              <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
+                Calendar months and budget periods use the household timezone so every member sees the same dates. Match device follows the device timezone.
+              </Text>
             </View>
-          )}
-        </View>
 
-        <View className="mt-3">
-          {isOwner ? (
-            <SelectField
-              label="Timezone"
-              placeholder="Select a timezone"
-              value={timezonePickerValue(household?.timezone)}
-              options={timezonePickerOptions()}
-              onSelect={handleTimezoneSelect}
-            />
-          ) : (
-            <View
-              style={[
-                Shadow.card,
-                {
-                  borderRadius: Radius.md,
-                  backgroundColor: C.background,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                },
-              ]}
-              className="px-4 py-4"
-            >
-              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                Timezone
-              </Text>
-              <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                {formatTimezoneLabel(resolveTimezone(household?.timezone))}
-              </Text>
-              <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
-                Only the household owner can change the timezone.
-              </Text>
+            {/* Danger zone — moved before members header to avoid interleaving */}
+            <View className="mt-1">
+              <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
+              <View
+                style={[
+                  Shadow.card,
+                  {
+                    borderRadius: Radius.md,
+                    backgroundColor: C.background,
+                    borderWidth: 1,
+                    borderColor: C.error,
+                  },
+                ]}
+                className="gap-3 px-4 py-4"
+              >
+                <View className="flex-row items-center gap-2">
+                  <Feather name="alert-triangle" size={18} color={C.error} />
+                  <Text className="text-sm font-semibold" style={{ color: C.error }}>
+                    {isOwner ? "Delete Household" : "Leave Household"}
+                  </Text>
+                </View>
+                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                  {isOwner
+                    ? "Permanently delete all household data for everyone. Or transfer ownership to keep the household."
+                    : "You will lose access to all household data. Your transactions will remain in the household."}
+                </Text>
+                <Button
+                  title={isOwner ? "Delete Household" : "Leave Household"}
+                  variant="danger"
+                  onPress={handleDeleteOrLeave}
+                  loading={isDeletingHousehold}
+                  disabled={isDeletingHousehold}
+                />
+              </View>
             </View>
-          )}
-          <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
-            Calendar months and budget periods use the household timezone so every
-            member sees the same dates. Match device follows the device timezone.
-          </Text>
-        </View>
 
-        <View className="mt-4">
-          <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
-          <View
-            style={[
-              Shadow.card,
-              {
-                borderRadius: Radius.md,
-                backgroundColor: C.background,
-                borderWidth: 1,
-                borderColor: C.error,
-              },
-            ]}
-            className="gap-3 px-4 py-4"
-          >
-            <View className="flex-row items-center gap-2">
-              <Feather name="alert-triangle" size={18} color={C.error} />
-              <Text className="text-sm font-semibold" style={{ color: C.error }}>
-                {isOwner ? "Delete Household" : "Leave Household"}
-              </Text>
+            {/* Members header */}
+            <View className="mt-2 flex-row items-center justify-between">
+              <Text className="text-xs font-bold tracking-widest text-text-secondary dark:text-text-secondary-dark">MEMBERS</Text>
+              <Text className="text-xs font-semibold text-text-secondary dark:text-text-secondary-dark">{memberCount} members</Text>
             </View>
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-              {isOwner
-                ? "Permanently delete all household data for everyone. Or transfer ownership to keep the household."
-                : "You will lose access to all household data. Your transactions will remain in the household."}
-            </Text>
-            <Button
-              title={isOwner ? "Delete Household" : "Leave Household"}
-              variant="danger"
-              onPress={handleDeleteOrLeave}
-              loading={isDeletingHousehold}
-              disabled={isDeletingHousehold}
-            />
+
+            {/* Empty state handling inside list */}
+            {members.members.length === 1 && !pendingInvites ? (
+              <View style={{ backgroundColor: C.background }} className="rounded-[16px]">
+                <EmptyState
+                  icon="users"
+                  title="You're the only member"
+                  description="Invite family members to manage finances together."
+                  actionLabel={isOwner ? "Invite Member" : undefined}
+                  onAction={isOwner ? handleGenerateCode : undefined}
+                />
+              </View>
+            ) : null}
           </View>
-        </View>
-      </View>
-
-      {members.members.length === 1 ? (
-        <View className="mt-6 flex-1 px-5">
-          {pendingInvitesSection ? (
-            <View className="mb-4">{pendingInvitesSection}</View>
-          ) : null}
-          <View
-            style={{ backgroundColor: C.background }}
-            className="flex-1 rounded-[16px]"
-          >
-            <EmptyState
-              icon="users"
-              title="You're the only member"
-              description="Invite family members to manage finances together."
-              actionLabel={isOwner ? "Invite Member" : undefined}
-              onAction={isOwner ? handleGenerateCode : undefined}
-            />
-          </View>
-        </View>
-      ) : (
-        <FlatList
-          className="mt-4 flex-1"
-          contentContainerClassName="gap-3 px-5 pb-28"
-          data={members.members}
-          keyExtractor={(item) => item.userId}
-          ListHeaderComponent={pendingInvitesSection ?? undefined}
-          renderItem={({ item }) => (
-            <MemberCard
-              name={item.name ?? "User"}
-              email={item.email ?? "No email"}
-              role={item.role}
-              onRemove={
-                isOwner && item.role !== "owner"
-                  ? () =>
-                      handleRemoveMember({
-                        userId: item.userId,
-                        name: item.name,
-                      })
-                  : undefined
-              }
-            />
-          )}
-        />
-      )}
+        }
+        renderItem={({ item }) => (
+          <HouseholdMemberRow
+            name={item.name ?? "User"}
+            email={item.email ?? "No email"}
+            role={item.role}
+            onRemove={
+              isOwner && item.role !== "owner"
+                ? () => handleRemoveMember({ userId: item.userId, name: item.name })
+                : undefined
+            }
+          />
+        )}
+      />
 
       {isOwner && (
-        <Fab
-          label="Generate Invite"
-          onPress={handleGenerateCode}
-          accessibilityLabel="Generate invite code"
-        />
+        <Fab label="Generate Invite" onPress={handleGenerateCode} accessibilityLabel="Generate invite code" />
       )}
     </SafeAreaView>
   );
