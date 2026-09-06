@@ -65,6 +65,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
         Shadow.card,
         {
           flex: 1,
+          minHeight: 198,
           backgroundColor: cardBg,
           borderWidth: 2.5,
           borderColor: C.cardBorder,
@@ -85,7 +86,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
         }}
       />
 
-      <View style={{ padding: 12, gap: 8, alignItems: "center" }}>
+      <View style={{ flex: 1, padding: 12, gap: 6, alignItems: "center", justifyContent: "center" }}>
         {/* icon 54px */}
         <View
           style={{
@@ -114,7 +115,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
           {typeLabel(type)}
         </Text>
 
-        {/* hidden pill */}
+        {/* hidden pill — reserve 22px when absent so rows stay equal height */}
         {hidden ? (
           <View
             testID="vault-hidden"
@@ -133,7 +134,9 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
             <Feather name="eye-off" size={10} color={muted} />
             <Text style={{ fontSize: 10, fontWeight: "700", color: muted }}>Hidden</Text>
           </View>
-        ) : null}
+        ) : (
+          <View style={{ height: 22 }} />
+        )}
 
         {/* balance 17px 800 */}
         <Text style={{ fontSize: 17, fontWeight: "800", color: C.textPrimary, textAlign: "center" }}>
@@ -283,7 +286,7 @@ export function VaultAdd({ onPress }: { onPress: () => void }) {
       onPressOut={() => setPressed(false)}
       style={{
         flex: 1,
-        minHeight: 168,
+        height: 198,
         borderRadius: 24,
         borderWidth: 2.5,
         borderColor: C.border,

@@ -177,7 +177,7 @@ export default function Accounts() {
         </View>
         <View className="mt-4 flex-row flex-wrap gap-2.5 px-5">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} style={{ flex: 1, minWidth: 150, height: 168, borderRadius: 24 }} />
+            <Skeleton key={i} style={{ flex: 1, minWidth: 150, height: 198, borderRadius: 24 }} />
           ))}
         </View>
       </SafeAreaView>
