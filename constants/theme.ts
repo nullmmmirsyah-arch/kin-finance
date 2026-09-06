@@ -20,6 +20,9 @@ export const Colors = {
   deltaNegativeBorder: "#991B1B33",
   chartAmber: "#D97706",
   chartEmerald: "#059669",
+  pantryWood: "#92400E",
+  pantryWoodDark: "#78350F",
+  pantryWoodDeep: "#5C2E0E",
 } as const;
 
 export const DarkColors = {
@@ -42,6 +45,9 @@ export const DarkColors = {
   deltaNegativeBorder: "rgba(248,113,113,0.25)",
   chartAmber: "#F59E0B",
   chartEmerald: "#34D399",
+  pantryWood: "#92400E",
+  pantryWoodDark: "#78350F",
+  pantryWoodDeep: "#5C2E0E",
 } as const;
 
 export function useThemeColors() {

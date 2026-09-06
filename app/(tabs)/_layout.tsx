@@ -47,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: "Budgets",
           tabBarIcon: ({ color }) => (
-            <Feather name="pie-chart" size={22} color={color} />
+            <Feather name="archive" size={22} color={color} />
           ),
         }}
       />

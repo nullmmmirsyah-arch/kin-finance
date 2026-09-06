@@ -1,22 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Fab } from "@/components/Fab";
 import { BudgetCard } from "@/components/BudgetCard";
 import { EmptyState } from "@/components/EmptyState";
-import { GradientCard } from "@/components/GradientCard";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
@@ -26,6 +18,9 @@ import { resolveTimezone } from "@/constants/timezones";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { BearFamilyRow } from "@/components/BearFaceless";
+import Feather from "@expo/vector-icons/Feather";
 
 export default function Budgets() {
   const router = useRouter();
@@ -42,8 +37,7 @@ export default function Budgets() {
   const isConnected = useConnectivity();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const monthStart =
-    selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
+  const monthStart = selectedMonthStart ?? getMonthBounds(Date.now(), timezone).start;
   const periodStart = monthStart;
   const periodEnd = getMonthBounds(monthStart, timezone).end;
 
@@ -82,8 +76,12 @@ export default function Budgets() {
     return { budgeted, spent, hasRedacted };
   }, [budgets]);
 
-  const overallProgress =
-    summary.hasRedacted ? 0 : summary.budgeted > 0 ? summary.spent / summary.budgeted : 0;
+  const overallProgress = summary.hasRedacted
+    ? 0
+    : summary.budgeted > 0
+      ? summary.spent / summary.budgeted
+      : 0;
+  const remainingOverall = summary.budgeted - summary.spent;
 
   const handlePrevMonth = useCallback(() => {
     setSelectedMonthStart((prev) => {
@@ -115,9 +113,7 @@ export default function Budgets() {
                   show(`Budget for "${budget.category?.name ?? "Unknown"}" deleted`);
                 })
                 .catch((e: unknown) => {
-                  show(
-                    getConvexErrorMessage(e, "Failed to delete budget."),
-                  );
+                  show(getConvexErrorMessage(e, "Failed to delete budget."));
                 });
             },
           },
@@ -131,13 +127,20 @@ export default function Budgets() {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-            Budgets
-          </Text>
+          <Text className="text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">Pantry</Text>
+          <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Keluarga Beruang • Honey Jars</Text>
         </View>
         {stale && (
           <View className="pt-2">
-            <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
+            <ConnectivityBanner
+              visible={stale}
+              onRetry={() => {
+                setStale(false);
+                setRefreshKey((k) => k + 1);
+                show("Retrying…");
+                void hapticSuccess();
+              }}
+            />
           </View>
         )}
         <View className="mt-4 items-center justify-center gap-4 px-5">
@@ -145,7 +148,7 @@ export default function Budgets() {
         </View>
         <View className="mt-4 gap-3 px-5">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} style={{ height: 96, borderRadius: Radius.md }} />
+            <Skeleton key={i} style={{ height: 140, borderRadius: 20 }} />
           ))}
         </View>
       </SafeAreaView>
@@ -155,125 +158,314 @@ export default function Budgets() {
   if (budgets === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
-          You are not a member of a household.
-        </Text>
+        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">You are not a member of a household.</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      {/* Header - Bear Pantry */}
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
-          Budgets
-        </Text>
+        <View className="flex-row items-start justify-between">
+          <View>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">Pantry</Text>
+              <View
+                style={{
+                  backgroundColor: C.primaryLight,
+                  borderWidth: 1,
+                  borderColor: `${C.primary}18`,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 999,
+                }}
+              >
+                <Text className="text-[10px] font-bold tracking-[0.14em] text-primary">BUDGETS</Text>
+              </View>
+            </View>
+            <Text className="mt-1 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+              Pantry madu keluarga beruang
+            </Text>
+          </View>
+          <BearFamilyRow size={26} />
+        </View>
+
+        {/* Wooden month tag */}
+        <View className="mt-4 flex-row items-center justify-between">
+          <Pressable
+            onPress={handlePrevMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+            style={{ width: 44, height: 44, borderRadius: Radius.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border }}
+            className="items-center justify-center"
+          >
+            <Feather name="chevron-left" size={18} color={C.primary} />
+          </Pressable>
+
+          <View
+            style={[
+              Shadow.card,
+              {
+                backgroundColor: C.background,
+                borderColor: C.border,
+                borderWidth: 1,
+                borderRadius: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+              },
+            ]}
+          >
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                backgroundColor: C.background,
+                borderWidth: 1,
+                borderColor: C.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="calendar" size={16} color={C.primary} />
+            </View>
+            <View>
+              <Text className="text-[10px] font-bold tracking-[0.14em] text-text-secondary dark:text-text-secondary-dark">PERIODE</Text>
+              <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                {formatMonthLabel(periodStart, timezone)}
+              </Text>
+            </View>
+            <View
+              style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: C.pantryWood, opacity: 0.35 }}
+            />
+          </View>
+
+          <Pressable
+            onPress={handleNextMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            style={{ width: 44, height: 44, borderRadius: Radius.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border }}
+            className="items-center justify-center"
+          >
+            <Feather name="chevron-right" size={18} color={C.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {stale && (
         <View className="pt-2">
-          <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
+          <ConnectivityBanner
+            visible={stale}
+            onRetry={() => {
+              setStale(false);
+              setRefreshKey((k) => k + 1);
+              show("Retrying…");
+              void hapticSuccess();
+            }}
+          />
         </View>
       )}
 
-      <View className="mt-4 flex-row items-center justify-center gap-4 px-5">
-        <Pressable
-          onPress={handlePrevMonth}
-          accessibilityRole="button"
-          accessibilityLabel="Previous month"
-          className="h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-surface-dark"
-        >
-          <Text className="text-lg text-primary dark:text-primary-dark">{"<"}</Text>
-        </Pressable>
-        <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-          {formatMonthLabel(periodStart, timezone)}
-        </Text>
-        <Pressable
-          onPress={handleNextMonth}
-          accessibilityRole="button"
-          accessibilityLabel="Next month"
-          className="h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-surface-dark"
-        >
-          <Text className="text-lg text-primary dark:text-primary-dark">{">"}</Text>
-        </Pressable>
-      </View>
-
       {budgets.length > 0 ? (
         <View className="mt-4 px-5">
-          <GradientCard>
-            <View className="gap-2">
+          {/* Pantry Shelf Hero */}
+          <View
+            style={[
+              Shadow.card,
+              {
+                borderRadius: 20,
+                backgroundColor: C.background,
+                borderWidth: 1,
+                borderColor: C.border,
+                overflow: "hidden",
+              },
+            ]}
+          >
+            {/* top wood plank */}
+            <View style={{ height: 14, backgroundColor: C.pantryWood, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <View style={{ width: 40, height: 3, borderRadius: 999, backgroundColor: C.pantryWoodDark, opacity: 0.7 }} />
+              <View style={{ width: 18, height: 3, borderRadius: 999, backgroundColor: C.pantryWoodDark, opacity: 0.4 }} />
+            </View>
+            <View style={{ height: 2, backgroundColor: C.pantryWoodDeep, opacity: 0.2 }} />
+
+            <LinearGradient
+              colors={[C.background, C.surface]}
+              style={{ padding: 16, gap: 14 }}
+            >
               <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                    Budgeted
-                  </Text>
-                  <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
-                    {formatNumber(summary.budgeted)}
+                <View className="flex-row items-center gap-2">
+                  <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: C.primary }} />
+                  <Text className="text-[11px] font-bold tracking-[0.14em] text-text-secondary dark:text-text-secondary-dark">
+                    TOTAL PANTRY • {budgets.length} JARS
                   </Text>
                 </View>
-                <View className="items-end">
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                    Spent
+                <View style={{ backgroundColor: summary.hasRedacted ? C.surface : overallProgress > 1 ? C.deltaNegativeBg : overallProgress > 0.8 ? C.primaryLight : C.deltaPositiveBg, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: summary.hasRedacted ? C.border : overallProgress > 1 ? C.deltaNegativeBorder : overallProgress > 0.8 ? C.primaryLight : C.deltaPositiveBorder }}>
+                  <Text
+                    style={{ color: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : overallProgress > 0.8 ? C.primary : C.success }}
+                    className="text-[11px] font-bold tracking-widest"
+                  >
+                    {summary.hasRedacted ? "SOME PRIVATE" : overallProgress > 1 ? "OVERFLOW" : overallProgress > 0.8 ? "ALMOST FULL" : "ON TRACK"}
                   </Text>
+                </View>
+              </View>
+
+              <View className="flex-row gap-3">
+                <View style={{ flex: 1, backgroundColor: C.background, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 12, gap: 6 }}>
+                  <View className="flex-row items-center gap-1.5">
+                    <Feather name="archive" size={12} color={C.textSecondary} />
+                    <Text className="text-[10px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
+                  </View>
+                  <Text className="text-lg font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                    {formatNumber(summary.budgeted)}
+                  </Text>
+                  <Text className="text-[11px] text-text-secondary dark:text-text-secondary-dark">Kapasitas stoples</Text>
+                </View>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: summary.hasRedacted ? C.surface : C.background,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: 16,
+                    padding: 12,
+                    gap: 6,
+                    opacity: summary.hasRedacted ? 0.7 : 1,
+                  }}
+                >
+                  <View className="flex-row items-center gap-1.5">
+                    <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : C.primary }} />
+                    <Text className="text-[10px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
+                  </View>
                   {summary.hasRedacted ? (
-                    <Text className="text-base font-semibold text-text-secondary dark:text-text-secondary-dark">
-                      —
-                    </Text>
+                    <Text className="text-lg font-bold text-text-secondary dark:text-text-secondary-dark">—</Text>
                   ) : (
                     <Text
-                      className={`text-base font-semibold ${
-                        summary.spent > summary.budgeted
-                          ? "text-error dark:text-error-dark"
-                          : "text-text-primary dark:text-text-primary-dark"
-                      }`}
+                      style={{ color: overallProgress > 1 ? C.error : undefined }}
+                      className={`text-lg font-bold tracking-tight ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
                     >
                       {formatNumber(summary.spent)}
                     </Text>
                   )}
+                  <Text className="text-[11px] text-text-secondary dark:text-text-secondary-dark">
+                    {summary.hasRedacted ? "Frosted jars hidden" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
+                  </Text>
                 </View>
               </View>
-              {summary.hasRedacted ? null : (
+
+              {summary.hasRedacted ? (
                 <View
                   style={{
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: C.border,
-                    overflow: "hidden",
+                    height: 12,
+                    borderRadius: 999,
+                    backgroundColor: C.surface,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderStyle: "dashed",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
+                  <Text className="text-[9px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">SOME JARS ARE FROSTED • PRIVATE</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 6 }}>
                   <View
                     style={{
-                      height: "100%",
-                      width: `${Math.min(overallProgress, 1) * 100}%`,
-                      backgroundColor: summary.spent > summary.budgeted ? C.error : C.primary,
-                      borderRadius: 4,
+                      height: 14,
+                      borderRadius: 999,
+                      backgroundColor: C.background,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      overflow: "hidden",
+                      padding: 3,
                     }}
-                  />
+                  >
+                    <View
+                      style={{
+                        flex: 1,
+                        borderRadius: 999,
+                        overflow: "hidden",
+                        backgroundColor: C.border,
+                      }}
+                    >
+                      <LinearGradient
+                        colors={overallProgress > 1 ? [C.error, C.error] : [C.primaryLight, C.primary]}
+                        start={{ x: 0, y: 0.5 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={{ width: `${Math.min(overallProgress, 1) * 100}%`, flex: 1, borderRadius: 999 }}
+                      />
+                    </View>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+                      {Math.round(overallProgress * 100)}% honey filled
+                    </Text>
+                    <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+                      {budgets.length} kategori • {formatMonthLabel(periodStart, timezone)}
+                    </Text>
+                  </View>
                 </View>
               )}
-            </View>
-          </GradientCard>
+            </LinearGradient>
+
+            {/* bottom wood plank */}
+            <View style={{ height: 10, backgroundColor: C.pantryWood }} />
+            <View style={{ height: 6, backgroundColor: C.pantryWoodDark, opacity: 0.25 }} />
+          </View>
         </View>
       ) : null}
 
       {budgets.length === 0 ? (
         <View className="mt-6 flex-1 px-5">
           <View
-            style={{ backgroundColor: C.background }}
-            className="rounded-[16px]"
+            style={[
+              Shadow.card,
+              {
+                backgroundColor: C.background,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: C.border,
+                overflow: "hidden",
+              },
+            ]}
           >
-            <EmptyState
-              icon="pie-chart"
-              title="No budgets yet"
-              description="Set budgets to control your spending."
-              actionLabel="Set Budget"
-              onAction={() =>
-                router.push({
-                  pathname: "/budget-form",
-                  params: { periodStart: periodStart.toString() },
-                })
-              }
-            />
+            {/* empty pantry shelf top */}
+            <View style={{ height: 14, backgroundColor: C.pantryWood }} />
+            <View className="items-center gap-4 px-6 py-10">
+              <View className="items-center gap-3">
+                <BearFamilyRow size={32} />
+                <View style={{ height: 6, width: 120, borderRadius: 999, backgroundColor: C.pantryWood, opacity: 0.1 }} />
+                <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">zZ • pantry masih kosong</Text>
+              </View>
+              <EmptyState
+                icon="archive"
+                title="Pantry kosong"
+                description="Isi pantry madu pertamamu — atur budget untuk setiap kategori pengeluaran."
+                actionLabel="Isi Stoples Pertama"
+                onAction={() =>
+                  router.push({
+                    pathname: "/budget-form",
+                    params: { periodStart: periodStart.toString() },
+                  })
+                }
+              />
+              <View className="flex-row gap-2">
+                <View style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>
+                  <Feather name="plus" size={18} color={C.textSecondary} />
+                </View>
+                <View style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>
+                  <Feather name="plus" size={18} color={C.textSecondary} />
+                </View>
+                <View style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center", opacity: 0.35 }}>
+                  <Feather name="plus" size={18} color={C.textSecondary} />
+                </View>
+              </View>
+            </View>
+            <View style={{ height: 10, backgroundColor: C.pantryWood }} />
           </View>
         </View>
       ) : (
@@ -290,7 +482,7 @@ export default function Budgets() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
-                setRefreshKey(k=>k+1);
+                setRefreshKey((k) => k + 1);
                 void hapticSuccess();
                 setTimeout(() => setRefreshing(false), 600);
               }}
@@ -319,7 +511,7 @@ export default function Budgets() {
       )}
 
       <Fab
-        label="Set Budget"
+        label="Isi Stoples"
         onPress={() =>
           router.push({
             pathname: "/budget-form",
