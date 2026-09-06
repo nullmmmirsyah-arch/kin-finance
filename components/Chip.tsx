@@ -17,6 +17,8 @@ export function Chip({ label, active, onPress }: Props) {
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      accessibilityLabel={`Filter by ${label}`}
+      accessibilityHint={active ? "Currently selected" : "Tap to filter"}
       className={`min-h-12 items-center justify-center rounded-full border px-4 ${
         active
           ? "border-primary bg-primary dark:border-primary-dark dark:bg-primary-dark"

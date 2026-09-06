@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { BearColors, Shadow } from "@/constants/theme";
+import { BearColors, Shadow, useThemeColors } from "@/constants/theme";
 
 export type BearSize = "small" | "mid" | "normal";
 export type BearVariant = "papa" | "mama" | "cub";
@@ -38,7 +38,8 @@ export function Bear({ size = "normal", variant, testID }: BearProps) {
   const s = SIZES[size];
   const teddy = teddyForVariant(variant);
   const innerEar = BearColors.teddyLight;
-  const borderWhite = "#FFFFFF";
+  const C = useThemeColors();
+  const borderWhite = C.cardBorder;
 
   return (
     <View

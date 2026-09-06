@@ -218,6 +218,9 @@ export default function CategoryForm() {
           <View
             style={{ borderColor: C.border }}
             className="flex-row items-center justify-between rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
+            accessible
+            accessibilityLabel="Visible to members"
+            accessibilityHint="Controls whether household members can see this category"
           >
             <View className="flex-1">
               <Text className="text-base font-medium text-text-primary dark:text-text-primary-dark">
@@ -232,6 +235,9 @@ export default function CategoryForm() {
               onValueChange={(value) => setHidden(!value)}
               trackColor={{ true: C.primary, false: C.border }}
               thumbColor={C.background}
+              accessibilityLabel="Visible to members"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: !hidden }}
             />
           </View>
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, View, Text } from "react-native";
+import { FlatList, Pressable, View, Text } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useThemeColors } from "@/constants/theme";
 import {
@@ -72,7 +72,9 @@ export function listIconRefs(): readonly string[] {
   return ALL_CATEGORY_ICONS;
 }
 
-// Ergonomic picker — collapses 28-line grid in category-form
+// Ergonomic picker — collapses 28-line grid in category-form, virtualized for perf
+const MemoIcon = React.memo(Icon);
+
 export function IconPicker({
   value,
   onChange,
@@ -83,29 +85,53 @@ export function IconPicker({
   size?: number;
 }) {
   const C = useThemeColors();
+  const renderItem = React.useCallback(
+    ({ item: name }: { item: string }) => {
+      const selected = value === name;
+      const label = name.replace(/_/g, " ");
+      return (
+        <Pressable
+          onPress={() => onChange(name)}
+          accessibilityRole="button"
+          accessibilityLabel={`Icon ${label}`}
+          accessibilityHint={selected ? "Currently selected" : "Tap to select icon"}
+          accessibilityState={{ selected }}
+          className="items-center justify-center rounded-full"
+          style={{
+            width: 56,
+            height: 56,
+            backgroundColor: selected ? `${C.primary}14` : C.surface,
+            borderWidth: selected ? 2 : 1,
+            borderColor: selected ? C.primary : C.border,
+          }}
+        >
+          <MemoIcon ref={name} size={size} />
+        </Pressable>
+      );
+    },
+    [value, onChange, size, C.primary, C.surface, C.border],
+  );
+
   return (
-    <View className="flex-row flex-wrap gap-2">
-      {ALL_CATEGORY_ICONS.map((name) => {
-        const selected = value === name;
-        return (
-          <Pressable
-            key={name}
-            onPress={() => onChange(name)}
-            className="items-center justify-center rounded-full"
-            style={{
-              width: 56,
-              height: 56,
-              backgroundColor: selected ? `${C.primary}14` : C.surface,
-              borderWidth: selected ? 2 : 1,
-              borderColor: selected ? C.primary : C.border,
-            }}
-            accessibilityState={{ selected }}
-          >
-            <Icon ref={name} size={size} />
-          </Pressable>
-        );
+    <FlatList
+      data={[...ALL_CATEGORY_ICONS] as string[]}
+      keyExtractor={(item) => item}
+      renderItem={renderItem}
+      numColumns={4}
+      columnWrapperStyle={{ gap: 8 }}
+      contentContainerStyle={{ gap: 8 }}
+      scrollEnabled={false}
+      initialNumToRender={16}
+      windowSize={5}
+      maxToRenderPerBatch={16}
+      removeClippedSubviews
+      getItemLayout={(_data, index) => ({
+        length: 64,
+        offset: 64 * Math.floor(index / 4),
+        index,
       })}
-    </View>
+      accessibilityLabel="Category icon picker"
+    />
   );
 }
 

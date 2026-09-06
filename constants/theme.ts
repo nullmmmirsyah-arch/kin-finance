@@ -24,7 +24,8 @@ export const Colors = {
   vaultCash: "#10B981",
   vaultEwallet: "#3B82F6",
   card: "#FFFFFF",
-  cardBorder: "#FFFFFF",
+  cardBorder: "#FFFFFF", // clay white 2.5px — tokenized, use C.cardBorder everywhere (P3)
+  clayBorder: "#FFFFFF",
   plushCream: "#FFFBF5",
   plushCreamBorder: "#F3E6CD",
   plushSurfaceAlt: "#FFF8EC",
@@ -54,7 +55,8 @@ export const DarkColors = {
   vaultCash: "#34D399",
   vaultEwallet: "#60A5FA",
   card: "#292524",
-  cardBorder: "rgba(255,255,255,0.14)",
+  cardBorder: "rgba(255,255,255,0.14)", // clay in dark — subtle per P3
+  clayBorder: "rgba(255,255,255,0.14)",
   plushCream: "#1C1917",
   plushCreamBorder: "#44403C",
   plushSurfaceAlt: "#292524",

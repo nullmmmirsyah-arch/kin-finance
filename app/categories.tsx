@@ -4,6 +4,7 @@ import {
   FlatList,
   Pressable,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +23,48 @@ import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { getConvexErrorMessage } from "@/lib/errors";
 
+function ReservedFooter({ C }: { C: ReturnType<typeof useThemeColors> }) {
+  return (
+    <View
+      testID="reserved-footer"
+      accessibilityRole="text"
+      accessibilityLabel="2 reserved Initial Balance categories, cannot be deleted"
+      style={[
+        Shadow.card,
+        {
+          marginTop: 12,
+          backgroundColor: C.plushPeek,
+          borderWidth: 2.5,
+          borderColor: C.cardBorder,
+          borderRadius: 18,
+          padding: 12,
+          flexDirection: "row",
+          gap: 10,
+          alignItems: "center",
+        },
+      ]}
+    >
+      <Bear size="small" />
+      <View style={{ flex: 1 }}>
+        <Text
+          allowFontScaling
+          maxFontSizeMultiplier={1.2}
+          style={{ fontSize: 12, fontWeight: "800", color: C.textPrimary }}
+        >
+          2 reserved “Initial Balance”
+        </Text>
+        <Text
+          allowFontScaling
+          maxFontSizeMultiplier={1.2}
+          style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}
+        >
+          Tidak bisa dihapus — dipakai untuk opening balance
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 type Filter = "all" | CategoryType;
 
 const FILTERS: { id: Filter; label: string }[] = [
@@ -38,6 +81,9 @@ export default function Categories() {
   const [filter, setFilter] = useState<Filter>("all");
   const [addPressed, setAddPressed] = useState(false);
   const C = useThemeColors();
+  const { width } = useWindowDimensions();
+  const isDark = C.background === "#1C1917";
+  const numColumns = width >= 700 ? 3 : 2;
 
   const categories = result?.categories ?? null;
   const isOwner = result?.isOwner ?? false;
@@ -93,7 +139,11 @@ export default function Categories() {
   if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-        <View className="px-5 pt-4">
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Loading categories"
+          className="px-5 pt-4"
+        >
           <View className="flex-row items-center gap-2">
             <View style={{ width: 48, height: 48 }} />
             <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
@@ -118,7 +168,12 @@ export default function Categories() {
   if (categories === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+        <Text
+          allowFontScaling
+          maxFontSizeMultiplier={1.2}
+          accessibilityLiveRegion="polite"
+          className="text-center text-sm text-text-secondary dark:text-text-secondary-dark"
+        >
           You are not a member of a household.
         </Text>
       </SafeAreaView>
@@ -138,21 +193,32 @@ export default function Categories() {
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+          <Text
+            allowFontScaling
+            maxFontSizeMultiplier={1.2}
+            className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark"
+          >
             Categories
           </Text>
           <View
+            accessibilityLabel="56 icons available"
             style={{
               marginLeft: 8,
-              backgroundColor: "#FDE68A",
+              backgroundColor: C.primaryLight,
               borderWidth: 2,
-              borderColor: "#FFFFFF",
+              borderColor: C.cardBorder,
               borderRadius: 999,
               paddingHorizontal: 8,
               paddingVertical: 3,
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: "800", color: C.primary }}>56 icons</Text>
+            <Text
+              allowFontScaling
+              maxFontSizeMultiplier={1.2}
+              style={{ fontSize: 11, fontWeight: "800", color: isDark ? C.textPrimary : C.primary }}
+            >
+              56 icons
+            </Text>
           </View>
         </View>
       </View>
@@ -176,8 +242,10 @@ export default function Categories() {
             onPressOut={() => setAddPressed(false)}
             accessibilityRole="button"
             accessibilityLabel="Add category"
+            accessibilityHint="Create a new category"
             style={{
-              backgroundColor: addPressed ? "#B45309" : C.primary,
+              backgroundColor: C.primary,
+              opacity: addPressed ? 0.85 : 1,
               borderRadius: 999,
               paddingHorizontal: 14,
               height: 48,
@@ -187,11 +255,17 @@ export default function Categories() {
               justifyContent: "center",
               gap: 6,
               borderWidth: 2,
-              borderColor: "#FFFFFF",
+              borderColor: C.cardBorder,
             }}
           >
             <Feather name="plus" size={14} color="#FFFFFF" />
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>Add</Text>
+            <Text
+              allowFontScaling
+              maxFontSizeMultiplier={1.2}
+              style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}
+            >
+              Add
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -212,43 +286,23 @@ export default function Categories() {
               }
             />
           </View>
-          {/* reserved footer even when empty */}
-          <View
-            testID="reserved-footer"
-            style={[
-              Shadow.card,
-              {
-                marginTop: 12,
-                backgroundColor: "#FFE9C9",
-                borderWidth: 2.5,
-                borderColor: "#FFFFFF",
-                borderRadius: 18,
-                padding: 12,
-                flexDirection: "row",
-                gap: 10,
-                alignItems: "center",
-              },
-            ]}
-          >
-            <Bear size="small" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: "800", color: C.textPrimary }}>
-                2 reserved “Initial Balance”
-              </Text>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>
-                Tidak bisa dihapus — dipakai untuk opening balance
-              </Text>
-            </View>
-          </View>
+          <ReservedFooter C={C} />
         </View>
       ) : (
         <FlatList
+          key={numColumns}
           className="mt-4 flex-1"
           contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 28 }}
-          columnWrapperStyle={{ gap: 8 }}
-          numColumns={2}
+          columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
+          numColumns={numColumns}
           data={visibleCategories ?? []}
           keyExtractor={(item) => item._id}
+          initialNumToRender={12}
+          windowSize={7}
+          maxToRenderPerBatch={12}
+          updateCellsBatchingPeriod={40}
+          removeClippedSubviews
+          ListEmptyComponent={null}
           renderItem={({ item }) =>
             isOwner ? (
               <PlushCategoryCard
@@ -274,35 +328,7 @@ export default function Categories() {
               />
             )
           }
-          ListFooterComponent={
-            <View
-              testID="reserved-footer"
-              style={[
-                Shadow.card,
-                {
-                  marginTop: 12,
-                  backgroundColor: "#FFE9C9",
-                  borderWidth: 2.5,
-                  borderColor: "#FFFFFF",
-                  borderRadius: 18,
-                  padding: 12,
-                  flexDirection: "row",
-                  gap: 10,
-                  alignItems: "center",
-                },
-              ]}
-            >
-              <Bear size="small" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: "800", color: C.textPrimary }}>
-                  2 reserved “Initial Balance”
-                </Text>
-                <Text style={{ fontSize: 11, fontWeight: "700", color: C.textSecondary }}>
-                  Tidak bisa dihapus — dipakai untuk opening balance
-                </Text>
-              </View>
-            </View>
-          }
+          ListFooterComponent={<ReservedFooter C={C} />}
         />
       )}
     </SafeAreaView>

@@ -157,7 +157,7 @@ export function PlushCategoryCard({
         },
       ]}
     >
-      {/* icon 36px peach2 #FFE9C9, border 2px white radius 12 */}
+      {/* icon 36px peach2 #FFE9C9, border 2px clay token P3 */}
       <View
         testID="plush-category-icon"
         style={{
@@ -166,7 +166,7 @@ export function PlushCategoryCard({
           borderRadius: 12,
           backgroundColor: C.plushPeek,
           borderWidth: 2,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
@@ -176,15 +176,19 @@ export function PlushCategoryCard({
       </View>
 
       <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-        {/* name 13px 800 */}
+        {/* name 13px 800 — allow scaling, fallback to 2 lines */}
         <Text
-          numberOfLines={1}
+          numberOfLines={2}
+          allowFontScaling
+          maxFontSizeMultiplier={1.3}
           style={{ fontSize: 13, fontWeight: "800", color: C.textPrimary }}
         >
           {name}
         </Text>
         <Text
           numberOfLines={1}
+          allowFontScaling
+          maxFontSizeMultiplier={1.2}
           style={{ fontSize: 11, fontWeight: "700", color: muted }}
         >
           {type === "income" ? "Income" : "Expense"}
@@ -211,11 +215,11 @@ export function PlushCategoryCard({
         </View>
       ) : null}
 
-      {/* owner actions: eye/edit/delete mini pills */}
+      {/* owner actions: eye/edit/delete mini pills — 44pt strict (P2) with flexWrap for 320dp */}
       {onToggleVisibility !== undefined ||
       onEdit !== undefined ||
       onDelete !== undefined ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 3, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {onToggleVisibility !== undefined ? (
             <Pressable
               onPress={onToggleVisibility}
@@ -223,10 +227,11 @@ export function PlushCategoryCard({
               onPressOut={() => setEyePressed(false)}
               accessibilityRole="button"
               accessibilityLabel={hidden ? "Show category to members" : "Hide category from members"}
-              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
+              accessibilityHint={hidden ? "Makes category visible to members" : "Hides category from members"}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               style={{
-                width: 32,
-                height: 32,
+                width: 44,
+                height: 44,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -244,11 +249,12 @@ export function PlushCategoryCard({
               onPressIn={() => setEditPressed(true)}
               onPressOut={() => setEditPressed(false)}
               accessibilityRole="button"
-              accessibilityLabel="Edit category"
-              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
+              accessibilityLabel={`Edit category ${name}`}
+              accessibilityHint="Opens edit form"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               style={{
-                width: 32,
-                height: 32,
+                width: 44,
+                height: 44,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -266,11 +272,12 @@ export function PlushCategoryCard({
               onPressIn={() => setDeletePressed(true)}
               onPressOut={() => setDeletePressed(false)}
               accessibilityRole="button"
-              accessibilityLabel="Delete category"
-              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
+              accessibilityLabel={`Delete category ${name}`}
+              accessibilityHint="Shows confirmation before deleting"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               style={{
-                width: 32,
-                height: 32,
+                width: 44,
+                height: 44,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
