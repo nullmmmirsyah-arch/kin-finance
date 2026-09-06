@@ -91,19 +91,19 @@ export function TransactionCard({
           <Icon ref={categoryIcon ?? "other"} size={32} />
         )}
       </View>
-      <View className="flex-1 gap-0.5">
-        <Text numberOfLines={1} className="text-[15px] font-medium leading-5 text-text-primary dark:text-text-primary-dark">
+      <View className="flex-1 gap-1">
+        <Text numberOfLines={1} className="text-[16px] font-medium leading-5 text-text-primary dark:text-text-primary-dark">
           {displayNote}
         </Text>
         <Text
           numberOfLines={1}
-          className="text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark"
+          className="text-[13.5px] leading-4 text-text-secondary dark:text-text-secondary-dark"
         >
           {subtitle}
         </Text>
       </View>
       <Text
-        className="text-[15px] font-bold tracking-tight"
+        className="text-[16px] font-semibold tracking-tight"
         style={{ color: amountColor }}
       >
         {amountLabel}
