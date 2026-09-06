@@ -12,7 +12,8 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: C.primary,
         tabBarInactiveTintColor: C.textSecondary,
-        tabBarStyle: { backgroundColor: C.background },
+        tabBarStyle: { backgroundColor: C.background, height: 68, paddingBottom: 8, paddingTop: 8 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
@@ -20,7 +21,7 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
-            <Feather name="home" size={22} color={color} />
+            <Feather name="home" size={24} color={color} />
           ),
         }}
       />
@@ -29,7 +30,7 @@ export default function TabLayout() {
         options={{
           title: "Reports",
           tabBarIcon: ({ color }) => (
-            <Feather name="bar-chart-2" size={22} color={color} />
+            <Feather name="bar-chart-2" size={24} color={color} />
           ),
         }}
       />
@@ -38,7 +39,7 @@ export default function TabLayout() {
         options={{
           title: "Accounts",
           tabBarIcon: ({ color }) => (
-            <Feather name="credit-card" size={22} color={color} />
+            <Feather name="credit-card" size={24} color={color} />
           ),
         }}
       />
@@ -47,7 +48,7 @@ export default function TabLayout() {
         options={{
           title: "Budgets",
           tabBarIcon: ({ color }) => (
-            <Feather name="archive" size={22} color={color} />
+            <Feather name="archive" size={24} color={color} />
           ),
         }}
       />
@@ -56,7 +57,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color }) => (
-            <Feather name="settings" size={22} color={color} />
+            <Feather name="settings" size={24} color={color} />
           ),
         }}
       />

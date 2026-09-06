@@ -630,15 +630,15 @@ export default function Home() {
         </View>
       )}
 
-      <View className="px-5 pb-2 pt-4">
-        <View className="mb-3 flex-row items-center justify-between">
-          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+      <View className="px-5 pb-3 pt-5">
+        <View className="mb-3.5 flex-row items-center justify-between">
+          <Text className="text-[22px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
             Hi, {firstName}!
           </Text>
         </View>
 
-        <View className="mb-3 items-center gap-1.5">
-          <Text className="text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+        <View className="mb-3.5 items-center gap-1.5">
+          <Text className="text-[22px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
             {household.name} Household
           </Text>
         </View>
@@ -652,9 +652,9 @@ export default function Home() {
             accessibilityRole="button"
             accessibilityLabel="Previous period"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: Radius.md,
+              width: 48,
+              height: 48,
+              borderRadius: Radius.lg,
               backgroundColor: prevPressed ? C.surface : C.background,
               borderWidth: 1,
               borderColor: C.border,
@@ -663,7 +663,7 @@ export default function Home() {
               opacity: isPrevDisabled ? 0.4 : 1,
             }}
           >
-            <Feather name="chevron-left" size={20} color={C.textPrimary} />
+            <Feather name="chevron-left" size={22} color={C.textPrimary} />
           </Pressable>
 
           <Pressable
@@ -707,9 +707,9 @@ export default function Home() {
             accessibilityRole="button"
             accessibilityLabel="Next period"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: Radius.md,
+              width: 48,
+              height: 48,
+              borderRadius: Radius.lg,
               backgroundColor: nextPressed ? C.surface : C.background,
               borderWidth: 1,
               borderColor: C.border,
@@ -718,7 +718,7 @@ export default function Home() {
               opacity: isNextDisabled ? 0.4 : 1,
             }}
           >
-            <Feather name="chevron-right" size={20} color={C.textPrimary} />
+            <Feather name="chevron-right" size={22} color={C.textPrimary} />
           </Pressable>
         </View>
       </View>
@@ -746,11 +746,13 @@ export default function Home() {
             <View key={String(p.periodStart)} collapsable={false} style={{ flex: 1 }}>
               {isSelected ? (
                 <SectionList
-                  contentContainerStyle={{ paddingBottom: 112, paddingTop: 16 }}
+                  contentContainerStyle={{ paddingBottom: 112, paddingTop: 20 }}
                   style={{ flex: 1 }}
                   sections={sections ?? []}
                   keyExtractor={(item) => item._id}
                   stickySectionHeadersEnabled={false}
+                  SectionSeparatorComponent={() => <View style={{ height: 12 }} />}
+                  ItemSeparatorComponent={() => <View style={{ height: 2 }} />}
                   onEndReached={loadMore}
                   onEndReachedThreshold={0.5}
                   removeClippedSubviews
@@ -771,15 +773,15 @@ export default function Home() {
                     />
                   }
                   ListHeaderComponent={
-                    <View className="px-5 pb-4">
+                    <View className="px-5 pb-5">
                       <GradientCard>
-                        <View className="gap-4 py-1">
-                          <View className="items-center gap-1">
+                        <View className="gap-5 py-2">
+                          <View className="items-center gap-1.5">
                             <View
                               style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
-                              className="px-3 py-1"
+                              className="px-3.5 py-1.5"
                             >
-                              <Text className="text-center text-[11px] font-semibold tracking-widest text-primary dark:text-primary-dark">
+                              <Text className="text-center text-[11px] font-semibold tracking-[1.2px] text-primary dark:text-primary-dark">
                                 PERIOD BALANCE
                               </Text>
                             </View>
@@ -790,11 +792,11 @@ export default function Home() {
                                 No data for this period
                               </Text>
                             ) : (
-                              <Text className="text-center text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                              <Text className="text-center text-[30px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
                                 {formatNumber(currentClosing)}
                               </Text>
                             )}
-                            <Text className="text-center text-xs text-text-secondary dark:text-text-secondary-dark">
+                            <Text className="text-center text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
                               {currentLabel}
                               {balances !== null && balances !== undefined
                                 ? ` • Opening ${formatNumber(balances.openingBalance)}`
@@ -806,29 +808,29 @@ export default function Home() {
 
                           {balances === undefined ? (
                             <View className="flex-row gap-3">
-                              <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
-                              <Skeleton style={{ flex: 1, height: 56, borderRadius: Radius.md }} />
+                              <Skeleton style={{ flex: 1, height: 60, borderRadius: Radius.md }} />
+                              <Skeleton style={{ flex: 1, height: 60, borderRadius: Radius.md }} />
                             </View>
                           ) : (
                             <View className="flex-row items-center">
-                              <View className="flex-1 flex-row items-center gap-3">
+                              <View className="flex-1 flex-row items-center gap-3.5">
                                 <View
                                   style={{
-                                    width: 36,
-                                    height: 36,
+                                    width: 40,
+                                    height: 40,
                                     borderRadius: 999,
                                     backgroundColor: `${C.success}14`,
                                     alignItems: "center",
                                     justifyContent: "center",
                                   }}
                                 >
-                                  <Feather name="trending-up" size={16} color={C.success} />
+                                  <Feather name="trending-up" size={18} color={C.success} />
                                 </View>
-                                <View className="flex-1">
+                                <View className="flex-1 gap-0.5">
                                   <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
                                     INCOME
                                   </Text>
-                                  <Text className="text-base font-semibold" style={{ color: C.success }}>
+                                  <Text className="text-[15px] font-bold tracking-tight" style={{ color: C.success }}>
                                     +{formatNumber(balances === null ? 0 : balances.income)}
                                   </Text>
                                 </View>
@@ -837,30 +839,30 @@ export default function Home() {
                               <View
                                 style={{
                                   width: 1,
-                                  height: 36,
+                                  height: 40,
                                   backgroundColor: C.border,
                                   opacity: 0.6,
                                 }}
                               />
 
-                              <View className="flex-1 flex-row items-center gap-3 pl-4">
+                              <View className="flex-1 flex-row items-center gap-3.5 pl-5">
                                 <View
                                   style={{
-                                    width: 36,
-                                    height: 36,
+                                    width: 40,
+                                    height: 40,
                                     borderRadius: 999,
                                     backgroundColor: `${C.error}14`,
                                     alignItems: "center",
                                     justifyContent: "center",
                                   }}
                                 >
-                                  <Feather name="trending-down" size={16} color={C.error} />
+                                  <Feather name="trending-down" size={18} color={C.error} />
                                 </View>
-                                <View className="flex-1">
+                                <View className="flex-1 gap-0.5">
                                   <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
                                     EXPENSE
                                   </Text>
-                                  <Text className="text-base font-semibold" style={{ color: C.error }}>
+                                  <Text className="text-[15px] font-bold tracking-tight" style={{ color: C.error }}>
                                     -{formatNumber(balances === null ? 0 : balances.expense)}
                                   </Text>
                                 </View>
@@ -870,15 +872,15 @@ export default function Home() {
                         </View>
                       </GradientCard>
 
-                      <View className="mt-4 flex-row gap-2">
-                        <View className="flex-1 flex-row items-center gap-2 rounded-full border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark">
-                          <Feather name="search" size={16} color={C.textSecondary} />
+                      <View className="mt-4 flex-row gap-2.5">
+                        <View className="flex-1 flex-row items-center gap-2.5 rounded-full border border-border bg-background px-5 dark:border-border-dark dark:bg-background-dark">
+                          <Feather name="search" size={18} color={C.textSecondary} />
                           <TextInput
                             value={searchDraft}
                             onChangeText={setSearchDraft}
                             placeholder="Search notes, amounts, accounts…"
                             placeholderTextColor={C.textSecondary}
-                            className="flex-1 py-3 text-base text-text-primary dark:text-text-primary-dark"
+                            className="flex-1 py-3.5 text-[15px] leading-5 text-text-primary dark:text-text-primary-dark"
                             accessibilityLabel="Search notes, amounts, accounts and categories"
                             returnKeyType="search"
                             onSubmitEditing={commitSearch}
@@ -887,9 +889,9 @@ export default function Home() {
                             <Pressable
                               onPress={clearSearch}
                               accessibilityLabel="Clear search"
-                              className="h-10 w-10 items-center justify-center"
+                              className="h-11 w-11 items-center justify-center"
                             >
-                              <Feather name="x" size={16} color={C.textSecondary} />
+                              <Feather name="x" size={18} color={C.textSecondary} />
                             </Pressable>
                           )}
                         </View>
@@ -898,15 +900,15 @@ export default function Home() {
                           accessibilityRole="button"
                           accessibilityLabel="Search"
                           style={{ backgroundColor: C.primary, borderRadius: 999 }}
-                          className="min-h-12 items-center justify-center px-5"
+                          className="min-h-[52px] items-center justify-center px-6"
                         >
-                          <Text className="text-sm font-semibold" style={{ color: C.background }}>
+                          <Text className="text-[15px] font-bold tracking-tight" style={{ color: C.background }}>
                             Search
                           </Text>
                         </Pressable>
                       </View>
 
-                      <View className="mt-2 flex-row">
+                      <View className="mt-3 flex-row">
                         <Pressable
                           onPress={() => setFilterOpen(true)}
                           accessibilityRole="button"
@@ -916,27 +918,27 @@ export default function Home() {
                             borderColor: activeFilterCount > 0 ? C.primary : C.border,
                             backgroundColor: activeFilterCount > 0 ? `${C.primary}14` : C.background,
                             borderRadius: 999,
-                            paddingHorizontal: 16,
-                            paddingVertical: 8,
+                            paddingHorizontal: 18,
+                            paddingVertical: 10,
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 4,
+                            gap: 6,
                           }}
                         >
                           <Feather
                             name="filter"
-                            size={14}
+                            size={15}
                             color={activeFilterCount > 0 ? C.primary : C.textSecondary}
                           />
                           <Text
-                            className="text-sm font-medium"
+                            className="text-[13px] font-semibold tracking-wide"
                             style={{ color: activeFilterCount > 0 ? C.primary : C.textSecondary }}
                           >
                             {activeFilterCount > 0 ? `Filter · ${activeFilterCount}` : "Filter"}
                           </Text>
                           <Feather
                             name="chevron-down"
-                            size={14}
+                            size={15}
                             color={activeFilterCount > 0 ? C.primary : C.textSecondary}
                           />
                         </Pressable>
@@ -948,15 +950,15 @@ export default function Home() {
                           <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
                         </View>
                       ) : (
-                        <View className="mt-6">
+                        <View className="mt-7">
                           <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center gap-2">
-                              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
-                                <Feather name="archive" size={14} color={C.textSecondary} />
+                            <View className="flex-row items-center gap-2.5">
+                              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="archive" size={15} color={C.textSecondary} />
                               </View>
                               <View>
-                                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Budgets</Text>
-                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+                                <Text className="text-[15px] font-semibold leading-5 text-text-primary dark:text-text-primary-dark">Budgets</Text>
+                                <Text className="text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
                                   {budgetPills.length > 0 ? `${budgetPills.length} jars` : "Honey pantry"}
                                 </Text>
                               </View>
@@ -967,13 +969,13 @@ export default function Home() {
                                 accessibilityRole="button"
                                 className="min-h-12 flex-row items-center gap-1"
                               >
-                                <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">View all</Text>
+                                <Text className="text-[13px] font-medium text-text-secondary dark:text-text-secondary-dark">View all</Text>
                                 <Feather name="chevron-right" size={14} color={C.textSecondary} />
                               </Pressable>
                             )}
                           </View>
                           {budgetPills.length > 0 ? (
-                            <View className="mt-3 gap-3">
+                            <View className="mt-3.5 gap-3.5">
                               {budgetPills.map((pill) => (
                                 <BudgetPill key={pill.id} pill={pill} onPress={handleBudgetPillPress} />
                               ))}
@@ -996,7 +998,7 @@ export default function Home() {
 
                       <View className="mt-8">
                         <View className="flex-row items-center justify-between">
-                          <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                          <Text className="mb-1 text-[18px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
                             My Accounts
                           </Text>
                           <Pressable
@@ -1015,15 +1017,15 @@ export default function Home() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             className="mt-2"
-                            contentContainerClassName="gap-3 pr-5"
+                            contentContainerClassName="gap-3.5 pr-5"
                             data={[0, 1]}
                             keyExtractor={(item) => String(item)}
                             renderItem={() => (
                               <Skeleton
                                 style={{
-                                  width: 160,
-                                  height: 96,
-                                  borderRadius: Radius.md,
+                                  width: 172,
+                                  height: 112,
+                                  borderRadius: Radius.lg,
                                 }}
                               />
                             )}
@@ -1045,7 +1047,7 @@ export default function Home() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             className="mt-2"
-                            contentContainerClassName="gap-3 pr-5"
+                            contentContainerClassName="gap-3.5 pr-5"
                             data={accountData.accounts}
                             keyExtractor={(item) => item._id}
                             removeClippedSubviews
@@ -1054,8 +1056,8 @@ export default function Home() {
                             maxToRenderPerBatch={4}
                             updateCellsBatchingPeriod={50}
                             getItemLayout={(_, index) => ({
-                              length: 160,
-                              offset: 172 * index,
+                              length: 172,
+                              offset: 186 * index,
                               index,
                             })}
                             renderItem={({ item }) => {
@@ -1074,33 +1076,33 @@ export default function Home() {
                                   style={[
                                     Shadow.card,
                                     {
-                                      width: 160,
-                                      borderRadius: Radius.md,
+                                      width: 172,
+                                      borderRadius: Radius.lg,
                                       backgroundColor: C.background,
                                       borderWidth: 1,
                                       borderColor: C.border,
                                     },
                                   ]}
-                                  className="p-4"
+                                  className="p-[18px]"
                                 >
                                   <View
                                     style={{
-                                      width: 40,
-                                      height: 40,
-                                      borderRadius: Radius.sm,
+                                      width: 44,
+                                      height: 44,
+                                      borderRadius: Radius.md,
                                       backgroundColor: C.surface,
                                     }}
                                     className="items-center justify-center"
                                   >
-                                    <AccountIcon type={item.type} size={28} />
+                                    <AccountIcon type={item.type} size={30} />
                                   </View>
                                   <Text
                                     numberOfLines={1}
-                                    className="mt-3 text-base font-semibold text-text-primary dark:text-text-primary-dark"
+                                    className="mt-3 text-[15px] font-semibold leading-5 text-text-primary dark:text-text-primary-dark"
                                   >
                                     {item.name}
                                   </Text>
-                                  <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                                  <Text className="text-[13px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
                                     {formatNumber(item.balance)}
                                   </Text>
                                 </Pressable>
@@ -1115,19 +1117,19 @@ export default function Home() {
                                   style={[
                                     Shadow.card,
                                     {
-                                      width: 160,
-                                      borderRadius: Radius.md,
+                                      width: 172,
+                                      borderRadius: Radius.lg,
                                       backgroundColor: C.surface,
                                       borderWidth: 1,
                                       borderColor: C.border,
                                     },
                                   ]}
-                                  className="items-center justify-center p-4"
+                                  className="items-center justify-center p-[18px]"
                                 >
-                                  <View className="h-10 w-10 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
-                                    <Feather name="plus" size={18} color={C.background} />
+                                  <View className="h-11 w-11 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
+                                    <Feather name="plus" size={20} color={C.background} />
                                   </View>
-                                  <Text className="mt-2 text-sm font-medium text-primary dark:text-primary-dark">
+                                  <Text className="mt-2.5 text-[13px] font-semibold text-primary dark:text-primary-dark">
                                     Add Account
                                   </Text>
                                 </Pressable>
@@ -1137,8 +1139,8 @@ export default function Home() {
                         )}
                       </View>
 
-                      <View className="mt-6">
-                        <Text className="mb-1 text-xl font-semibold text-text-primary dark:text-text-primary-dark">
+                      <View className="mt-8">
+                        <Text className="mb-1 text-[18px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
                           Transactions
                         </Text>
                       </View>
@@ -1208,12 +1210,12 @@ export default function Home() {
                     )
                   }
                   renderSectionHeader={({ section }) => (
-                    <View className="flex-row items-center justify-between bg-background px-5 pb-1 pt-4 dark:bg-background-dark">
-                      <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                    <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-6 dark:bg-background-dark">
+                      <Text className="text-[13px] font-semibold tracking-wide text-text-primary dark:text-text-primary-dark">
                         {section.title}
                       </Text>
                       <Text
-                        className="text-sm font-semibold"
+                        className="text-[13px] font-bold tracking-tight"
                         style={{
                           color:
                             section.total > 0
@@ -1229,7 +1231,7 @@ export default function Home() {
                     </View>
                   )}
                   renderItem={({ item }) => (
-                    <View className="px-2">
+                    <View className="px-3">
                       <TransactionCard
                         categoryName={item.category?.name ?? null}
                         categoryIcon={item.category?.icon ?? null}

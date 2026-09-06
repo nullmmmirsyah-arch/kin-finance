@@ -39,11 +39,11 @@ export function Fab({ onPress, accessibilityLabel, label }: Props) {
         onPressOut={handlePressOut}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        className="absolute bottom-6 right-6 flex-row items-center gap-2 rounded-full bg-primary px-5 dark:bg-primary-dark"
-        style={[Shadow.elevated, { height: 56 }, animatedStyle]}
+        className="absolute bottom-6 right-5 flex-row items-center gap-2.5 rounded-full bg-primary px-6 dark:bg-primary-dark"
+        style={[Shadow.elevated, { height: 60 }, animatedStyle]}
       >
-        <Feather name="plus" size={24} color={C.background} />
-        <Text className="text-base font-semibold text-background dark:text-background-dark">
+        <Feather name="plus" size={26} color={C.background} />
+        <Text className="text-[15px] font-bold tracking-tight text-background dark:text-background-dark">
           {label}
         </Text>
       </AnimatedPressable>
