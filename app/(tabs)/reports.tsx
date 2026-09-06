@@ -230,7 +230,7 @@ export default function Reports() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pb-2 pt-4">
-        <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 20, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }]}>
+        <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: C.cardBorder, borderRadius: 20, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }]}>
           <Bear size="small" />
           <View className="flex-row items-center justify-between" style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <Pressable
@@ -355,7 +355,7 @@ export default function Reports() {
                       </View>
                     </View>
                   ) : (
-                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 26, overflow: "hidden" }]}>
+                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: C.cardBorder, borderRadius: 26, overflow: "hidden" }]}>
                       <LinearGradient colors={G.card as unknown as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 16, gap: 12 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                           <Bear size="small" />
@@ -378,11 +378,11 @@ export default function Reports() {
                       </View>
                     </View>
                   ) : (
-                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 26, padding: 16, gap: 10 }]}>
+                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: C.cardBorder, borderRadius: 26, padding: 16, gap: 10 }]}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Bear size="small" variant="cub" />
                         <Text style={{ fontSize: 13, fontWeight: "800", color: C.textPrimary }}>Top Bills</Text>
-                        <View style={{ marginLeft: "auto", backgroundColor: C.plushPeek, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: "#FFFFFF" }}>
+                        <View style={{ marginLeft: "auto", backgroundColor: C.plushPeek, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: C.cardBorder }}>
                           <Text style={{ fontSize: 10, fontWeight: "800", color: C.primary }}>TOP 10</Text>
                         </View>
                       </View>

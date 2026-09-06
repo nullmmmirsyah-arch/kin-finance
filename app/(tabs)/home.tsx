@@ -70,7 +70,7 @@ const BudgetPill = memo(function BudgetPill({
         {
           backgroundColor: pressed ? C.surface : C.card,
           borderWidth: 2.5,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           borderRadius: 16,
         },
       ]}
@@ -83,7 +83,7 @@ const BudgetPill = memo(function BudgetPill({
           borderRadius: 12,
           backgroundColor: C.plushPeek,
           borderWidth: 2,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           alignItems: "center",
           justifyContent: "center",
         }}

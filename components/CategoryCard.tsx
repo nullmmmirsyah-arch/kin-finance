@@ -223,7 +223,7 @@ export function PlushCategoryCard({
               onPressOut={() => setEyePressed(false)}
               accessibilityRole="button"
               accessibilityLabel={hidden ? "Show category to members" : "Hide category from members"}
-              hitSlop={8}
+              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
               style={{
                 width: 32,
                 height: 32,
@@ -245,7 +245,7 @@ export function PlushCategoryCard({
               onPressOut={() => setEditPressed(false)}
               accessibilityRole="button"
               accessibilityLabel="Edit category"
-              hitSlop={8}
+              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
               style={{
                 width: 32,
                 height: 32,
@@ -267,7 +267,7 @@ export function PlushCategoryCard({
               onPressOut={() => setDeletePressed(false)}
               accessibilityRole="button"
               accessibilityLabel="Delete category"
-              hitSlop={8}
+              hitSlop={{ top: 8, bottom: 8, left: 3, right: 3 }}
               style={{
                 width: 32,
                 height: 32,
