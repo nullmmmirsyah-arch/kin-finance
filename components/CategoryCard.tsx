@@ -337,30 +337,43 @@ function CategoryBadge({
 
 export function CategoryCircle({
   name,
+  type: _type,
   icon,
   hidden,
   onToggleVisibility,
+  onEdit,
   onDelete,
 }: Props) {
+  void _type;
   const C = useThemeColors();
+  const circleStyle = {
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: C.plushPeek,
+    borderWidth: 2,
+    borderColor: C.cardBorder,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    overflow: "hidden" as const,
+  };
   return (
     <View style={{ width: 56 + 8 * 2, alignItems: "center", gap: 6 }}>
       <View style={{ width: 56, height: 56, position: "relative" }}>
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 999,
-            backgroundColor: C.plushPeek,
-            borderWidth: 2,
-            borderColor: C.cardBorder,
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
-        >
-          <CategoryIcon name={icon} size={32} />
-        </View>
+        {onEdit ? (
+          <Pressable
+            onPress={onEdit}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit category ${name}`}
+            style={circleStyle}
+          >
+            <CategoryIcon name={icon} size={32} />
+          </Pressable>
+        ) : (
+          <View style={circleStyle}>
+            <CategoryIcon name={icon} size={32} />
+          </View>
+        )}
         {onToggleVisibility && hidden === false && (
           <CategoryBadge type="minus" onPress={onToggleVisibility} label={`Hide category ${name}`} />
         )}

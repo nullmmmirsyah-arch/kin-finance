@@ -97,7 +97,7 @@ export default function Categories() {
   }, [categories, filter]);
 
   const { visible, hidden } = useMemo(() => {
-    if (visibleCategories === null) return { visible: null, hidden: null } as any;
+    if (visibleCategories === null) return { visible: null as typeof visibleCategories, hidden: null as typeof visibleCategories };
     return {
       visible: visibleCategories.filter((c) => !c.hidden),
       hidden: visibleCategories.filter((c) => c.hidden),
@@ -153,7 +153,7 @@ export default function Categories() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          const results = await Promise.allSettled(hidden.map((c: any) => removeCategory({ categoryId: c._id })));
+          const results = await Promise.allSettled(hidden.map((c) => removeCategory({ categoryId: c._id })));
           const ok = results.filter((r) => r.status === "fulfilled").length;
           const fail = results.length - ok;
           show(fail ? `${ok} deleted, ${fail} failed (in use)` : `${ok} hidden categories deleted`);
@@ -339,6 +339,7 @@ export default function Categories() {
                     icon={item.icon}
                     hidden={false}
                     onToggleVisibility={isOwner ? () => handleToggleVisibility(item) : undefined}
+                    onEdit={isOwner ? () => router.push({ pathname: "/category-form", params: { id: item._id } }) : undefined}
                     onDelete={isOwner ? () => handleDelete(item) : undefined}
                   />
                 )}
@@ -356,7 +357,12 @@ export default function Categories() {
                   <Text style={{ fontSize: 12, color: C.textSecondary }}>({hidden.length})</Text>
                 </View>
                 {isOwner && (
-                  <Pressable onPress={handleBulkDeleteHidden} accessibilityLabel="Delete hidden categories">
+                  <Pressable
+                    onPress={handleBulkDeleteHidden}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete hidden categories"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
                     <Text style={{ fontSize: 12, fontWeight: "700", color: C.error, textDecorationLine: "underline" }}>Delete hidden categories</Text>
                   </Pressable>
                 )}
@@ -376,6 +382,7 @@ export default function Categories() {
                     icon={item.icon}
                     hidden={true}
                     onToggleVisibility={isOwner ? () => handleToggleVisibility(item) : undefined}
+                    onEdit={isOwner ? () => router.push({ pathname: "/category-form", params: { id: item._id } }) : undefined}
                     onDelete={isOwner ? () => handleDelete(item) : undefined}
                   />
                 )}
