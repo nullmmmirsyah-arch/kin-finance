@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import PagerView from "react-native-pager-view";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { AccountIcon } from "@/components/AccountIcon";
 import { GradientCard } from "@/components/GradientCard";
 import { TransactionCard } from "@/components/TransactionCard";
@@ -51,7 +52,7 @@ const BudgetPill = memo(function BudgetPill({
   pill,
   onPress,
 }: {
-  pill: { id: string; name: string; budgeted: number; spent?: number; progress?: number };
+  pill: { id: string; name: string; icon?: string; budgeted: number; spent?: number; progress?: number };
   onPress: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -67,13 +68,29 @@ const BudgetPill = memo(function BudgetPill({
       style={[
         Shadow.card,
         {
-          backgroundColor: pressed ? C.surface : C.background,
-          borderRadius: Radius.md,
+          backgroundColor: pressed ? C.surface : C.card,
+          borderWidth: 2.5,
+          borderColor: "#FFFFFF",
+          borderRadius: 16,
         },
       ]}
-      className="flex-row items-center gap-3 px-4 py-3"
+      className="flex-row items-center gap-3 px-3 py-3"
     >
-      <View className="flex-1">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: C.plushPeek,
+          borderWidth: 2,
+          borderColor: "#FFFFFF",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {pill.icon ? <CategoryIcon name={pill.icon} size={18} /> : <Text style={{ fontSize: 16 }}>🍯</Text>}
+      </View>
+      <View className="flex-1" style={{ minWidth: 0 }}>
         <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
           {pill.name}
         </Text>
@@ -395,6 +412,7 @@ export default function Home() {
     return budgets.slice(0, 3).map((b) => ({
       id: b._id,
       name: b.category?.name ?? "Budget",
+      icon: b.category?.icon,
       budgeted: b.amount,
       spent: b.spent,
       progress: b.progress,

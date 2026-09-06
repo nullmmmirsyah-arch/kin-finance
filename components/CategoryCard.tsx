@@ -145,6 +145,7 @@ export function PlushCategoryCard({
         Shadow.card,
         {
           flex: 1,
+          minWidth: 0,
           backgroundColor: cardBg,
           borderWidth: 2.5,
           borderColor: creamBorder,
@@ -222,9 +223,10 @@ export function PlushCategoryCard({
               onPressOut={() => setEyePressed(false)}
               accessibilityRole="button"
               accessibilityLabel={hidden ? "Show category to members" : "Hide category from members"}
+              hitSlop={8}
               style={{
-                width: 48,
-                height: 48,
+                width: 32,
+                height: 32,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -233,7 +235,7 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name={hidden ? "eye-off" : "eye"} size={16} color={muted} />
+              <Feather name={hidden ? "eye-off" : "eye"} size={14} color={muted} />
             </Pressable>
           ) : null}
           {onEdit !== undefined ? (
@@ -243,9 +245,10 @@ export function PlushCategoryCard({
               onPressOut={() => setEditPressed(false)}
               accessibilityRole="button"
               accessibilityLabel="Edit category"
+              hitSlop={8}
               style={{
-                width: 48,
-                height: 48,
+                width: 32,
+                height: 32,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -254,7 +257,7 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name="edit-2" size={16} color={C.primary} />
+              <Feather name="edit-2" size={14} color={C.primary} />
             </Pressable>
           ) : null}
           {onDelete !== undefined ? (
@@ -264,9 +267,10 @@ export function PlushCategoryCard({
               onPressOut={() => setDeletePressed(false)}
               accessibilityRole="button"
               accessibilityLabel="Delete category"
+              hitSlop={8}
               style={{
-                width: 48,
-                height: 48,
+                width: 32,
+                height: 32,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -275,7 +279,7 @@ export function PlushCategoryCard({
                 justifyContent: "center",
               }}
             >
-              <Feather name="trash-2" size={16} color={C.error} />
+              <Feather name="trash-2" size={14} color={C.error} />
             </Pressable>
           ) : null}
         </View>

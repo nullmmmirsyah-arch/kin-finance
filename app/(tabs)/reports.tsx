@@ -5,7 +5,9 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import PagerView from "react-native-pager-view";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
+import { Bear } from "@/components/Bear";
+import { LinearGradient } from "expo-linear-gradient";
 import { MonthPicker } from "@/components/MonthPicker";
 import { CategoryRankingCard } from "@/components/reports/CategoryRankingCard";
 import { BillRankingCard } from "@/components/reports/BillRankingCard";
@@ -17,6 +19,7 @@ import { hapticSuccess } from "@/lib/haptics";
 
 export default function Reports() {
   const C = useThemeColors();
+  const G = useThemeGradients();
   const household = useQuery(api.households.getActive);
   const timezone = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
 
@@ -226,9 +229,10 @@ export default function Reports() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      {/* Header with chevrons + MonthPicker + dots + Filter dummy */}
       <View className="px-5 pb-2 pt-4">
-        <View className="flex-row items-center justify-between">
+        <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 20, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }]}>
+          <Bear size="small" />
+          <View className="flex-row items-center justify-between" style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <Pressable
             onPress={handlePrev}
             onPressIn={() => setPrevPressed(true)}
@@ -298,6 +302,7 @@ export default function Reports() {
           >
             <Feather name="chevron-right" size={20} color={C.textPrimary} />
           </Pressable>
+          </View>
         </View>
       </View>
 
@@ -350,7 +355,18 @@ export default function Reports() {
                       </View>
                     </View>
                   ) : (
-                    <CategoryRankingCard type={type} segments={displaySegments} total={displayTotal} othersAmount={displayOthers} onToggle={toggleType} />
+                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 26, overflow: "hidden" }]}>
+                      <LinearGradient colors={G.card as unknown as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 16, gap: 12 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <Bear size="small" />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 11, fontWeight: "800", letterSpacing: 0.6, color: C.textSecondary }}>WHERE MONEY GOES</Text>
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: C.textPrimary }}>Expenses • Income</Text>
+                          </View>
+                        </View>
+                        <CategoryRankingCard type={type} segments={displaySegments} total={displayTotal} othersAmount={displayOthers} onToggle={toggleType} />
+                      </LinearGradient>
+                    </View>
                   )}
 
                   {isLoadingSegments ? (
@@ -362,7 +378,16 @@ export default function Reports() {
                       </View>
                     </View>
                   ) : (
-                    <BillRankingCard type={type} segments={displaySegments} />
+                    <View style={[Shadow.card, { backgroundColor: C.card, borderWidth: 2.5, borderColor: "#FFFFFF", borderRadius: 26, padding: 16, gap: 10 }]}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Bear size="small" variant="cub" />
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: C.textPrimary }}>Top Bills</Text>
+                        <View style={{ marginLeft: "auto", backgroundColor: C.plushPeek, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: "#FFFFFF" }}>
+                          <Text style={{ fontSize: 10, fontWeight: "800", color: C.primary }}>TOP 10</Text>
+                        </View>
+                      </View>
+                      <BillRankingCard type={type} segments={displaySegments} />
+                    </View>
                   )}
 
                   {balances === undefined || prevBalances === undefined ? (
