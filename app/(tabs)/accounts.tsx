@@ -110,12 +110,10 @@ export default function Accounts() {
     return accounts.reduce((sum, a) => sum + a.balance, 0);
   }, [accounts]);
 
-  type GridItem = NonNullable<typeof accounts>[number] | { _id: "__add__"; __add: true };
+  type GridItem = NonNullable<typeof accounts>[number];
   const gridData: GridItem[] = useMemo(() => {
-    const base = (visibleAccounts ?? []) as GridItem[];
-    if (isOwner) return [...base, { _id: "__add__", __add: true } as GridItem];
-    return base;
-  }, [visibleAccounts, isOwner]);
+    return (visibleAccounts ?? []) as GridItem[];
+  }, [visibleAccounts]);
 
   const isEmptyFiltered = visibleAccounts !== null && visibleAccounts.length === 0;
 
@@ -312,7 +310,7 @@ export default function Accounts() {
           }
         >
           {isOwner ? (
-            <View style={{ flexDirection: "row" }}>
+            <View style={{ marginBottom: 4 }}>
               <VaultAdd onPress={() => router.push("/account-form")} />
             </View>
           ) : null}
@@ -366,10 +364,6 @@ export default function Accounts() {
           data={gridData}
           keyExtractor={(item) => String(item._id)}
           renderItem={({ item }) => {
-            const isAdd = (item as { __add?: boolean }).__add;
-            if (isAdd) {
-              return <VaultAdd onPress={() => router.push("/account-form")} />;
-            }
             const acc = item as typeof accounts[number];
             return isOwner ? (
               <VaultCard
@@ -394,6 +388,13 @@ export default function Accounts() {
               />
             );
           }}
+          ListFooterComponent={
+            isOwner ? (
+              <View style={{ paddingTop: 10 }}>
+                <VaultAdd onPress={() => router.push("/account-form")} />
+              </View>
+            ) : null
+          }
         />
       )}
 
