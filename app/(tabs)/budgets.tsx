@@ -128,7 +128,7 @@ export default function Budgets() {
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
           <Text className="text-[28px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">Pantry</Text>
-          <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Keluarga Beruang • Honey Jars</Text>
+          <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Bear Family • Honey Jars</Text>
         </View>
         {stale && (
           <View className="pt-2">
@@ -185,7 +185,7 @@ export default function Budgets() {
               </View>
             </View>
             <Text className="mt-1 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
-              Pantry madu keluarga beruang
+              Bear family honey pantry
             </Text>
           </View>
           <BearFamilyRow size={26} />
@@ -234,7 +234,7 @@ export default function Budgets() {
               <Feather name="calendar" size={16} color={C.primary} />
             </View>
             <View>
-              <Text className="text-[10px] font-bold tracking-[0.14em] text-text-secondary dark:text-text-secondary-dark">PERIODE</Text>
+              <Text className="text-[10px] font-bold tracking-[0.14em] text-text-secondary dark:text-text-secondary-dark">PERIOD</Text>
               <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
                 {formatMonthLabel(periodStart, timezone)}
               </Text>
@@ -322,7 +322,7 @@ export default function Budgets() {
                   <Text className="text-lg font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
                     {formatNumber(summary.budgeted)}
                   </Text>
-                  <Text className="text-[11px] text-text-secondary dark:text-text-secondary-dark">Kapasitas stoples</Text>
+                  <Text className="text-[11px] text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
                 </View>
                 <View
                   style={{
@@ -405,7 +405,7 @@ export default function Budgets() {
                       {Math.round(overallProgress * 100)}% honey filled
                     </Text>
                     <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
-                      {budgets.length} kategori • {formatMonthLabel(periodStart, timezone)}
+                      {budgets.length} categories • {formatMonthLabel(periodStart, timezone)}
                     </Text>
                   </View>
                 </View>
@@ -439,13 +439,13 @@ export default function Budgets() {
               <View className="items-center gap-3">
                 <BearFamilyRow size={32} />
                 <View style={{ height: 6, width: 120, borderRadius: 999, backgroundColor: C.pantryWood, opacity: 0.1 }} />
-                <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">zZ • pantry masih kosong</Text>
+                <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">zZ • pantry is empty</Text>
               </View>
               <EmptyState
                 icon="archive"
-                title="Pantry kosong"
-                description="Isi pantry madu pertamamu — atur budget untuk setiap kategori pengeluaran."
-                actionLabel="Isi Stoples Pertama"
+                title="Pantry is empty"
+                description="Fill your first honey pantry — set a budget for each expense category."
+                actionLabel="Fill First Jar"
                 onAction={() =>
                   router.push({
                     pathname: "/budget-form",
@@ -511,7 +511,7 @@ export default function Budgets() {
       )}
 
       <Fab
-        label="Isi Stoples"
+        label="Set Budget"
         onPress={() =>
           router.push({
             pathname: "/budget-form",

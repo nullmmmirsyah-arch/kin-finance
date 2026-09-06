@@ -935,7 +935,7 @@ export default function Home() {
                               </View>
                               <View>
                                 <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">Pantry</Text>
-                                <Text className="text-[11px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">HONEY JARS • {budgetPills.length > 0 ? `${budgetPills.length} stoples` : "KELUARGA BERUANG"}</Text>
+                                <Text className="text-[11px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">HONEY JARS • {budgetPills.length > 0 ? `${budgetPills.length} jars` : "BEAR FAMILY"}</Text>
                               </View>
                             </View>
                             {budgetPills.length > 0 && (
@@ -944,7 +944,7 @@ export default function Home() {
                                 accessibilityRole="button"
                                 className="min-h-12 flex-row items-center gap-1"
                               >
-                                <Text className="text-sm font-semibold text-primary dark:text-primary-dark">Lihat Pantry</Text>
+                                <Text className="text-sm font-semibold text-primary dark:text-primary-dark">View Pantry</Text>
                                 <Feather name="chevron-right" size={16} color={C.primary} />
                               </Pressable>
                             )}
@@ -961,9 +961,9 @@ export default function Home() {
                               <View className="px-2 py-2">
                                 <EmptyState
                                   icon="archive"
-                                  title="Pantry kosong"
-                                  description="Isi stoples madu pertamamu — atur budget untuk setiap kategori pengeluaran."
-                                  actionLabel="Isi Stoples Pertama"
+                                  title="Pantry is empty"
+                                  description="Fill your first honey jar — set a budget for each expense category."
+                                  actionLabel="Fill First Jar"
                                   onAction={() => router.push("/budget-form")}
                                 />
                               </View>
