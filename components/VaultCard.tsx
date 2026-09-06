@@ -67,7 +67,7 @@ export function VaultCard({ name, type, balance, hidden, onEdit, onDelete }: Vau
           flex: 1,
           backgroundColor: cardBg,
           borderWidth: 2.5,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           borderRadius: 24,
           overflow: "hidden",
         },
@@ -208,7 +208,7 @@ export function VaultHero({ total, count }: { total: number; count: number }) {
         Shadow.card,
         {
           borderWidth: 2.5,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           borderRadius: 26,
           overflow: "hidden",
         },
@@ -223,7 +223,7 @@ export function VaultHero({ total, count }: { total: number; count: number }) {
         {/* bear stack mid+normal */}
         <View
           testID="vault-hero-bears"
-          style={{ flexDirection: "row", alignItems: "flex-end", gap: -6 } as any}
+          style={{ flexDirection: "row", alignItems: "flex-end" }}
         >
           <View style={{ marginRight: -8 }}>
             <Bear size="mid" />
@@ -255,7 +255,7 @@ export function VaultHero({ total, count }: { total: number; count: number }) {
             borderRadius: 999,
             backgroundColor: isDark ? C.background : C.card,
             borderWidth: 2,
-            borderColor: "#FFFFFF",
+            borderColor: C.cardBorder,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -303,7 +303,7 @@ export function VaultAdd({ onPress }: { onPress: () => void }) {
           borderRadius: 16,
           backgroundColor: isDark ? C.background : C.plushSurfaceAlt,
           borderWidth: 2,
-          borderColor: "#FFFFFF",
+          borderColor: C.cardBorder,
           alignItems: "center",
           justifyContent: "center",
         }}

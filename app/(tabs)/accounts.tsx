@@ -4,6 +4,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -13,7 +14,7 @@ import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { Shadow, useThemeColors } from "@/constants/theme";
 import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
 import { Chip } from "@/components/Chip";
 import { Fab } from "@/components/Fab";
@@ -45,6 +46,7 @@ export default function Accounts() {
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcilePressed, setReconcilePressed] = useState(false);
   const isConnected = useConnectivity();
   const [refreshKey, setRefreshKey] = useState(0);
   const C = useThemeColors();
@@ -147,18 +149,28 @@ export default function Accounts() {
     [removeAccount, show],
   );
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRefreshKey((k) => k + 1);
+    void hapticSuccess();
+    setTimeout(() => setRefreshing(false), 600);
+  }, []);
+
   if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Accounts</Text>
+          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Bear Vault</Text>
+          <Text className="mt-0.5 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+            Your accounts, guarded by bears
+          </Text>
         </View>
         {stale && (
-          <View className="pt-2">
+          <View className="pt-3">
             <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
           </View>
         )}
-        <View className="mt-4 flex-row flex-wrap gap-2 px-5">
+        <View className="mt-4 flex-row gap-2 px-5">
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} style={{ width: 72, height: 40, borderRadius: 999 }} />
           ))}
@@ -175,9 +187,15 @@ export default function Accounts() {
   if (accounts === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
-          You are not a member of a household.
-        </Text>
+        <View className="items-center gap-3">
+          <View className="flex-row items-end gap-2">
+            <Bear size="mid" />
+            <Bear size="normal" />
+          </View>
+          <Text className="text-center text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+            You are not a member of a household.
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -185,12 +203,14 @@ export default function Accounts() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">Bear Vault</Text>
-        <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">Your accounts, guarded by bears</Text>
+        <Text className="text-[28px] font-bold leading-8 text-text-primary dark:text-text-primary-dark">Bear Vault</Text>
+        <Text className="mt-1 text-[13px] font-medium leading-4 text-text-secondary dark:text-text-secondary-dark">
+          Your accounts, guarded by bears
+        </Text>
       </View>
 
       {stale && (
-        <View className="pt-2">
+        <View className="pt-3">
           <ConnectivityBanner visible={stale} onRetry={() => { setStale(false); setRefreshKey(k=>k+1); show("Retrying…"); void hapticSuccess(); }} />
         </View>
       )}
@@ -198,30 +218,64 @@ export default function Accounts() {
       {isOwner && verifyResult && verifyResult.discrepancies.length > 0 ? (
         <View className="mt-4 px-5">
           <View
-            style={[Shadow.card, { borderRadius: Radius.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.chartAmber }]}
-            className="gap-2 px-4 py-3"
+            testID="reconcile-banner"
+            style={[
+              Shadow.card,
+              {
+                borderRadius: 20,
+                backgroundColor: C.card,
+                borderWidth: 2.5,
+                borderColor: C.cardBorder,
+                overflow: "hidden",
+              },
+            ]}
           >
-            <View className="flex-row items-center gap-2">
-              <Feather name="alert-triangle" size={18} color={C.chartAmber} />
-              <Text className="flex-1 text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-                {verifyResult.discrepancies.length} account(s) out of sync
-              </Text>
+            <View className="gap-3 p-4">
+              <View className="flex-row items-start gap-3">
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    backgroundColor: C.plushSurfaceAlt,
+                    borderWidth: 1.5,
+                    borderColor: C.plushCreamBorder,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Feather name="alert-triangle" size={16} color={C.chartAmber} />
+                </View>
+                <View className="flex-1 gap-1">
+                  <Text className="text-[14px] font-extrabold leading-5 text-text-primary dark:text-text-primary-dark">
+                    {verifyResult.discrepancies.length} account{verifyResult.discrepancies.length === 1 ? "" : "s"} out of sync
+                  </Text>
+                  <Text className="text-[12px] font-medium leading-4 text-text-secondary dark:text-text-secondary-dark">
+                    Stored balances don&apos;t match transaction history. Recalculate to fix.
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={handleReconcile}
+                onPressIn={() => setReconcilePressed(true)}
+                onPressOut={() => setReconcilePressed(false)}
+                disabled={isReconciling}
+                accessibilityRole="button"
+                accessibilityLabel="Recalculate balances"
+                style={{
+                  height: 44,
+                  borderRadius: 999,
+                  backgroundColor: C.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: isReconciling ? 0.6 : reconcilePressed ? 0.85 : 1,
+                }}
+              >
+                <Text className="text-[13px] font-extrabold" style={{ color: C.background }}>
+                  {isReconciling ? "Recalculating…" : "Recalculate"}
+                </Text>
+              </Pressable>
             </View>
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-              Stored balances don&apos;t match transaction history. Tap to recalculate.
-            </Text>
-            <Pressable
-              onPress={handleReconcile}
-              disabled={isReconciling}
-              accessibilityRole="button"
-              accessibilityLabel="Recalculate balances"
-              style={{ backgroundColor: C.primary, borderRadius: Radius.sm, opacity: isReconciling ? 0.6 : 1 }}
-              className="mt-1 items-center justify-center py-2.5"
-            >
-              <Text className="text-sm font-semibold" style={{ color: C.background }}>
-                {isReconciling ? "Recalculating…" : "Recalculate"}
-              </Text>
-            </Pressable>
           </View>
         </View>
       ) : null}
@@ -231,86 +285,75 @@ export default function Accounts() {
         <VaultHero total={vaultTotal} count={accounts.length} />
       </View>
 
-      <View className="mt-4 flex-row flex-wrap gap-2 px-5">
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.label}
-            active={filter === f.id}
-            onPress={() => setFilter(f.id)}
-          />
-        ))}
+      {/* Filter chips — horizontal scroll, Operate scanability */}
+      <View className="mt-4">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+        >
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.id}
+              label={f.label}
+              active={filter === f.id}
+              onPress={() => setFilter(f.id)}
+            />
+          ))}
+        </ScrollView>
       </View>
 
       {isEmptyFiltered ? (
-        <FlatList
+        <ScrollView
           className="mt-4 flex-1"
-          contentContainerClassName="gap-3 px-5 pb-28"
-          numColumns={2}
-          columnWrapperStyle={{ gap: 10 }}
-          removeClippedSubviews
-          windowSize={5}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 112, gap: 12 }}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                setRefreshKey(k=>k+1);
-                void hapticSuccess();
-                setTimeout(() => setRefreshing(false), 600);
-              }}
-              tintColor={C.primary}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />
           }
-          data={[] as GridItem[]}
-          keyExtractor={(item) => String(item._id)}
-          renderItem={({ item }) => {
-            const isAdd = (item as { __add?: boolean }).__add;
-            if (isAdd) {
-              return <VaultAdd onPress={() => router.push("/account-form")} />;
-            }
-            return null as any;
-          }}
-          ListEmptyComponent={(
-              <View style={{ gap: 12, alignItems: "center", paddingTop: 8, flex: 1, width: "100%" } as any}>
-                {isOwner ? (
-                  <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
-                    <VaultAdd onPress={() => router.push("/account-form")} />
-                  </View>
-                ) : null}
-                <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: "center" }}>
-                  <Bear size="mid" />
-                  <Bear size="normal" />
-                </View>
-                <View
-                  style={{ backgroundColor: C.background, borderRadius: 16, width: "100%" }}
-                  className="rounded-[16px]"
-                >
-                  <EmptyState
-                    icon="credit-card"
-                    title={filter === "all" ? "No accounts yet" : `No ${filter} accounts`}
-                    description={
-                      filter === "all"
-                        ? isOwner
-                          ? "Add your first vault to start tracking your money."
-                          : "Only the Owner can add vaults. Contact your household Owner."
-                        : `No accounts match "${filter}". Try another filter.`
-                    }
-                    actionLabel={isOwner && filter === "all" ? "Add Vault" : undefined}
-                    onAction={
-                      isOwner && filter === "all" ? () => router.push("/account-form") : undefined
-                    }
-                  />
-                </View>
-              </View>
-            )}
-        />
+        >
+          {isOwner ? (
+            <View style={{ flexDirection: "row" }}>
+              <VaultAdd onPress={() => router.push("/account-form")} />
+            </View>
+          ) : null}
+          <View style={{ alignItems: "center", gap: 10, paddingTop: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: "center" }}>
+              <Bear size="mid" />
+              <Bear size="normal" />
+            </View>
+            <View
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 20,
+                borderWidth: 2.5,
+                borderColor: C.cardBorder,
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              <EmptyState
+                icon="credit-card"
+                title={filter === "all" ? "No vaults yet" : `No ${filter} vaults`}
+                description={
+                  filter === "all"
+                    ? isOwner
+                      ? "Add your first vault to start tracking your money."
+                      : "Only the Owner can add vaults. Contact your household Owner."
+                    : `No accounts match "${filter}". Try another filter.`
+                }
+                actionLabel={isOwner && filter === "all" ? "Add Vault" : undefined}
+                onAction={
+                  isOwner && filter === "all" ? () => router.push("/account-form") : undefined
+                }
+              />
+            </View>
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           className="mt-4 flex-1"
-          columnWrapperStyle={gridData.length > 1 ? ({ gap: 10 } as any) : undefined}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 112, gap: 10, paddingTop: 4 }}
+          columnWrapperStyle={gridData.length > 1 ? ({ gap: 10 } as unknown as object) : undefined}
           numColumns={2}
           removeClippedSubviews
           windowSize={7}
@@ -318,16 +361,7 @@ export default function Accounts() {
           maxToRenderPerBatch={8}
           updateCellsBatchingPeriod={50}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                setRefreshKey(k=>k+1);
-                void hapticSuccess();
-                setTimeout(() => setRefreshing(false), 600);
-              }}
-              tintColor={C.primary}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />
           }
           data={gridData}
           keyExtractor={(item) => String(item._id)}
