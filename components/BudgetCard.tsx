@@ -65,28 +65,35 @@ export function BudgetCard({
         accessibilityLabel={`${categoryName} budget, ${spent !== undefined ? `${formatNumber(spent)} of ${formatNumber(budgetAmount)}` : "private"}`}
         className="flex-row gap-4"
       >
-        {/* Quiet jar — flat lid, no wood */}
-        <View style={{ width: 52, alignItems: "center", gap: 5 }}>
-          {/* flat neutral lid */}
+        {/* Real jar silhouette — quiet, no wood */}
+        <View style={{ width: 52, alignItems: "center", gap: 4 }}>
+          {/* screw cap */}
           <View
             style={{
-              width: 32,
-              height: 7,
-              borderRadius: 3,
+              width: 46,
+              height: 9,
+              borderRadius: 4,
               backgroundColor: C.surface,
               borderWidth: 1,
               borderColor: C.border,
-              marginBottom: -3,
+              marginBottom: -4,
               zIndex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 4,
             }}
-          />
+          >
+            <View style={{ width: 16, height: 2, borderRadius: 999, backgroundColor: C.border, opacity: 0.6 }} />
+            <View style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: C.border, opacity: 0.35 }} />
+          </View>
           <View
             style={{
               width: 44,
-              height: 54,
-              borderRadius: 10,
-              borderTopLeftRadius: 6,
-              borderTopRightRadius: 6,
+              height: 56,
+              borderRadius: 11,
+              borderTopLeftRadius: 3,
+              borderTopRightRadius: 3,
               borderWidth: 1,
               borderColor: C.border,
               backgroundColor: C.background,
