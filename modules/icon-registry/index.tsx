@@ -1,5 +1,5 @@
 import * as React from "react";
-import { FlatList, Pressable, View, Text } from "react-native";
+import { FlatList, Pressable, View, Text, useWindowDimensions } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useThemeColors } from "@/constants/theme";
 import {
@@ -84,6 +84,11 @@ export function IconPicker({
   onChange: (ref: string) => void;
   size?: number;
 }) {
+  const { width } = useWindowDimensions();
+  const GAP = 8;
+  const ITEM = 56;
+  const H_PADDING = 40;
+  const cols = Math.max(4, Math.min(6, Math.floor((width - H_PADDING + GAP) / (ITEM + GAP))));
   const C = useThemeColors();
   const renderItem = React.useCallback(
     ({ item: name }: { item: string }) => {
@@ -117,8 +122,8 @@ export function IconPicker({
       data={[...ALL_CATEGORY_ICONS] as string[]}
       keyExtractor={(item) => item}
       renderItem={renderItem}
-      numColumns={4}
-      columnWrapperStyle={{ gap: 8 }}
+      numColumns={cols}
+      columnWrapperStyle={cols > 1 ? { gap: GAP } : undefined}
       contentContainerStyle={{ gap: 8 }}
       scrollEnabled={false}
       initialNumToRender={16}
@@ -127,7 +132,7 @@ export function IconPicker({
       removeClippedSubviews
       getItemLayout={(_data, index) => ({
         length: 64,
-        offset: 64 * Math.floor(index / 4),
+        offset: 64 * Math.floor(index / cols),
         index,
       })}
       accessibilityLabel="Category icon picker"
