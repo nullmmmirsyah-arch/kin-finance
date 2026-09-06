@@ -26,6 +26,7 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz } from "@/utils/date";
@@ -79,32 +80,78 @@ const BudgetPill = memo(function BudgetPill({
       ]}
       className="flex-row items-center gap-3 px-4 py-3"
     >
-      {/* Quiet mini jar — 36px, no wood/bear, flat tint */}
-      <View
-        style={{
-          width: 36,
-          height: 42,
-          borderRadius: 8,
-          borderWidth: 1,
-          borderColor: C.border,
-          backgroundColor: C.background,
-          overflow: "hidden",
-          justifyContent: "flex-end",
-        }}
-      >
-        {isPrivate ? (
-          <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-            <Feather name="eye-off" size={12} color={C.textSecondary} />
-          </View>
-        ) : (
+      {/* Cute mini jar — matches Budgets card */}
+      <View style={{ width: 42, alignItems: "center", gap: 2 }}>
+        <View
+          style={{
+            width: 38,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: C.surface,
+            borderWidth: 1,
+            borderColor: C.border,
+            marginBottom: -4,
+            zIndex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <View
             style={{
-              height: `${honeyLevel * 100}%`,
+              width: 6,
+              height: 6,
+              borderRadius: 999,
               backgroundColor: over ? C.error : C.primary,
-              opacity: over ? 0.9 : 0.7,
+              opacity: honeyLevel > 0 ? 0.85 : 0.2,
             }}
           />
-        )}
+        </View>
+        <View
+          style={{
+            width: 40,
+            height: 50,
+            borderRadius: 10,
+            borderTopLeftRadius: 3,
+            borderTopRightRadius: 3,
+            borderWidth: 1.5,
+            borderColor: C.border,
+            backgroundColor: "#FFFFFF",
+            overflow: "hidden",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              left: 5,
+              top: 5,
+              bottom: 5,
+              width: 5,
+              borderRadius: 999,
+              backgroundColor: "white",
+              opacity: 0.55,
+            }}
+          />
+          {isPrivate ? (
+            <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
+              <Feather name="eye-off" size={12} color={C.textSecondary} />
+            </View>
+          ) : (
+            <View style={{ height: `${honeyLevel * 100}%`, minHeight: honeyLevel > 0 ? 10 : 0, overflow: "hidden", borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
+              <LinearGradient
+                colors={over ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ flex: 1 }}
+              >
+                <View style={{ height: 6, marginTop: -1, backgroundColor: "rgba(255,255,255,0.28)", borderBottomLeftRadius: 999, borderBottomRightRadius: 999, transform: [{ scaleX: 1.1 }] }} />
+              </LinearGradient>
+            </View>
+          )}
+        </View>
+        <Text style={{ fontSize: 10, fontWeight: "700", color: over ? C.error : honeyLevel < 0.3 ? C.primary : C.textSecondary }}>
+          {isPrivate ? "—" : over ? "EMPTY" : `${Math.round(honeyLevel * 100)}%`}
+        </Text>
       </View>
 
       <View className="flex-1 gap-1.5">
@@ -134,28 +181,20 @@ const BudgetPill = memo(function BudgetPill({
           {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted • hidden"}
         </Text>
         {pill.progress !== undefined ? (
-          <View style={{ height: 6, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
-            <View
-              style={{
-                width: `${honeyLevel * 100}%`,
-                height: "100%",
-                borderRadius: 999,
-                backgroundColor: over ? C.error : C.primary,
-                opacity: over ? 0.9 : 0.65,
-              }}
-            />
+          <View style={{ height: 8, borderRadius: 999, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
+            <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
+              <LinearGradient
+                colors={over ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
+              />
+            </View>
           </View>
         ) : (
-          <View
-            style={{
-              height: 6,
-              borderRadius: 999,
-              backgroundColor: C.surface,
-              borderWidth: 1,
-              borderColor: C.border,
-              borderStyle: "dashed",
-            }}
-          />
+          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 8, fontWeight: "700", letterSpacing: 0.6, color: C.textSecondary }}>FROSTED</Text>
+          </View>
         )}
       </View>
     </Pressable>

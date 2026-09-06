@@ -2,6 +2,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { formatNumber } from "@/utils/format";
 
@@ -65,65 +66,122 @@ export function BudgetCard({
         accessibilityLabel={`${categoryName} budget, ${spent !== undefined ? `${formatNumber(spent)} of ${formatNumber(budgetAmount)}` : "private"}`}
         className="flex-row gap-4"
       >
-        {/* Real jar silhouette — quiet, no wood */}
-        <View style={{ width: 52, alignItems: "center", gap: 4 }}>
-          {/* screw cap */}
+        {/* Cute jar — prominent honey, still no wood */}
+        <View style={{ width: 56, alignItems: "center", gap: 4 }}>
+          {/* cute screw cap — wider, honey dot */}
           <View
             style={{
-              width: 46,
-              height: 9,
-              borderRadius: 4,
+              width: 48,
+              height: 11,
+              borderRadius: 6,
               backgroundColor: C.surface,
               borderWidth: 1,
               borderColor: C.border,
-              marginBottom: -4,
+              marginBottom: -5,
               zIndex: 1,
               flexDirection: "row",
               alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: 4,
+              justifyContent: "center",
+              gap: 6,
             }}
           >
-            <View style={{ width: 16, height: 2, borderRadius: 999, backgroundColor: C.border, opacity: 0.6 }} />
-            <View style={{ width: 10, height: 2, borderRadius: 999, backgroundColor: C.border, opacity: 0.35 }} />
+            <View style={{ width: 18, height: 2.5, borderRadius: 999, backgroundColor: C.border, opacity: 0.55 }} />
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 999,
+                backgroundColor: overBudget ? C.error : C.primary,
+                opacity: honeyLevel > 0 ? 0.9 : 0.25,
+              }}
+            />
+            <View style={{ width: 10, height: 2.5, borderRadius: 999, backgroundColor: C.border, opacity: 0.32 }} />
           </View>
           <View
             style={{
-              width: 44,
-              height: 56,
-              borderRadius: 11,
-              borderTopLeftRadius: 3,
-              borderTopRightRadius: 3,
-              borderWidth: 1,
+              width: 48,
+              height: 64,
+              borderRadius: 14,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderWidth: 1.5,
               borderColor: C.border,
-              backgroundColor: C.background,
+              backgroundColor: "#FFFFFF",
               overflow: "hidden",
               justifyContent: "flex-end",
+              shadowColor: "#000",
+              shadowOpacity: 0.04,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 2 },
             }}
           >
-            {/* subtle glass highlight */}
+            {/* glossy glass highlight */}
             <View
               style={{
                 position: "absolute",
-                left: 5,
-                top: 5,
-                bottom: 5,
-                width: 5,
+                left: 6,
+                top: 6,
+                bottom: 6,
+                width: 6,
                 borderRadius: 999,
-                backgroundColor: C.background,
-                opacity: 0.5,
+                backgroundColor: "white",
+                opacity: 0.55,
               }}
             />
             {spent !== undefined ? (
               <View
                 style={{
                   height: `${honeyLevel * 100}%`,
-                  backgroundColor: overBudget ? C.error : C.primary,
-                  opacity: overBudget ? 0.9 : 0.85,
+                  minHeight: honeyLevel > 0 ? 14 : 0,
+                  overflow: "hidden",
+                  borderBottomLeftRadius: 12,
+                  borderBottomRightRadius: 12,
                 }}
               >
-                {/* soft top edge */}
-                <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.3)" }} />
+                <LinearGradient
+                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ flex: 1 }}
+                >
+                  {/* honey shine */}
+                  <View
+                    style={{
+                      height: 8,
+                      marginTop: -1,
+                      backgroundColor: "rgba(255,255,255,0.28)",
+                      borderBottomLeftRadius: 999,
+                      borderBottomRightRadius: 999,
+                      transform: [{ scaleX: 1.15 }],
+                    }}
+                  />
+                  {honeyLevel > 0.2 && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: 12,
+                        width: 7,
+                        height: 7,
+                        borderRadius: 999,
+                        backgroundColor: "rgba(255,255,255,0.5)",
+                      }}
+                    />
+                  )}
+                  {honeyLevel > 0.35 && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: 18,
+                        top: 22,
+                        width: 3,
+                        height: 3,
+                        borderRadius: 999,
+                        backgroundColor: "rgba(255,255,255,0.45)",
+                      }}
+                    />
+                  )}
+                </LinearGradient>
               </View>
             ) : (
               <View
@@ -139,8 +197,8 @@ export function BudgetCard({
             )}
           </View>
           <Text
-            style={{ color: overBudget ? C.error : C.textSecondary }}
-            className="text-[11px] font-medium tracking-wide"
+            style={{ color: overBudget ? C.error : honeyLevel < 0.3 ? C.primary : C.textSecondary }}
+            className="text-[11px] font-bold tracking-wide"
           >
             {spent === undefined ? "—" : overBudget ? "Empty" : `${pctLeft}% left`}
           </Text>
@@ -204,36 +262,42 @@ export function BudgetCard({
             </Text>
           </View>
 
-          {/* Thin quiet track */}
+          {/* Cute prominent track */}
           {spent === undefined ? (
             <View
               style={{
-                height: 6,
+                height: 8,
                 borderRadius: 999,
                 backgroundColor: C.surface,
                 borderWidth: 1,
                 borderColor: C.border,
                 borderStyle: "dashed",
+                alignItems: "center",
+                justifyContent: "center",
               }}
-            />
+            >
+              <Text className="text-[8px] font-bold tracking-wide text-text-secondary dark:text-text-secondary-dark">FROSTED</Text>
+            </View>
           ) : (
             <View
               style={{
-                height: 6,
+                height: 8,
                 borderRadius: 999,
-                backgroundColor: C.surface,
+                backgroundColor: "#FFFFFF",
+                borderWidth: 1,
+                borderColor: C.border,
                 overflow: "hidden",
+                padding: 2,
               }}
             >
-              <View
-                style={{
-                  width: `${honeyLevel * 100}%`,
-                  height: "100%",
-                  borderRadius: 999,
-                  backgroundColor: overBudget ? C.error : C.primary,
-                  opacity: overBudget ? 0.9 : 0.7,
-                }}
-              />
+              <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
+                <LinearGradient
+                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
+                />
+              </View>
             </View>
           )}
 
