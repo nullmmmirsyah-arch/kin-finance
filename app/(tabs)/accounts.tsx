@@ -735,24 +735,6 @@ export default function Accounts() {
               HOUSEHOLD VAULT • {accounts.length} {accounts.length === 1 ? "ACCOUNT" : "ACCOUNTS"}
             </Text>
           </View>
-          {isOwner ? (
-            <Pressable
-              onPress={() => router.push("/account-form")}
-              accessibilityRole="button"
-              accessibilityLabel="Add account"
-              hitSlop={8}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 999,
-                backgroundColor: C.primary,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Feather name="plus" size={20} color={C.background} />
-            </Pressable>
-          ) : null}
         </View>
       </View>
 
