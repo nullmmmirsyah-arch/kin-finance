@@ -16,8 +16,8 @@ export function GradientCard({ children, className = "" }: Props) {
       style={[
         Shadow.card,
         {
-          borderRadius: Radius.md,
-          padding: 16,
+          borderRadius: Radius.lg,
+          padding: 20,
         },
       ]}
       className={`w-full ${className}`}
