@@ -154,6 +154,7 @@ export function PlushCategoryCard({
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
+          flexWrap: "wrap",
         },
       ]}
     >
@@ -215,11 +216,11 @@ export function PlushCategoryCard({
         </View>
       ) : null}
 
-      {/* owner actions: eye/edit/delete mini pills — 44pt strict (P2) with flexWrap for 320dp */}
+      {/* owner actions: eye/edit/delete mini pills — 40dp + hitSlop 6 = 52dp effective (48dp Android, 44pt iOS) — fits 2-col @170dp */}
       {onToggleVisibility !== undefined ||
       onEdit !== undefined ||
       onDelete !== undefined ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 3, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "flex-end", flexShrink: 1, maxWidth: "100%" }}>
           {onToggleVisibility !== undefined ? (
             <Pressable
               onPress={onToggleVisibility}
@@ -228,10 +229,10 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel={hidden ? "Show category to members" : "Hide category from members"}
               accessibilityHint={hidden ? "Makes category visible to members" : "Hides category from members"}
-              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               style={{
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -251,10 +252,10 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel={`Edit category ${name}`}
               accessibilityHint="Opens edit form"
-              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               style={{
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
@@ -274,10 +275,10 @@ export function PlushCategoryCard({
               accessibilityRole="button"
               accessibilityLabel={`Delete category ${name}`}
               accessibilityHint="Shows confirmation before deleting"
-              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               style={{
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderRadius: 999,
                 borderWidth: 2,
                 borderColor: C.plushCreamBorder,
