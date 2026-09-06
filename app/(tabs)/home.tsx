@@ -26,8 +26,6 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
-import { LinearGradient } from "expo-linear-gradient";
-import { BearFaceless } from "@/components/BearFaceless";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz } from "@/utils/date";
@@ -49,13 +47,6 @@ import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils
 
 const PAGE_SIZE = 30;
 
-function bearVariantFromName(name: string): "papa" | "mama" | "cub" {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 997;
-  const m = h % 3;
-  return m === 0 ? "papa" : m === 1 ? "mama" : "cub";
-}
-
 const BudgetPill = memo(function BudgetPill({
   pill,
   onPress,
@@ -65,16 +56,10 @@ const BudgetPill = memo(function BudgetPill({
 }) {
   const [pressed, setPressed] = useState(false);
   const C = useThemeColors();
-  const variant = bearVariantFromName(pill.name);
   const progress = pill.progress ?? 0;
   const isPrivate = pill.spent === undefined;
   const over = pill.spent !== undefined && pill.progress !== undefined && pill.progress > 1;
   const honeyLevel = isPrivate ? 0 : Math.max(1 - Math.min(progress, 1), 0);
-  const honeyColors: [string, string] = isPrivate
-    ? [C.border, C.border]
-    : over
-      ? [C.error, C.error]
-      : [C.primaryLight, C.primary];
 
   return (
     <Pressable
@@ -87,92 +72,90 @@ const BudgetPill = memo(function BudgetPill({
         Shadow.card,
         {
           backgroundColor: pressed ? C.surface : C.background,
-          borderRadius: 16,
+          borderRadius: Radius.md,
           borderWidth: 1,
           borderColor: C.border,
-          overflow: "hidden",
         },
       ]}
-      className="flex-row items-center gap-0"
+      className="flex-row items-center gap-3 px-4 py-3"
     >
-      {/* wooden lid accent */}
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, backgroundColor: C.pantryWood, opacity: 0.9 }} />
-      <View style={{ position: "absolute", top: 6, left: 0, right: 0, height: 1.5, backgroundColor: C.pantryWoodDark, opacity: 0.2 }} />
-
-      {/* mini jar */}
-      <View style={{ width: 64, alignItems: "center", paddingTop: 12, paddingBottom: 10, gap: 2 }}>
-        <View style={{ marginBottom: -8, zIndex: 2 }}>
-          <BearFaceless size={22} variant={variant} />
-        </View>
-        <View
-          style={{
-            width: 38,
-            height: 44,
-            borderRadius: 10,
-            borderWidth: 1.5,
-            borderColor: C.border,
-            backgroundColor: C.background,
-            overflow: "hidden",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View style={{ position: "absolute", left: 4, top: 4, bottom: 4, width: 5, borderRadius: 999, backgroundColor: C.background, opacity: 0.5 }} />
-          {isPrivate ? (
-            <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", opacity: 0.7 }}>
-              <Feather name="eye-off" size={12} color={C.textSecondary} />
-            </View>
-          ) : (
-            <View style={{ height: `${honeyLevel * 100}%`, minHeight: honeyLevel > 0 ? 8 : 0, overflow: "hidden" }}>
-              <LinearGradient colors={honeyColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
-                <View style={{ height: 6, marginTop: -1, backgroundColor: "rgba(255,255,255,0.22)", borderBottomLeftRadius: 999, borderBottomRightRadius: 999, transform: [{ scaleX: 1.2 }] }} />
-              </LinearGradient>
-            </View>
-          )}
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: isPrivate ? C.textSecondary : over ? C.error : C.textSecondary, letterSpacing: 0.6 }}>
-          {isPrivate ? "—" : over ? "EMPTY" : `${Math.round(honeyLevel * 100)}% left`}
-        </Text>
-      </View>
-
-      {/* content */}
-      <View className="flex-1 gap-1.5 py-3 pr-3" style={{ paddingTop: 14 }}>
-        <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-            {pill.name}
-          </Text>
+      {/* Quiet mini jar — 36px, no wood/bear, flat tint */}
+      <View
+        style={{
+          width: 36,
+          height: 42,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.background,
+          overflow: "hidden",
+          justifyContent: "flex-end",
+        }}
+      >
+        {isPrivate ? (
+          <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
+            <Feather name="eye-off" size={12} color={C.textSecondary} />
+          </View>
+        ) : (
           <View
             style={{
-              backgroundColor: isPrivate ? C.surface : over ? C.deltaNegativeBg : progress > 0.8 ? C.primaryLight : C.deltaPositiveBg,
-              borderColor: isPrivate ? C.border : over ? C.deltaNegativeBorder : progress > 0.8 ? C.primaryLight : C.deltaPositiveBorder,
-              borderWidth: 1,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 999,
+              height: `${honeyLevel * 100}%`,
+              backgroundColor: over ? C.error : C.primary,
+              opacity: over ? 0.9 : 0.7,
             }}
-          >
-            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.8, color: isPrivate ? C.textSecondary : over ? C.error : progress > 0.8 ? C.primary : C.success }}>
-              {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST EMPTY" : "ON TRACK"}
+          />
+        )}
+      </View>
+
+      <View className="flex-1 gap-1.5">
+        <View className="flex-row items-center gap-2">
+          <Text numberOfLines={1} className="flex-1 text-sm font-medium text-text-primary dark:text-text-primary-dark">
+            {pill.name}
+          </Text>
+          <View className="flex-row items-center gap-1.5">
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                backgroundColor: isPrivate ? C.textSecondary : over ? C.error : progress > 0.8 ? C.primary : C.success,
+                opacity: 0.8,
+              }}
+            />
+            <Text
+              style={{ fontSize: 10, fontWeight: "600", letterSpacing: 0.6 }}
+              className={over ? "text-error dark:text-error-dark" : "text-text-secondary dark:text-text-secondary-dark"}
+            >
+              {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST EMPTY" : `${Math.round(honeyLevel * 100)}% LEFT`}
             </Text>
           </View>
         </View>
-        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-          {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted jar • details hidden"}
+        <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+          {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted • hidden"}
         </Text>
         {pill.progress !== undefined ? (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.background, borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
-            <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.border, overflow: "hidden" }}>
-              <LinearGradient
-                colors={honeyColors as [string, string]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
-              />
-            </View>
+          <View style={{ height: 6, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
+            <View
+              style={{
+                width: `${honeyLevel * 100}%`,
+                height: "100%",
+                borderRadius: 999,
+                backgroundColor: over ? C.error : C.primary,
+                opacity: over ? 0.9 : 0.65,
+              }}
+            />
           </View>
         ) : (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 8, letterSpacing: 0.6, color: C.textSecondary }}>PRIVATE JAR</Text>
-          </View>
+          <View
+            style={{
+              height: 6,
+              borderRadius: 999,
+              backgroundColor: C.surface,
+              borderWidth: 1,
+              borderColor: C.border,
+              borderStyle: "dashed",
+            }}
+          />
         )}
       </View>
     </Pressable>
@@ -929,12 +912,14 @@ export default function Home() {
                         <View className="mt-6">
                           <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center gap-2">
-                              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: "#FEF3C7", borderWidth: 1, borderColor: "#E7E5E4", alignItems: "center", justifyContent: "center" }}>
-                                <Feather name="archive" size={14} color="#92400E" />
+                              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="archive" size={14} color={C.textSecondary} />
                               </View>
                               <View>
-                                <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">Pantry</Text>
-                                <Text className="text-[11px] font-bold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">HONEY JARS • {budgetPills.length > 0 ? `${budgetPills.length} jars` : "BEAR FAMILY"}</Text>
+                                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Budgets</Text>
+                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+                                  {budgetPills.length > 0 ? `${budgetPills.length} jars` : "Honey pantry"}
+                                </Text>
                               </View>
                             </View>
                             {budgetPills.length > 0 && (
@@ -943,8 +928,8 @@ export default function Home() {
                                 accessibilityRole="button"
                                 className="min-h-12 flex-row items-center gap-1"
                               >
-                                <Text className="text-sm font-semibold text-primary dark:text-primary-dark">View Pantry</Text>
-                                <Feather name="chevron-right" size={16} color={C.primary} />
+                                <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">View all</Text>
+                                <Feather name="chevron-right" size={14} color={C.textSecondary} />
                               </Pressable>
                             )}
                           </View>
@@ -955,14 +940,13 @@ export default function Home() {
                               ))}
                             </View>
                           ) : (
-                            <View style={[Shadow.card, { backgroundColor: C.background, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: "hidden" }]}>
-                              <View style={{ height: 8, backgroundColor: "#92400E" }} />
+                            <View style={{ backgroundColor: C.background, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
                               <View className="px-2 py-2">
                                 <EmptyState
                                   icon="archive"
-                                  title="Pantry is empty"
-                                  description="Fill your first honey jar — set a budget for each expense category."
-                                  actionLabel="Fill First Jar"
+                                  title="No budgets yet"
+                                  description="Set a budget for each category to track your spending."
+                                  actionLabel="Set Budget"
                                   onAction={() => router.push("/budget-form")}
                                 />
                               </View>
