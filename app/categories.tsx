@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   Pressable,
+  ScrollView,
   Text,
   useWindowDimensions,
   View,
@@ -16,7 +17,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Chip } from "@/components/Chip";
-import { PlushCategoryCard } from "@/components/CategoryCard";
+import { CategoryCircle } from "@/components/CategoryCard";
 import { Bear } from "@/components/Bear";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
@@ -95,6 +96,14 @@ export default function Categories() {
       : categories.filter((c) => c.type === filter);
   }, [categories, filter]);
 
+  const { visible, hidden } = useMemo(() => {
+    if (visibleCategories === null) return { visible: null, hidden: null } as any;
+    return {
+      visible: visibleCategories.filter((c) => !c.hidden),
+      hidden: visibleCategories.filter((c) => c.hidden),
+    };
+  }, [visibleCategories]);
+
   const handleToggleVisibility = useCallback(
     (category: { _id: Id<"categories">; hidden: boolean }) => {
       updateCategory({ categoryId: category._id, hidden: !category.hidden })
@@ -135,6 +144,23 @@ export default function Categories() {
     },
     [removeCategory, show],
   );
+
+  const handleBulkDeleteHidden = useCallback(() => {
+    if (!hidden || hidden.length === 0) return;
+    Alert.alert(`Delete ${hidden.length} hidden categories?`, "Cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const results = await Promise.allSettled(hidden.map((c: any) => removeCategory({ categoryId: c._id })));
+          const ok = results.filter((r) => r.status === "fulfilled").length;
+          const fail = results.length - ok;
+          show(fail ? `${ok} deleted, ${fail} failed (in use)` : `${ok} hidden categories deleted`);
+        },
+      },
+    ]);
+  }, [hidden, removeCategory, show]);
 
   if (result === undefined) {
     return (
@@ -289,47 +315,75 @@ export default function Categories() {
           <ReservedFooter C={C} />
         </View>
       ) : (
-        <FlatList
-          key={numColumns}
-          className="mt-4 flex-1"
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 28 }}
-          columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
-          numColumns={numColumns}
-          data={visibleCategories ?? []}
-          keyExtractor={(item) => item._id}
-          initialNumToRender={12}
-          windowSize={7}
-          maxToRenderPerBatch={12}
-          updateCellsBatchingPeriod={40}
-          removeClippedSubviews
-          ListEmptyComponent={null}
-          renderItem={({ item }) =>
-            isOwner ? (
-              <PlushCategoryCard
-                name={item.name}
-                type={item.type}
-                icon={item.icon}
-                hidden={item.hidden}
-                onToggleVisibility={() => handleToggleVisibility(item)}
-                onEdit={() =>
-                  router.push({
-                    pathname: "/category-form",
-                    params: { id: item._id },
-                  })
-                }
-                onDelete={() => handleDelete(item)}
+        <ScrollView style={{ flex: 1, marginTop: 16 }} contentContainerStyle={{ gap: 24, paddingHorizontal: 16, paddingBottom: 28 }}>
+          {/* Visible */}
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: "800", color: C.textPrimary }}>Visible</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: C.textSecondary }}>(Long press to reorder)</Text>
+              <Text style={{ fontSize: 12, color: C.textSecondary }}>({visible?.length ?? 0})</Text>
+            </View>
+            {visible && visible.length > 0 ? (
+              <FlatList
+                key={`v-${numColumns}`}
+                data={visible}
+                numColumns={numColumns}
+                columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
+                contentContainerStyle={{ gap: 8 }}
+                scrollEnabled={false}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <CategoryCircle
+                    name={item.name}
+                    type={item.type}
+                    icon={item.icon}
+                    hidden={false}
+                    onToggleVisibility={isOwner ? () => handleToggleVisibility(item) : undefined}
+                    onDelete={isOwner ? () => handleDelete(item) : undefined}
+                  />
+                )}
               />
             ) : (
-              <PlushCategoryCard
-                name={item.name}
-                type={item.type}
-                icon={item.icon}
-                hidden={item.hidden}
+              <Text style={{ fontSize: 12, color: C.textSecondary, fontStyle: "italic" }}>No visible categories</Text>
+            )}
+          </View>
+          {/* Hidden — only when hidden.length>0 */}
+          {hidden && hidden.length > 0 && (
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: C.textPrimary }}>Hidden</Text>
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>({hidden.length})</Text>
+                </View>
+                {isOwner && (
+                  <Pressable onPress={handleBulkDeleteHidden} accessibilityLabel="Delete hidden categories">
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: C.error, textDecorationLine: "underline" }}>Delete hidden categories</Text>
+                  </Pressable>
+                )}
+              </View>
+              <FlatList
+                key={`h-${numColumns}`}
+                data={hidden}
+                numColumns={numColumns}
+                columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
+                contentContainerStyle={{ gap: 8 }}
+                scrollEnabled={false}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <CategoryCircle
+                    name={item.name}
+                    type={item.type}
+                    icon={item.icon}
+                    hidden={true}
+                    onToggleVisibility={isOwner ? () => handleToggleVisibility(item) : undefined}
+                    onDelete={isOwner ? () => handleDelete(item) : undefined}
+                  />
+                )}
               />
-            )
-          }
-          ListFooterComponent={<ReservedFooter C={C} />}
-        />
+            </View>
+          )}
+          <ReservedFooter C={C} />
+        </ScrollView>
       )}
     </SafeAreaView>
   );
