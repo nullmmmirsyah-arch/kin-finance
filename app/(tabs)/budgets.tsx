@@ -81,6 +81,7 @@ export default function Budgets() {
     : summary.budgeted > 0
       ? summary.spent / summary.budgeted
       : 0;
+  const overallHoneyLevel = summary.hasRedacted ? 0 : Math.max(1 - overallProgress, 0);
   const remainingOverall = summary.budgeted - summary.spent;
 
   const handlePrevMonth = useCallback(() => {
@@ -308,7 +309,7 @@ export default function Budgets() {
                     style={{ color: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : overallProgress > 0.8 ? C.primary : C.success }}
                     className="text-[11px] font-bold tracking-widest"
                   >
-                    {summary.hasRedacted ? "SOME PRIVATE" : overallProgress > 1 ? "OVERFLOW" : overallProgress > 0.8 ? "ALMOST FULL" : "ON TRACK"}
+                    {summary.hasRedacted ? "SOME PRIVATE" : overallProgress > 1 ? "OVERFLOW" : overallProgress > 0.8 ? "ALMOST EMPTY" : "ON TRACK"}
                   </Text>
                 </View>
               </View>
@@ -396,13 +397,13 @@ export default function Budgets() {
                         colors={overallProgress > 1 ? [C.error, C.error] : [C.primaryLight, C.primary]}
                         start={{ x: 0, y: 0.5 }}
                         end={{ x: 1, y: 0.5 }}
-                        style={{ width: `${Math.min(overallProgress, 1) * 100}%`, flex: 1, borderRadius: 999 }}
+                        style={{ width: `${overallHoneyLevel * 100}%`, flex: 1, borderRadius: 999 }}
                       />
                     </View>
                   </View>
                   <View className="flex-row justify-between">
                     <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
-                      {Math.round(overallProgress * 100)}% honey filled
+                      {overallProgress > 1 ? "Empty • overflow" : `${Math.round(overallHoneyLevel * 100)}% honey left`}
                     </Text>
                     <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
                       {budgets.length} categories • {formatMonthLabel(periodStart, timezone)}

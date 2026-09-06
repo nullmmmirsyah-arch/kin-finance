@@ -36,9 +36,11 @@ export function BudgetCard({
   const C = useThemeColors();
   const [pressed, setPressed] = useState(false);
   const overBudget = spent !== undefined && spent > budgetAmount;
-  const progress =
+  const progressUsed =
     spent === undefined ? 0 : budgetAmount > 0 ? Math.min(spent / budgetAmount, 1) : spent > 0 ? 1 : 0;
-  const pct = Math.round(progress * 100);
+  // honey drains as you spend: full when unused, empty when spent >= budget
+  const honeyLevel = spent === undefined ? 0 : Math.max(1 - progressUsed, 0);
+  const pct = Math.round(honeyLevel * 100);
   const remaining = spent !== undefined ? budgetAmount - spent : budgetAmount;
   const variant = bearVariantFromName(categoryName);
 
@@ -49,15 +51,15 @@ export function BudgetCard({
         ? [C.error, C.error]
         : [C.primaryLight, C.primary];
 
-  // status pill
+  // status pill — thresholds based on spent, not honey remaining
   const statusLabel =
-    spent === undefined ? "Private" : overBudget ? "Over" : pct >= 80 ? "Almost" : "On track";
+    spent === undefined ? "Private" : overBudget ? "Over" : progressUsed >= 0.8 ? "Almost empty" : "On track";
   const statusBg =
     spent === undefined
       ? C.surface
       : overBudget
         ? `${C.error}14`
-        : pct >= 80
+        : progressUsed >= 0.8
           ? C.primaryLight
           : `${C.success}14`;
   const statusColor =
@@ -65,7 +67,7 @@ export function BudgetCard({
       ? C.textSecondary
       : overBudget
         ? C.error
-        : pct >= 80
+        : progressUsed >= 0.8
           ? C.primary
           : C.success;
 
@@ -156,12 +158,12 @@ export function BudgetCard({
                 opacity: 0.45,
               }}
             />
-            {/* honey fill */}
+            {/* honey fill — drains as you spend */}
             {spent !== undefined ? (
               <View
                 style={{
-                  height: `${progress * 100}%`,
-                  minHeight: progress > 0 ? 12 : 0,
+                  height: `${honeyLevel * 100}%`,
+                  minHeight: honeyLevel > 0 ? 12 : 0,
                   overflow: "hidden",
                   borderBottomLeftRadius: 12,
                   borderBottomRightRadius: 12,
@@ -184,8 +186,8 @@ export function BudgetCard({
                       transform: [{ scaleX: 1.2 }],
                     }}
                   />
-                  {/* bubbles */}
-                  {progress > 0.15 && (
+                  {/* bubbles — show when jar still has honey */}
+                  {honeyLevel > 0.15 && (
                     <>
                       <View
                         style={{
@@ -264,10 +266,10 @@ export function BudgetCard({
             }}
           />
           <Text
-            style={{ color: overBudget ? C.error : pct >= 80 ? C.primary : C.textSecondary }}
+            style={{ color: overBudget ? C.error : progressUsed >= 0.8 ? C.primary : C.textSecondary }}
             className="mt-1 text-[11px] font-bold tracking-widest"
           >
-            {spent === undefined ? "—" : `${pct}%`}
+            {spent === undefined ? "—" : overBudget ? "EMPTY" : `${pct}% left`}
           </Text>
         </View>
 
@@ -355,7 +357,7 @@ export function BudgetCard({
             <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">/ {formatNumber(budgetAmount)}</Text>
             {spent !== undefined && !overBudget && (
               <Text className="ml-auto text-xs font-medium" style={{ color: C.success }}>
-                • {(progress * 100).toFixed(0)}% filled
+                • {(honeyLevel * 100).toFixed(0)}% honey left
               </Text>
             )}
             {overBudget && (
@@ -402,7 +404,7 @@ export function BudgetCard({
                   colors={honeyColors as [string, string]}
                   start={{ x: 0, y: 0.5 }}
                   end={{ x: 1, y: 0.5 }}
-                  style={{ width: `${progress * 100}%`, flex: 1, borderRadius: 999 }}
+                  style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
                 />
               </View>
             </View>

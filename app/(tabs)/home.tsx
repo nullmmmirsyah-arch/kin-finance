@@ -67,15 +67,14 @@ const BudgetPill = memo(function BudgetPill({
   const C = useThemeColors();
   const variant = bearVariantFromName(pill.name);
   const progress = pill.progress ?? 0;
-  const over = pill.spent !== undefined && pill.progress !== undefined && pill.progress > 1;
   const isPrivate = pill.spent === undefined;
+  const over = pill.spent !== undefined && pill.progress !== undefined && pill.progress > 1;
+  const honeyLevel = isPrivate ? 0 : Math.max(1 - Math.min(progress, 1), 0);
   const honeyColors: [string, string] = isPrivate
     ? [C.border, C.border]
     : over
-      ? ["#F87171", "#991B1B"]
-      : progress > 0.8
-        ? ["#FDE68A", "#92400E"]
-        : ["#FDE68A", "#92400E"];
+      ? [C.error, C.error]
+      : [C.primaryLight, C.primary];
 
   return (
     <Pressable
@@ -97,8 +96,8 @@ const BudgetPill = memo(function BudgetPill({
       className="flex-row items-center gap-0"
     >
       {/* wooden lid accent */}
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, backgroundColor: "#92400E", opacity: 0.9 }} />
-      <View style={{ position: "absolute", top: 6, left: 0, right: 0, height: 1.5, backgroundColor: "#78350F", opacity: 0.2 }} />
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, backgroundColor: C.pantryWood, opacity: 0.9 }} />
+      <View style={{ position: "absolute", top: 6, left: 0, right: 0, height: 1.5, backgroundColor: C.pantryWoodDark, opacity: 0.2 }} />
 
       {/* mini jar */}
       <View style={{ width: 64, alignItems: "center", paddingTop: 12, paddingBottom: 10, gap: 2 }}>
@@ -111,19 +110,19 @@ const BudgetPill = memo(function BudgetPill({
             height: 44,
             borderRadius: 10,
             borderWidth: 1.5,
-            borderColor: isPrivate ? C.border : "#E7E5E4",
-            backgroundColor: "rgba(255,255,255,0.9)",
+            borderColor: C.border,
+            backgroundColor: C.background,
             overflow: "hidden",
             justifyContent: "flex-end",
           }}
         >
-          <View style={{ position: "absolute", left: 4, top: 4, bottom: 4, width: 5, borderRadius: 999, backgroundColor: "white", opacity: 0.5 }} />
+          <View style={{ position: "absolute", left: 4, top: 4, bottom: 4, width: 5, borderRadius: 999, backgroundColor: C.background, opacity: 0.5 }} />
           {isPrivate ? (
             <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", opacity: 0.7 }}>
               <Feather name="eye-off" size={12} color={C.textSecondary} />
             </View>
           ) : (
-            <View style={{ height: `${Math.min(progress * 100, 100)}%`, minHeight: progress > 0 ? 8 : 0, overflow: "hidden" }}>
+            <View style={{ height: `${honeyLevel * 100}%`, minHeight: honeyLevel > 0 ? 8 : 0, overflow: "hidden" }}>
               <LinearGradient colors={honeyColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 <View style={{ height: 6, marginTop: -1, backgroundColor: "rgba(255,255,255,0.22)", borderBottomLeftRadius: 999, borderBottomRightRadius: 999, transform: [{ scaleX: 1.2 }] }} />
               </LinearGradient>
@@ -131,7 +130,7 @@ const BudgetPill = memo(function BudgetPill({
           )}
         </View>
         <Text style={{ fontSize: 10, fontWeight: "700", color: isPrivate ? C.textSecondary : over ? C.error : C.textSecondary, letterSpacing: 0.6 }}>
-          {isPrivate ? "—" : `${Math.round(Math.min(progress, 1) * 100)}%`}
+          {isPrivate ? "—" : over ? "EMPTY" : `${Math.round(honeyLevel * 100)}% left`}
         </Text>
       </View>
 
@@ -143,16 +142,16 @@ const BudgetPill = memo(function BudgetPill({
           </Text>
           <View
             style={{
-              backgroundColor: isPrivate ? C.surface : over ? "#FEE2E2" : progress > 0.8 ? "#FEF3C7" : "#ECFDF5",
-              borderColor: isPrivate ? C.border : over ? "#FECACA" : progress > 0.8 ? "#FDE68A" : "#A7F3D0",
+              backgroundColor: isPrivate ? C.surface : over ? C.deltaNegativeBg : progress > 0.8 ? C.primaryLight : C.deltaPositiveBg,
+              borderColor: isPrivate ? C.border : over ? C.deltaNegativeBorder : progress > 0.8 ? C.primaryLight : C.deltaPositiveBorder,
               borderWidth: 1,
               paddingHorizontal: 6,
               paddingVertical: 2,
               borderRadius: 999,
             }}
           >
-            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.8, color: isPrivate ? C.textSecondary : over ? C.error : progress > 0.8 ? "#92400E" : C.success }}>
-              {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST" : "ON TRACK"}
+            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 0.8, color: isPrivate ? C.textSecondary : over ? C.error : progress > 0.8 ? C.primary : C.success }}>
+              {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST EMPTY" : "ON TRACK"}
             </Text>
           </View>
         </View>
@@ -160,13 +159,13 @@ const BudgetPill = memo(function BudgetPill({
           {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted jar • details hidden"}
         </Text>
         {pill.progress !== undefined ? (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: "#FFFBF5", borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
+          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.background, borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
             <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.border, overflow: "hidden" }}>
               <LinearGradient
                 colors={honeyColors as [string, string]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
-                style={{ width: `${Math.min(progress * 100, 100)}%`, flex: 1, borderRadius: 999 }}
+                style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
               />
             </View>
           </View>
