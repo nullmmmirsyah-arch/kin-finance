@@ -298,5 +298,85 @@ export function PlushCategoryCard({
   );
 }
 
+function CategoryBadge({
+  type,
+  onPress,
+  label,
+}: {
+  type: "minus" | "plus" | "close";
+  onPress?: () => void;
+  label: string;
+}) {
+  const C = useThemeColors();
+  const bg = type === "close" ? "#FCA5A5" : "#FACC15";
+  const icon = type === "minus" ? "minus" : type === "plus" ? "plus" : "x";
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: 999,
+        backgroundColor: bg,
+        borderWidth: 2,
+        borderColor: C.cardBorder,
+        alignItems: "center",
+        justifyContent: "center",
+        position: "absolute",
+        top: -4,
+        ...(type === "close" ? { right: -4 } : { left: -4 }),
+      }}
+    >
+      <Feather name={icon as never} size={10} color="#1C1917" />
+    </Pressable>
+  );
+}
+
+export function CategoryCircle({
+  name,
+  icon,
+  hidden,
+  onToggleVisibility,
+  onDelete,
+}: Props) {
+  const C = useThemeColors();
+  return (
+    <View style={{ width: 56 + 8 * 2, alignItems: "center", gap: 6 }}>
+      <View style={{ width: 56, height: 56, position: "relative" }}>
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 999,
+            backgroundColor: C.plushPeek,
+            borderWidth: 2,
+            borderColor: C.cardBorder,
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          <CategoryIcon name={icon} size={32} />
+        </View>
+        {onToggleVisibility && hidden === false && (
+          <CategoryBadge type="minus" onPress={onToggleVisibility} label={`Hide category ${name}`} />
+        )}
+        {onToggleVisibility && hidden === true && (
+          <CategoryBadge type="plus" onPress={onToggleVisibility} label={`Show category ${name}`} />
+        )}
+        {onDelete && hidden === true && (
+          <CategoryBadge type="close" onPress={onDelete} label={`Delete category ${name}`} />
+        )}
+      </View>
+      <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: "600", color: C.textPrimary, textAlign: "center" }}>
+        {name}
+      </Text>
+    </View>
+  );
+}
+
 export const CategoryCardPlush = PlushCategoryCard;
 export const PlushCategoryChip = PlushCategoryCard;
