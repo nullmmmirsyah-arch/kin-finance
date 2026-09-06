@@ -65,13 +65,28 @@ export function BudgetCard({
         accessibilityLabel={`${categoryName} budget, ${spent !== undefined ? `${formatNumber(spent)} of ${formatNumber(budgetAmount)}` : "private"}`}
         className="flex-row gap-4"
       >
-        {/* Quiet jar — small, flat, no wood/bear */}
-        <View style={{ width: 52, alignItems: "center", gap: 6 }}>
+        {/* Quiet jar — flat lid, no wood */}
+        <View style={{ width: 52, alignItems: "center", gap: 5 }}>
+          {/* flat neutral lid */}
+          <View
+            style={{
+              width: 32,
+              height: 7,
+              borderRadius: 3,
+              backgroundColor: C.surface,
+              borderWidth: 1,
+              borderColor: C.border,
+              marginBottom: -3,
+              zIndex: 1,
+            }}
+          />
           <View
             style={{
               width: 44,
               height: 54,
               borderRadius: 10,
+              borderTopLeftRadius: 6,
+              borderTopRightRadius: 6,
               borderWidth: 1,
               borderColor: C.border,
               backgroundColor: C.background,
