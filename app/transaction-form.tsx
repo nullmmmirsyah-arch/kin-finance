@@ -549,10 +549,10 @@ export default function TransactionForm() {
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[28px] font-bold tracking-[-0.02em] leading-none text-text-primary dark:text-text-primary-dark">
               {isEdit ? "Edit Transaction" : "New Transaction"}
             </Text>
-            <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               {type === "transfer" ? "Move money between accounts" : type === "income" ? "Record incoming money" : "Track an expense"}
             </Text>
           </View>
@@ -573,14 +573,14 @@ export default function TransactionForm() {
         >
           {error ? (
             <View className="rounded-2xl bg-error/10 px-4 py-3">
-              <Text className="text-sm font-medium text-error dark:text-error-dark">{error}</Text>
+              <Text className="text-[13px] leading-4 tracking-wide font-medium text-error dark:text-error-dark">{error}</Text>
             </View>
           ) : null}
 
           <View className="rounded-2xl border border-border bg-background px-4 py-4 dark:border-border-dark dark:bg-background-dark">
             <View className="gap-4">
               <View className="gap-1.5">
-                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                   Type
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
@@ -604,10 +604,10 @@ export default function TransactionForm() {
                 >
                   <Feather name="repeat" size={16} color={C.primary} />
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+                    <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-primary dark:text-primary-dark">
                       Repeat last
                     </Text>
-                    <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                    <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                       {`Copies ${lastTransaction.type}, ${formatNumber(lastTransaction.amount)} — tap to reuse`}
                     </Text>
                   </View>
@@ -615,7 +615,7 @@ export default function TransactionForm() {
               ) : null}
 
               <View className="gap-1.5">
-                <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                   Amount
                 </Text>
                 <Input
@@ -627,7 +627,7 @@ export default function TransactionForm() {
                   amount
                   error={amountError}
                 />
-                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                   Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
                 </Text>
               </View>
@@ -712,17 +712,17 @@ export default function TransactionForm() {
                   onChange={setDate}
                   error={dateError}
                 />
-                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                   Today&apos;s date is pre-filled — you can backdate transactions
                 </Text>
               </View>
 
               <View className="gap-1.5">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                  <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                     Note (optional)
                   </Text>
-                  <Text className={`text-xs ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
+                  <Text className={`text-[13px] leading-4 tracking-wide ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
                     {note.length}/{NOTE_MAX_LENGTH}
                   </Text>
                 </View>

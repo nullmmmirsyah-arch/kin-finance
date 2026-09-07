@@ -139,7 +139,7 @@ export default function Onboarding() {
                   }}
                 >
                   <Text
-                    className={`text-sm font-medium ${
+                    className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
                       mode === m.id
                         ? "text-white"
                         : "text-text-secondary dark:text-text-secondary-dark"
@@ -155,7 +155,7 @@ export default function Onboarding() {
               {mode === "create" ? (
                 <>
                   <View className="w-full gap-2 rounded-[16px] border border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
-                    <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                    <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                       What&apos;s a Household?
                     </Text>
                     <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
@@ -205,7 +205,7 @@ export default function Onboarding() {
               accessibilityRole="button"
               className="min-h-12 items-center justify-center py-2"
             >
-              <Text className="text-sm font-medium text-primary dark:text-primary-dark">
+              <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-primary dark:text-primary-dark">
                 Back to login
               </Text>
             </Pressable>

@@ -39,10 +39,10 @@ export function EmptyState({
         <Feather name={icon} size={36} color={C.primary} />
       </View>
       <View className="items-center gap-1.5">
-        <Text className="text-center text-lg font-semibold text-text-primary dark:text-text-primary-dark">
+        <Text className="text-center text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
           {title}
         </Text>
-        <Text className="max-w-[280px] text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+        <Text className="max-w-[280px] text-center text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
           {description}
         </Text>
       </View>

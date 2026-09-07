@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kin Finance — Impeccable Typeset Audit</title>
+<style>
+  :root{
+    --paper:#FFFBF5; --surface:#FEF3C7; --ink:#1C1917; --stone:#6E675F; --border:#E7E5E4;
+    --primary:#92400E; --amber:#D97706; --green:#065F46; --red:#991B1B;
+    --radius-md:16px; --radius-lg:24px; --radius-sm:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--primary);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 120px}
+  .hero{background:linear-gradient(135deg,#FFFBF5 0%,#FEF3C7 100%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 22px 18px;box-shadow:0 2px 16px rgba(0,0,0,.04)}
+  .kicker{font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--stone);display:flex;gap:10px;align-items:center}
+  .kicker i{width:28px;height:28px;border-radius:999px;background:#92400E14;border:1px solid #92400E22;display:grid;place-items:center;font-style:normal}
+  h1{font-size:28px;letter-spacing:-.02em;line-height:1;margin:10px 0 6px;font-weight:800}
+  .sub{font-size:13px;line-height:1.5;letter-spacing:.04em;color:var(--stone);max-width:70ch}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:999px;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:13px}
+  .stat b{font-size:13px}
+  .dot{width:8px;height:8px;border-radius:999px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .card h3{margin:0 0 8px;font-size:18px;letter-spacing:-.02em;line-height:1.33;font-weight:700}
+  .micro{font-size:11px;letter-spacing:.08em;font-weight:600;color:var(--stone)}
+  .scaleRow{display:flex;align-items:baseline;gap:14px;padding:10px 0;border-bottom:1px solid #f1ebe0}
+  .scaleRow:last-child{border:0}
+  .scaleMeta{width:150px;flex-shrink:0}
+  .scaleMeta b{display:block;font-size:13px}
+  .scaleMeta span{font-size:12px;color:var(--stone)}
+  .preview{flex:1}
+  .tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700;letter-spacing:.06em}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)}
+  table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:16px;background:#fff}
+  th,td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid #f1ebe0}
+  th{font-size:11px;letter-spacing:.08em;color:var(--stone);background:#FFFBF544}
+  tr:last-child td{border:0}
+  .pill{border:1px solid var(--border);border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700;letter-spacing:.04em;background:#fff}
+  .pill.ok{border-color:#065F4633;background:#065F4610;color:#065F46}
+  .pill.warn{border-color:#D9770633;background:#D9770610;color:#92400E}
+  .issue{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}
+  .issueHead{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;align-items:center;cursor:pointer}
+  .issueHead h4{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .issueBody{padding:0 16px 16px;display:none;border-top:1px solid #f1ebe0;background:#FFFBF52e}
+  .issue.open .issueBody{display:block}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;overflow:auto}
+  .choice{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .choice button{flex:1;min-width:220px;border:1px solid var(--border);background:#fff;border-radius:14px;padding:12px;text-align:left;cursor:pointer}
+  .choice button.sel{border-color:var(--primary);background:#92400E0d;box-shadow:0 0 0 2px #92400E14}
+  .choice button b{display:block;font-size:13px;margin-bottom:4px}
+  .choice button span{font-size:12px;color:var(--stone);line-height:1.4;display:block}
+  .ex{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:700px){.ex{grid-template-columns:1fr}}
+  .exBox{border:1px solid var(--border);border-radius:14px;background:#fff;padding:14px}
+  .exBox h5{margin:0 0 8px;font-size:11px;letter-spacing:.08em;color:var(--stone)}
+  .bar{height:6px;border-radius:999px;background:#fff;border:1px solid var(--border);overflow:hidden;padding:2px}
+  .bar i{display:block;height:100%;border-radius:999px;background:var(--primary)}
+  .tabs{display:flex;gap:8px;overflow:auto;padding-bottom:6px}
+  .tabs button{white-space:nowrap;border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
+  .tabs button.active{background:var(--primary);color:#FFFBF5;border-color:var(--primary)}
+  .pagePane{display:none}
+  .pagePane.active{display:block}
+  .stickyBar{position:fixed;left:12px;right:12px;bottom:12px;background:#1C1917;color:#FAF9F7;border-radius:18px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:1080px;margin:0 auto}
+  .stickyBar b{font-size:13px}
+  .stickyBar code{font-size:12px;background:#292524;border:1px solid #44403C;border-radius:999px;padding:6px 10px;color:#FAF9F7}
+  .btn{border:0;border-radius:999px;padding:10px 14px;font-weight:700;cursor:pointer}
+  .btnPrimary{background:#F59E0B;color:#1C1917}
+  .btnGhost{background:#292524;color:#FAF9F7;border:1px solid #44403C}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--stone)}
+  .legend i{width:10px;height:10px;border-radius:999px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker"><i>◐</i> IMPECCABLE TYPESET • WARM LEDGER • SDK 54 <span class="pill ok" style="margin-left:auto">PRD + DESIGN.md synced</span></div>
+    <h1>Kin Finance — Typeset Audit Interaktif</h1>
+    <p class="sub">Audit konsistensi tipografi di <b>17 halaman/komponen</b> vs source of truth <code>constants/theme.ts:94</code> + <code>DESIGN.md:24</code>. Klik issue untuk lihat contoh before → after. Pilih opsi A/B di tiap issue — jawabanmu terkumpul di bar bawah untuk kamu copy-paste kembali ke chat.</p>
+    <div class="stats">
+      <div class="stat"><span class="dot" style="background:var(--green)"></span><b>11 ok</b> heading 28/18/16 konsisten</div>
+      <div class="stat"><span class="dot" style="background:var(--amber)"></span><b>7 butuh keputusan</b> belum di-edit</div>
+      <div class="stat"><span class="dot" style="background:var(--stone)"></span><b>read-only</b> file belum diubah — menunggu jawabanmu</div>
+    </div>
+    <div class="legend" style="margin-top:14px">
+      <span><i style="background:var(--green)"></i> ok</span>
+      <span><i style="background:var(--amber)"></i> butuh keputusan</span>
+      <span><i style="background:var(--red)"></i> tidak konsisten</span>
+      <span style="margin-left:auto">Last updated: 2026-09-07 • Scope: <code>app/**</code> <code>components/**</code> <code>tailwind.config.js</code></span>
+    </div>
+  </div>
+
+  <div style="height:14px"></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="micro">SOURCE OF TRUTH</div>
+      <h3>Skala yang sudah baked</h3>
+      <div class="scaleRow"><div class="scaleMeta"><b>Display 28 • 700</b><span>1.0 • -0.02em • hero</span></div><div class="preview" style="font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1">12.345.678</div><span class="tag ok">theme.ts:95 • DESIGN.md:27</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Heading 18 • 700</b><span>1.33 • -0.02em</span></div><div class="preview" style="font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.33">Transactions • Budgets</div><span class="tag ok">theme.ts:96</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Subheading 15 • 500</b><span>1.33 • -0.01em</span></div><div class="preview" style="font-size:15px;font-weight:500;letter-spacing:-.01em">Hi, Aisyah! • 20 Aug – 3 Sep</div><span class="tag ok">theme.ts:97</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Body 16 • 500/600</b><span>1.25 • -0.01em</span></div><div class="preview" style="font-size:16px;font-weight:500">BCA • Bills — 1.250.000</div><span class="tag ok">TransactionCard.tsx:95</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Label 14 • 600</b><span>1.4 • 0.02em</span></div><div class="preview" style="font-size:14px;font-weight:600;letter-spacing:.02em">View all • Filter • Edit</div><span class="tag warn">Button: 16px ≠ spec</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Detail 13 • 400</b><span>1.33 • 0.04em</span></div><div class="preview" style="font-size:13px;letter-spacing:.04em;color:#6E675F">Opening 0 • Spent / Budgeted</div><span class="tag ok">BudgetCard:237</span></div>
+      <div class="scaleRow"><div class="scaleMeta"><b>Micro 11 • 600</b><span>1.0 • 0.08em</span></div><div class="preview" style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#6E675F">PERIOD BALANCE • VAULT TOTAL</div><span class="tag warn">tracking 1.2px mixed</span></div>
+    </div>
+    <div class="card">
+      <div class="micro">CONSISTENCY MATRIX</div>
+      <h3>Dokumen vs Kode vs Tailwind</h3>
+      <table>
+        <tr><th>Sumber</th><th>Status</th><th>Catatan</th></tr>
+        <tr><td><code>constants/theme.ts:94</code> FontSize</td><td><span class="pill ok">sinkron</span></td><td>28/18/15/16/14/13/12/11 sesuai DESIGN</td></tr>
+        <tr><td><code>DESIGN.md:24</code> frontmatter</td><td><span class="pill ok">sinkron</span></td><td>lengkap dengan lineHeight & tracking</td></tr>
+        <tr><td><code>tailwind.config.js:8</code></td><td><span class="pill warn">parsial</span></td><td>hanya <code>display:28px 1.2</code> — heading/body/label belum di-declare → paksa <code>text-[18px]</code> arbitrary</td></tr>
+        <tr><td><code>PRD.md:4</code> changelog</td><td><span class="pill ok">ok</span></td><td>sebut "28/18/16 bigger-feel" baked</td></tr>
+        <tr><td><code>PRD.md §3.9</code> Design System</td><td><span class="pill warn">perlu sync</span></td><td>hanya referensi singkat, belum list skala penuh seperti DESIGN.md</td></tr>
+      </table>
+      <div class="micro" style="margin-top:10px">Rekomendasi docs: tambah <code>fontSize</code> lengkap di tailwind + mirror tabel skala di PRD §3.9 agar PRD/DESIGN/theme tiga-tiganya identik.</div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <span class="pill">Babel: nativewind ✓</span>
+        <span class="pill">Dark: useThemeColors() ✓</span>
+        <span class="pill">Pressable: useState (no style fn) ✓</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div class="card">
+    <div class="micro">PER-PAGE SNAPSHOT — tap tab untuk lihat contoh</div>
+    <h3 style="margin-top:4px">Konsistensi per halaman (17 files)</h3>
+    <div class="tabs" id="tabs"></div>
+    <div id="panes"></div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div class="card">
+    <div class="micro">7 KEPUTUSAN — klik untuk buka, pilih A/B</div>
+    <h3>Tiap perubahan butuh persetujuanmu dulu</h3>
+    <p class="sub" style="margin:6px 0 12px">Semua issue di bawah adalah <b>read-only</b>. Tidak ada file yang diubah sampai kamu jawab di chat. Pilihanmu auto-terkumpul di sticky bar bawah.</p>
+    <div id="issues" style="display:grid;gap:12px"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="micro">VERIFICATION PLAN — setelah kamu jawab</div>
+    <h3>Yang akan saya eksekusi</h3>
+    <ol style="font-size:13px;line-height:1.6;color:var(--stone)">
+      <li><code>tailwind.config.js</code> tambah <code>fontSize.heading/body/label/detail/micro</code> + perbaiki <code>display lineHeight 1.2 → 1.0</code></li>
+      <li>Replace <code>text-sm/text-base/text-lg</code> scattered → token eksplisit per page (home, budgets, accounts, settings, transaction-form, search, members, categories, index, chips, inputs)</li>
+      <li>Unifikasi weight: semua heading <code>font-bold 700</code>, body amount <code>600 tabular-nums</code>, micro <code>0.08em</code></li>
+      <li>Sync docs: <code>DESIGN.md</code> + <code>PRD.md §3.9</code> + <code>constants/theme.ts</code> mirror</li>
+      <li>Verify: <code>npx tsc --noEmit</code>, <code>npm run lint</code>, <code>npx convex codegen</code> lalu screenshot diff</li>
+    </ol>
+  </div>
+
+  <p class="sub" style="margin-top:16px">File ini di-generate lokal: <code>docs/typeset-audit.html</code> — buka langsung di browser, tidak perlu server. Semua interaktif murni client-side.</p>
+</div>
+
+<div class="stickyBar" id="sticky">
+  <div style="min-width:0">
+    <b>Jawabanmu</b>
+    <div style="font-size:12px;color:#A8A29E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="summaryText">Belum memilih — tap issue di atas</div>
+    <code id="copyText" style="display:block;margin-top:6px;max-width:52ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">contoh: 1A 2A 3A 4A 5A 6A 7A</code>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button class="btnGhost btn" id="resetBtn">Reset</button>
+    <button class="btnPrimary btn" id="copyBtn">Copy untuk chat</button>
+  </div>
+</div>
+
+<script>
+const pages = [
+  {id:'home', label:'Home', file:'app/(tabs)/home.tsx', lines:'642,684,785,796,831,884,961,999', status:'warn', note:'Hero 28/18 ok, "Household" pakai 600 bukan 700, micro tracking campur 1.2px/0.08em', heading:'18 bold', body:'16 medium', detail:'13 wide', sample:'PERIOD BALANCE • 2.300.000'},
+  {id:'accounts', label:'Accounts', file:'app/(tabs)/accounts.tsx', lines:'475,664', status:'ok', note:'Vault Total 28 bold benar. VaultCard 16/13 konsisten.', heading:'18 bold', body:'16 semibold', detail:'13 wide'},
+  {id:'budgets', label:'Budgets', file:'app/(tabs)/budgets.tsx', lines:'240,285,391', status:'ok', note:'Total card 16/11 konsisten, period pill 15 ok', heading:'18 bold', body:'16 semibold', detail:'13 wide'},
+  {id:'reports', label:'Reports', file:'app/(tabs)/reports.tsx:263', lines:'263', status:'ok', note:'Category Ranking 18 bold + row 16/16 simetris', heading:'18 bold', body:'16', detail:'13'},
+  {id:'transactions', label:'TransactionCard', file:'components/TransactionCard.tsx:95', lines:'95,100,106', status:'ok', note:'Template ideal: 16 medium / 13 wide / 16 semibold tabular-nums', heading:'—', body:'16', detail:'13'},
+  {id:'budgetCard', label:'BudgetCard', file:'components/BudgetCard.tsx:231', lines:'231,237,256', status:'ok', note:'Jar card 16/13/11 sudah impecable', heading:'—', body:'16', detail:'13'},
+  {id:'settings', label:'Settings', file:'app/(tabs)/settings.tsx:187', lines:'187,193,224', status:'warn', note:'Section header pakai text-sm (14) bukan detail 13, value 16 ok', heading:'18 bold', body:'16', detail:'14 ≠13'},
+  {id:'search', label:'Search', file:'app/search.tsx:400', lines:'255,400,407', status:'warn', note:'Input 16 ok, hint 12 (xs) harusnya 13 detail', heading:'—', body:'16', detail:'12 vs 13'},
+  {id:'transForm', label:'Tx Form', file:'app/transaction-form.tsx:552', lines:'552,555,583', status:'warn', note:'Title 28 bold ok, subtitle 14 harusnya 13 detail', heading:'28 bold', body:'14 label', detail:'14 vs 13'},
+  {id:'members', label:'Members', file:'app/members.tsx:365', lines:'365,436,485', status:'warn', note:'Household name 16 semibold ok, section text-sm 14 campur', heading:'18 bold', body:'16', detail:'14'},
+  {id:'categories', label:'Categories', file:'app/categories.tsx:98', lines:'98', status:'ok', note:'Title 18 bold konsisten', heading:'18 bold', body:'—', detail:'—'},
+  {id:'auth', label:'Auth (index)', file:'app/index.tsx:178', lines:'178,181', status:'warn', note:'Display pakai font-semibold 600 bukan 700', heading:'28 semibold ≠700', body:'16', detail:'—'},
+  {id:'chip', label:'Chip/Button', file:'components/Chip.tsx:28 + Button.tsx:77', lines:'28,77', status:'warn', note:'Label 14 medium vs spec 600, Button 16 vs spec 14', heading:'—', body:'16 vs 14', detail:'—'},
+];
+
+const issues = [
+  {n:1, title:'Heading weight — 600 vs 700', files:['app/(tabs)/home.tsx:642','components/EmptyState.tsx:42','app/index.tsx:178','components/CategoryCard.tsx:54'], spec:'DESIGN.md:32 heading 700 -0.02em 1.33', cur:'Banyak heading pakai font-semibold (600)', exA:'Semua heading jadi font-bold 700 tracking -0.02em leading-6 (sesuai DESIGN, lebih tegas, editorial)', exB:'Keep 600 (lebih soft, current feel)', opts:[{k:'A', b:'1A — Unifikasi ke 700 (rekomendasi)', s:'Tegas, konsisten DESIGN, Money Manager match'},{k:'B', b:'1B — Keep 600', s:'Lebih halus, tidak setebal editorial'}], rec:'A'},
+  {n:2, title:'Button / Fab label — 16px vs 14px spec', files:['components/Button.tsx:77 text-base 16','components/Fab.tsx:46 text-[15px]','app/(tabs)/home.tsx:906 text-[15px]'], spec:'DESIGN.md:49 label 14px 600 0.02em', cur:'Button pakai 16px semibold (lebih besar, thumb-friendly)', exA:'Keep 16px — update DESIGN.md label untuk button jadi 16px 600 (bigger-feel)', exB:'Turun ke 14px 600 0.02em strict spec (lebih rapat)', opts:[{k:'A', b:'2A — Keep 16px, update docs (rekomendasi)', s:'48px control + 16px label = Money Manager bigger-feel tetap'},{k:'B', b:'2B — Turun ke 14px strict', s:'Strict DESIGN, lebih kecil di thumb'}], rec:'A'},
+  {n:3, title:'text-sm / text-base scattered vs token eksplisit', files:['app/(tabs)/settings.tsx:193 text-sm','app/search.tsx:255 text-base','app/transaction-form.tsx:583 text-sm'], spec:'Detail 13, Label 14, Body 16 eksplisit', cur:'Same semantic pakai token beda → rawan drift', exA:'Migrasi semua ke text-[13px]/[14px]/[16px] + tambah fontSize di tailwind.config.js:8', exB:'Keep Tailwind default (text-sm/base) — tidak migrasi', opts:[{k:'A', b:'3A — Migrasi ke token eksplisit (rekomendasi)', s:'30 file tersentuh tapi sekali jadi, no more drift'},{k:'B', b:'3B — Keep text-sm/base', s:'Lebih sedikit churn'}], rec:'A'},
+  {n:4, title:'Tracking & leading — 1.2px vs 0.08em, 1.2 vs 1.0', files:['tailwind.config.js:9 display 1.2','app/(tabs)/home.tsx:785 tracking-[1.2px]','app/(tabs)/accounts.tsx:470 tracking-[0.08em]'], spec:'Display 1.0 -0.02em, Heading 1.33 -0.02em, Body 1.25 -0.01em, Micro 1.0 0.08em', cur:'Campur px vs em, leading 1.2 vs 1.0', exA:'Samakan: tailwind display 1.0, heading -0.02em leading-6, body -0.01em leading-5, micro 0.08em, detail 0.04em', exB:'Toleransi varian current', opts:[{k:'A', b:'4A — Samakan presisi (rekomendasi)', s:'Pixel-perfect editorial'},{k:'B', b:'4B — Toleransi', s:'Biarkan campur'}], rec:'A'},
+  {n:5, title:'Input label weight — 500 vs 600', files:['components/Input.tsx:54 text-sm font-medium','app/transaction-form.tsx:618 label'], spec:'Label 14px 600 0.02em', cur:'Label pakai 500 medium', exA:'Naikkan ke font-semibold 600 + tracking-wide', exB:'Keep 500', opts:[{k:'A', b:'5A — Naikkan ke 600 (rekomendasi)', s:'Label lebih terbaca, konsisten chip/button'},{k:'B', b:'5B — Keep 500', s:'Lebih ringan'}], rec:'A'},
+  {n:6, title:'Subheading "Hi, …" — 400 vs 500', files:['app/(tabs)/home.tsx:636 text-[15px] font-normal 400'], spec:'Subheading 15px 500 -0.01em', cur:'400 normal', exA:'Samakan ke 500 medium', exB:'Keep 400 (lebih airy)', opts:[{k:'A', b:'6A — 500 medium (rekomendasi)', s:'Sesuai DESIGN subheading'},{k:'B', b:'6B — Keep 400', s:'Lebih tipis di greeting'}], rec:'A'},
+  {n:7, title:'Docs sync — tailwind + PRD §3.9 mirror DESIGN', files:['tailwind.config.js:8','PRD.md §3.9','DESIGN.md:24','constants/theme.ts:94'], spec:'3 source harus mirror: FontSize 28/18/15/16/14/13/12/11', cur:'tailwind cuma display, PRD cuma sebut 28/18/16', exA:'Update tailwind scale lengkap + PRD §3.9 tabel skala + bump changelog 2026-09-07', exB:'Hanya DESIGN jadi source, PRD/tailwind tetap parsial', opts:[{k:'A', b:'7A — Full sync (rekomendasi)', s:'Single source of truth beneran'},{k:'B', b:'7B — DESIGN only', s:'Minimal docs churn'}], rec:'A'},
+];
+
+const tabsEl=document.getElementById('tabs');
+const panesEl=document.getElementById('panes');
+pages.forEach((p,i)=>{
+  const b=document.createElement('button'); b.textContent=p.label; b.dataset.id=p.id; if(i===0) b.className='active';
+  b.onclick=()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+    document.querySelectorAll('.pagePane').forEach(x=>x.classList.remove('active')); document.getElementById('pane-'+p.id).classList.add('active');
+  }; tabsEl.appendChild(b);
+});
+pages.forEach((p,i)=>{
+  const d=document.createElement('div'); d.id='pane-'+p.id; d.className='pagePane'+(i===0?' active':'');
+  d.innerHTML=`
+    <div style="margin-top:12px" class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><div class="micro">${p.file}</div><div style="font-size:12px;color:var(--stone)">lines ${p.lines}</div></div>
+        <span class="pill ${p.status==='ok'?'ok':'warn'}">${p.status==='ok'?'● konsisten':'● butuh keputusan'}</span>
+      </div>
+      <p style="font-size:13px;color:var(--stone);margin:8px 0 12px">${p.note}</p>
+      <div class="ex">
+        <div class="exBox"><h5>HEADING — current</h5><div style="font-size:18px;font-weight:${p.heading.includes('bold')?'700':'600'};letter-spacing:-.02em;line-height:1.33">Budgets • ${p.label}</div><div style="font-size:11px;letter-spacing:.08em;color:var(--stone);margin-top:6px">PERIOD BALANCE</div></div>
+        <div class="exBox"><h5>BODY + DETAIL — canonical</h5><div style="font-size:16px;font-weight:500;letter-spacing:-.01em">BCA • Bills — 1.250.000</div><div style="font-size:13px;letter-spacing:.04em;color:var(--stone)">Spent / Budgeted • ${p.detail}</div><div style="font-size:16px;font-weight:600;letter-spacing:-.015em;margin-top:6px" class="tabular-nums">+2.500</div></div>
+      </div>
+      <table style="margin-top:12px"><tr><th>Token</th><th>Spec</th><th>Current di page</th></tr>
+        <tr><td>Heading</td><td>18 700 -0.02 1.33</td><td>${p.heading}</td></tr>
+        <tr><td>Body</td><td>16 500/600 -0.01 1.25</td><td>${p.body}</td></tr>
+        <tr><td>Detail</td><td>13 400 0.04 1.33</td><td>${p.detail}</td></tr>
+      </table>
+    </div>`;
+  panesEl.appendChild(d);
+});
+
+const issuesEl=document.getElementById('issues');
+const state={};
+issues.forEach(it=>{
+  state[it.n]=null;
+  const wrap=document.createElement('div'); wrap.className='issue'+(it.n<=2?' open':'');
+  wrap.innerHTML=`
+    <div class="issueHead">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="pill warn" style="flex-shrink:0">#${it.n}</span>
+        <h4>${it.title}</h4>
+      </div>
+      <span style="font-size:12px;color:var(--stone)" class="chev">▼</span>
+    </div>
+    <div class="issueBody">
+      <div style="font-size:12px;color:var(--stone);margin:10px 0 8px">Spec: <code>${it.spec}</code> • Lokasi: <code>${it.files.join('</code> <code>')}</code></div>
+      <div class="ex">
+        <div class="exBox"><h5>SEBELUM (current)</h5><div class="code">${it.cur}</div><div class="micro" style="margin-top:8px">Contoh visual before</div>
+          <div style="margin-top:8px;border:1px dashed var(--border);border-radius:12px;padding:12px;background:#FFFBF5">
+            ${it.n===1?'<div style="font-size:18px;font-weight:600">Budgets — 600 current</div>':''}
+            ${it.n===2?'<div style="font-size:16px;font-weight:600;background:var(--primary);color:#FFFBF5;border-radius:999px;padding:10px 14px;display:inline-block">Sign In — 16px current</div>':''}
+            ${it.n===3?'<div style="font-size:14px">text-sm (14) vs text-[13px] campur</div>':''}
+            ${it.n===4?'<div style="font-size:28px;font-weight:700;line-height:1.2">28px 1.2 current</div>':''}
+            ${it.n===5?'<div style="font-size:14px;font-weight:500">Label 500 current</div>':''}
+            ${it.n===6?'<div style="font-size:15px;font-weight:400">Hi, Aisyah! — 400</div>':''}
+            ${it.n===7?'<div style="font-size:12px;color:var(--stone)">tailwind: display only • PRD: 28/18/16 mention</div>':''}
+          </div>
+        </div>
+        <div class="exBox"><h5>SESUDAH (opsi A — rekomendasi)</h5><div class="code">${it.exA}</div><div style="margin-top:8px;border:1px solid var(--primary);border-radius:12px;padding:12px;background:#92400E0d">
+            ${it.n===1?'<div style="font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.33">Budgets — 700 fixed</div>':''}
+            ${it.n===2?'<div style="font-size:16px;font-weight:700;letter-spacing:-.01em;background:var(--primary);color:#FFFBF5;border-radius:999px;padding:10px 14px;display:inline-block">Sign In — keep 16 + docs update</div><div style="font-size:11px;letter-spacing:.08em;color:var(--stone);margin-top:6px">DOCS: label for button = 16</div>':''}
+            ${it.n===3?'<div style="font-size:13px;letter-spacing:.04em">detail 13 eksplisit • label 14 eksplisit • body 16</div>':''}
+            ${it.n===4?'<div style="font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1">28px 1.0 fixed</div>':''}
+            ${it.n===5?'<div style="font-size:14px;font-weight:600;letter-spacing:.02em">Label 600 fixed</div>':''}
+            ${it.n===6?'<div style="font-size:15px;font-weight:500;letter-spacing:-.01em">Hi, Aisyah! — 500 fixed</div>':''}
+            ${it.n===7?'<div style="font-size:12px">tailwind: heading/body/label/detail/micro • PRD §3.9 tabel lengkap</div>':''}
+          </div></div>
+      </div>
+      <div class="choice" data-n="${it.n}">
+        <button data-k="${it.opts[0].k}"><b>${it.opts[0].b}</b><span>${it.opts[0].s}</span></button>
+        <button data-k="${it.opts[1].k}"><b>${it.opts[1].b}</b><span>${it.opts[1].s}</span></button>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--stone)">Rekomendasi: <b style="color:var(--ink)">${it.rec}</b> — klik salah satu, auto-terkumpul di bar bawah.</div>
+    </div>`;
+  wrap.querySelector('.issueHead').onclick=()=>wrap.classList.toggle('open');
+  issuesEl.appendChild(wrap);
+});
+
+// choices
+document.querySelectorAll('.choice').forEach(row=>{
+  row.querySelectorAll('button').forEach(btn=>{
+    btn.onclick=()=>{
+      row.querySelectorAll('button').forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+      state[row.dataset.n]=btn.dataset.k;
+      updateSummary();
+    };
+  });
+});
+function updateSummary(){
+  const parts = issues.map(it=> state[it.n] ? `${it.n}${state[it.n]}` : `${it.n}?`);
+  const full = parts.join(' ');
+  const answered = Object.values(state).filter(v=>v!==null).length;
+  document.getElementById('summaryText').textContent = answered===issues.length ? `Siap copy — ${answered}/7 terjawab` : `${answered}/7 terjawab — lengkapi yang masih ?`;
+  document.getElementById('copyText').textContent = parts.includes('?') ? `contoh: 1A 2A 3A 4A 5A 6A 7A  (kamu: ${full})` : full;
+}
+updateSummary();
+document.getElementById('copyBtn').onclick=()=>{
+  const t=document.getElementById('copyText').textContent.replace('contoh: 1A 2A 3A 4A 5A 6A 7A  (kamu: ','').replace(')','');
+  navigator.clipboard.writeText(t).then(()=>{ const b=document.getElementById('copyBtn'); const old=b.textContent; b.textContent='Copied ✓'; setTimeout(()=>b.textContent=old,1400); });
+};
+document.getElementById('resetBtn').onclick=()=>{
+  Object.keys(state).forEach(k=>state[k]=null);
+  document.querySelectorAll('.choice button').forEach(b=>b.classList.remove('sel'));
+  updateSummary();
+};
+// auto-open first 2
+</script>
+</body>
+</html>

@@ -74,7 +74,7 @@ export function Button({
       ) : (
         <View className="flex-row items-center gap-2">
           {icon}
-          <Text className={`text-base font-semibold ${labelStyles[variant]}`}>
+          <Text className={`text-[16px] font-semibold tracking-[-0.01em] leading-5 ${labelStyles[variant]}`}>
             {title}
           </Text>
           {badge ? (
