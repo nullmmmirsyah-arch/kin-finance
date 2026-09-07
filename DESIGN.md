@@ -153,8 +153,8 @@ A tight, warm-analogous palette centered on toasted amber (#92400E) set against 
 - **Heading** (700, 18px, 1.33, −0.02em): Section titles (Transactions, Budgets, My Accounts, Reports headings), screen titles. Leading-6.
 - **Subheading** (500, 15px, 1.33, −0.01em): Date group headers (Today Sep 6 Sun), period label (September 2026), secondary card titles. Weight steps from heading via 700→500.
 - **Body** (500/600, 16px, 1.25, −0.01 to −0.015em): Ledger rows — title 500, amount 600 tabular-nums. Max ~60ch on phone. This is the Money Manager match point (16px is the dominant size).
-- **Label** (600, 14px, 1.4, 0.02em): Button text, chip text, field labels. Filter pills 13px variant tracking-wide, not caps.
-- **Detail** (400, 13px, 1.33, 0.04em): Subtitles (BCA • Bills), helper text, spent/budgeted line. Tracking-wide for secondary tone.
+  - **Label** (600, 14px, 1.4, 0.02em): Chip text, field labels. Filter pills 13px variant tracking-wide, not caps. **Button/FAB exception (audit 2A):** primary CTA labels use 16px semibold −0.01em/1.25 (Money Manager bigger-feel) — documented as `buttonLabel` variant, not generic label.
+  - **Detail** (400, 13px, 1.33, 0.04em): Subtitles (BCA • Bills), helper text, spent/budgeted line. 0.04em tracking for secondary tone.
 - **Caption** (400, 12-13px, 1.33): Timestamps (unused in ledger), helper text, day totals. Detail 13 is preferred for secondary metadata.
 - **Micro** (600, 11px, 1.0, 0.08em): Kicker badges (PERIOD BALANCE, VAULT TOTAL, TOTAL • 3 JARS). Uppercase only for micro.
 - **Nav** (600, 11px, 0.2): Tab bar labels, icon 24px. Height 68 with 8dp vertical inset.

@@ -397,7 +397,7 @@ export default function Search() {
         </ScrollView>
 
         {/* Hint */}
-        <Text className="mt-2 text-xs text-text-secondary dark:text-text-secondary-dark">Showing {dateLabel} • tap Date to change</Text>
+        <Text className="mt-2 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Showing {dateLabel} • tap Date to change</Text>
 
         {/* Summary card Records N ↑ ↓ */}
         <View

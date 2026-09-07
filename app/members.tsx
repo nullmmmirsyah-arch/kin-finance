@@ -100,7 +100,7 @@ export default function Members() {
   const pendingInvitesSection =
     pendingInvites === null ? null : (
       <View className="gap-3">
-        <Text className="text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
           Pending Invites
         </Text>
         {pendingInvites.map((inv) => (
@@ -433,7 +433,7 @@ export default function Members() {
       </View>
 
       <View className="mt-4 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
           Household
         </Text>
 
@@ -529,19 +529,19 @@ export default function Members() {
               <Text className="mt-0.5 text-base font-semibold text-text-primary dark:text-text-primary-dark">
                 {formatTimezoneLabel(resolveTimezone(household?.timezone))}
               </Text>
-              <Text className="mt-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+              <Text className="mt-1 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 Only the household owner can change the timezone.
               </Text>
             </View>
           )}
-          <Text className="mt-1.5 text-xs text-text-secondary dark:text-text-secondary-dark">
+          <Text className="mt-1.5 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
             Calendar months and budget periods use the household timezone so every
             member sees the same dates. Match device follows the device timezone.
           </Text>
         </View>
 
         <View className="mt-4">
-          <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
+          <Text className="mb-2 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Danger Zone</Text>
           <View
             style={[
               Shadow.card,
@@ -560,7 +560,7 @@ export default function Members() {
                 {isOwner ? "Delete Household" : "Leave Household"}
               </Text>
             </View>
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               {isOwner
                 ? "Permanently delete all household data for everyone. Or transfer ownership to keep the household."
                 : "You will lose access to all household data. Your transactions will remain in the household."}

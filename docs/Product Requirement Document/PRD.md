@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-07 (Impeccable typeset — Home bigger-feel Money Manager scale 28/18/16, Accounts/Budgets/Reports aligned, theme FontSize + DESIGN.md hierarchy + spacing baked)
+> Last updated: 2026-09-07 (Impeccable typeset audit 1A–7A — heading 700 bold, button 16 keep with docs exception, token explicit, tracking 1.0/0.08em, label 600, subheading 500, full docs sync; tailwind scale baked)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`, `CONTEXT.md`
 
 ---
@@ -396,7 +396,7 @@ Materialized per-period snapshot powering Home/Analytics O(1) reads, extensible 
 | Token | Value |
 |-------|-------|
 | Colors | stone/amber warm palette — primary `#92400E`, background `#FFFBF5`, surface `#FEF3C7`, success `#065F46`, error `#991B1B`, chartAmber `#D97706`/`#F59E0B` dark, chartEmerald `#059669`/`#34D399` dark; full dark-mode variants in `constants/theme.ts` (`C.chartAmber`/`C.chartEmerald` via `useThemeColors()`, no hardcoded hex in `app/**/*.tsx`) |
-| Typography | Display 28 bold −0.02em/1.0 tabular, Heading 18 bold −0.02em/1.33, Subheading 15 medium −0.01em, Body 16 medium/600 tabular −0.01/−0.015em/1.25, Label 14 semibold, Detail 13 tracking-wide, Caption 12, Micro 11 0.08em (PERIOD BALANCE), Nav 11 — single sans family, weight steps 400→500→600→700, per `constants/theme.ts:FontSize` + `DESIGN.md` Hierarchy |
+| Typography | Display 28 bold −0.02em/1.0 tabular, Heading 18 bold −0.02em/1.33 (700, leading-6), Subheading 15 medium −0.01em/1.33 (500), Body 16 medium/600 tabular −0.01/−0.015em/1.25 (leading-5), Label 14 semibold 0.02em/1.4 — button/FAB exception 16 semibold −0.01em/1.25 (bigger-feel), Detail 13 0.04em/1.33 tracking-wide, Caption 12, Micro 11 0.08em/1.0 (PERIOD BALANCE), Nav 11 — single sans family, weight steps 400→500→600→700, per `constants/theme.ts:FontSize` + `tailwind.config.js:fontSize` (display/heading/subheading/body/label/detail/caption/micro/nav) + `DESIGN.md` Hierarchy (audit 1A–7A) |
 | Spacing | XS 4 / SM 8 / MD 12 / Gutter 20 (px-5) / LG 24 / XL 32 — grid 4dp, row height 48–60 (icon 48 py-4), intra-section 2 + inter-section 12 (SectionList), major sections 24–32 (mt-7/8), card pad 16–20 (Transaction 20, Gradient 20, tabBar 68h 8dp inset, FAB 60h pill) — Money Manager bigger-feel via 20px gutters + 60px rows |
 | Radius | SM 12 / MD 16 / LG 24 |
 | Shadow | Card `0 2 8 rgba(0,0,0,0.04)`, Elevated `0 4 16 rgba(0,0,0,0.08)` |

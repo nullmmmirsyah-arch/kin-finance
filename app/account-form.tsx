@@ -185,7 +185,7 @@ export default function AccountForm() {
           />
 
           <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
               Account type
             </Text>
             <View className="flex-row flex-wrap gap-2">

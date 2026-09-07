@@ -175,20 +175,20 @@ export default function Index() {
           <Image source={require("../assets/images/splash-icon.png")} style={{ width: 200, height: 200 }} resizeMode="contain" />
           {successScreen ? (
             <View className="w-full gap-4">
-              <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
+              <Text className="text-center text-display font-bold tracking-[-0.02em] leading-none text-text-primary dark:text-text-primary-dark">
                 {successScreen === "verify" ? "You're all set" : "Password updated"}
               </Text>
-              <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
+              <Text className="text-center text-[16px] font-medium tracking-[-0.01em] leading-5 text-text-secondary dark:text-text-secondary-dark">
                 {successScreen === "verify" ? "Welcome to your family's ledger." : "Welcome back to your family's ledger."}
               </Text>
             </View>
           ) : auth.isMfaVerifying || auth.isVerifying ? (
             <View className="w-full gap-4">
               <View className="items-center gap-2">
-                <Text className="text-center text-display font-semibold text-text-primary dark:text-text-primary-dark">
+                <Text className="text-center text-display font-bold tracking-[-0.02em] leading-none text-text-primary dark:text-text-primary-dark">
                   {auth.isMfaVerifying ? "A quick check" : "Check your email"}
                 </Text>
-                <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
+                <Text className="text-center text-[16px] font-medium tracking-[-0.01em] leading-5 text-text-secondary dark:text-text-secondary-dark">
                   {auth.isMfaVerifying ? "Enter the code we emailed you to keep your family's money safe." : "Enter the 6-digit code we sent to your email."}
                 </Text>
               </View>

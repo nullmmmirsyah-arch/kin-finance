@@ -633,13 +633,13 @@ export default function Home() {
 
       <View className="px-5 pb-3 pt-5">
         <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-[15px] font-normal text-text-secondary dark:text-text-secondary-dark">
+          <Text className="text-[15px] font-medium tracking-[-0.01em] leading-5 text-text-secondary dark:text-text-secondary-dark">
             Hi, {firstName}!
           </Text>
         </View>
 
         <View className="mb-3 items-center gap-1">
-          <Text className="text-[18px] font-semibold tracking-tight text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
             {household.name} Household
           </Text>
         </View>
@@ -782,7 +782,7 @@ export default function Home() {
                               style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
                               className="px-3.5 py-1.5"
                             >
-                              <Text className="text-center text-[11px] font-semibold tracking-[1.2px] text-primary dark:text-primary-dark">
+                              <Text className="text-center text-[11px] font-semibold tracking-[0.08em] leading-none text-primary dark:text-primary-dark">
                                 PERIOD BALANCE
                               </Text>
                             </View>

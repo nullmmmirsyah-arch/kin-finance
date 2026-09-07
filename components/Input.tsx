@@ -51,7 +51,7 @@ export function Input({
     <View className="w-full gap-1.5">
       {label ? (
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
             {label}
           </Text>
           {labelBadge ? (
@@ -60,7 +60,7 @@ export function Input({
               style={{ backgroundColor: C.surface }}
             >
               <Text
-                className="text-xs font-medium"
+                className="text-[11px] font-semibold tracking-[0.08em] leading-none"
                 style={{ color: C.primary }}
               >
                 {labelBadge}
@@ -115,10 +115,10 @@ export function Input({
         ) : null}
       </View>
       {error ? (
-        <Text accessibilityLiveRegion="polite" className="text-sm text-error dark:text-error-dark">{error}</Text>
+        <Text accessibilityLiveRegion="polite" className="text-[13px] leading-4 tracking-wide text-error dark:text-error-dark">{error}</Text>
       ) : null}
       {amount && decimalWarning && !error ? (
-        <Text accessibilityLiveRegion="polite" className="text-xs" style={{ color: C.chartAmber }}>
+        <Text accessibilityLiveRegion="polite" className="text-[13px] leading-4 tracking-wide" style={{ color: C.chartAmber }}>
           {decimalWarning}
         </Text>
       ) : null}
