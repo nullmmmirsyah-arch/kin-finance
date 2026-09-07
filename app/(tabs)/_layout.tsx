@@ -13,7 +13,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: C.primary,
         tabBarInactiveTintColor: C.textSecondary,
         tabBarStyle: { backgroundColor: C.background, height: 68, paddingBottom: 8, paddingTop: 8 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", letterSpacing: 0.2 },
       }}
     >
       <Tabs.Screen

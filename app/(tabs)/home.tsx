@@ -680,7 +680,7 @@ export default function Home() {
             }}
           >
             <View className="flex-row items-center gap-1">
-              <Text className="text-[17px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+              <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
                 {selectedPeriodStart !== null ? currentLabel : ""} {selectedPeriodStart !== null ? "▼" : ""}
               </Text>
             </View>
@@ -773,9 +773,9 @@ export default function Home() {
                     />
                   }
                   ListHeaderComponent={
-                    <View className="px-5 pb-5">
+                      <View className="px-5 pb-5">
                       <GradientCard>
-                        <View className="gap-5 py-2">
+                        <View className="gap-5 py-2.5">
                           <View className="items-center gap-1.5">
                             <View
                               style={{ backgroundColor: `${C.primary}10`, borderRadius: 999 }}
@@ -792,11 +792,11 @@ export default function Home() {
                                 No data for this period
                               </Text>
                             ) : (
-                              <Text className="text-center text-[30px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                              <Text className="text-center text-[28px] font-bold tracking-[-0.02em] leading-none text-text-primary dark:text-text-primary-dark">
                                 {formatNumber(currentClosing)}
                               </Text>
                             )}
-                            <Text className="text-center text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
+                            <Text className="text-center text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                               {currentLabel}
                               {balances !== null && balances !== undefined
                                 ? ` • Opening ${formatNumber(balances.openingBalance)}`
@@ -827,10 +827,10 @@ export default function Home() {
                                   <Feather name="trending-up" size={18} color={C.success} />
                                 </View>
                                 <View className="flex-1 gap-0.5">
-                                  <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                                  <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
                                     INCOME
                                   </Text>
-                                  <Text className="text-[15px] font-bold tracking-tight" style={{ color: C.success }}>
+                                  <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5" style={{ color: C.success }}>
                                     +{formatNumber(balances === null ? 0 : balances.income)}
                                   </Text>
                                 </View>
@@ -859,10 +859,10 @@ export default function Home() {
                                   <Feather name="trending-down" size={18} color={C.error} />
                                 </View>
                                 <View className="flex-1 gap-0.5">
-                                  <Text className="text-[11px] font-semibold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                                  <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
                                     EXPENSE
                                   </Text>
-                                  <Text className="text-[15px] font-bold tracking-tight" style={{ color: C.error }}>
+                                  <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5" style={{ color: C.error }}>
                                     -{formatNumber(balances === null ? 0 : balances.expense)}
                                   </Text>
                                 </View>
@@ -957,8 +957,8 @@ export default function Home() {
                                 <Feather name="archive" size={15} color={C.textSecondary} />
                               </View>
                               <View>
-                                <Text className="text-[15px] font-semibold leading-5 text-text-primary dark:text-text-primary-dark">Budgets</Text>
-                                <Text className="text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
+                                <Text className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">Budgets</Text>
+                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                                   {budgetPills.length > 0 ? `${budgetPills.length} jars` : "Honey pantry"}
                                 </Text>
                               </View>
@@ -969,7 +969,7 @@ export default function Home() {
                                 accessibilityRole="button"
                                 className="min-h-12 flex-row items-center gap-1"
                               >
-                                <Text className="text-[13px] font-medium text-text-secondary dark:text-text-secondary-dark">View all</Text>
+                                <Text className="text-[13px] font-semibold tracking-wide text-text-secondary dark:text-text-secondary-dark">View all</Text>
                                 <Feather name="chevron-right" size={14} color={C.textSecondary} />
                               </Pressable>
                             )}
@@ -998,7 +998,7 @@ export default function Home() {
 
                       <View className="mt-8">
                         <View className="flex-row items-center justify-between">
-                          <Text className="mb-1 text-[18px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                          <Text className="mb-1 text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
                             My Accounts
                           </Text>
                           <Pressable
@@ -1140,7 +1140,7 @@ export default function Home() {
                       </View>
 
                       <View className="mt-8">
-                        <Text className="mb-1 text-[18px] font-bold tracking-tight text-text-primary dark:text-text-primary-dark">
+                        <Text className="mb-1 text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
                           Transactions
                         </Text>
                       </View>
