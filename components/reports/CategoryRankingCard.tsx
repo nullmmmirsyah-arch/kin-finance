@@ -34,7 +34,7 @@ export function CategoryRankingCard({ type, segments, total, othersAmount, onTog
     >
       {/* Header */}
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">Category Ranking</Text>
+        <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">Category Ranking</Text>
         <Pressable
           onPress={onToggle}
           onPressIn={() => setTogglePressed(true)}
@@ -44,12 +44,12 @@ export function CategoryRankingCard({ type, segments, total, othersAmount, onTog
           style={{
             backgroundColor: C.primaryLight,
             borderRadius: 999,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
             opacity: togglePressed ? 0.85 : 1,
           }}
         >
-          <Text className="text-xs font-semibold text-text-primary">{type === "expenses" ? "Expenses" : "Income"} ⇌</Text>
+          <Text className="text-[13px] font-semibold tracking-wide text-text-primary">{type === "expenses" ? "Expenses" : "Income"} ⇌</Text>
         </Pressable>
       </View>
 
@@ -74,10 +74,10 @@ export function CategoryRankingCard({ type, segments, total, othersAmount, onTog
             return (
               <View key={s.name} className="gap-1">
                 <View className="flex-row items-center justify-between">
-                  <Text numberOfLines={1} className="flex-1 text-sm text-text-primary dark:text-text-primary-dark">
+                  <Text numberOfLines={1} className="flex-1 text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
                     {idx + 1} {s.name}
                   </Text>
-                  <Text className="ml-2 text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                  <Text className="ml-2 text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-primary dark:text-text-primary-dark">
                     {formatNumber(s.amount)}
                   </Text>
                 </View>

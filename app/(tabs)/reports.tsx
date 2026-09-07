@@ -237,9 +237,9 @@ export default function Reports() {
             accessibilityRole="button"
             accessibilityLabel="Previous period"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: Radius.md,
+              width: 48,
+              height: 48,
+              borderRadius: Radius.lg,
               backgroundColor: prevPressed ? C.surface : C.background,
               borderWidth: 1,
               borderColor: C.border,
@@ -248,7 +248,7 @@ export default function Reports() {
               opacity: isPrevDisabled ? 0.4 : 1,
             }}
           >
-            <Feather name="chevron-left" size={20} color={C.textPrimary} />
+            <Feather name="chevron-left" size={22} color={C.textPrimary} />
           </Pressable>
 
           <Pressable
@@ -260,7 +260,7 @@ export default function Reports() {
             style={{ flex: 1, alignItems: "center", gap: 4, opacity: headerPressed ? 0.7 : 1 }}
           >
             <View className="flex-row items-center gap-1">
-              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">{currentLabel} ▼</Text>
+              <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">{currentLabel} ▼</Text>
             </View>
             <View className="flex-row items-center gap-1.5">
               {pagerPeriods.map((p, idx) => (
@@ -285,9 +285,9 @@ export default function Reports() {
             accessibilityRole="button"
             accessibilityLabel="Next period"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: Radius.md,
+              width: 48,
+              height: 48,
+              borderRadius: Radius.lg,
               backgroundColor: nextPressed ? C.surface : C.background,
               borderWidth: 1,
               borderColor: C.border,
@@ -296,7 +296,7 @@ export default function Reports() {
               opacity: isNextDisabled ? 0.4 : 1,
             }}
           >
-            <Feather name="chevron-right" size={20} color={C.textPrimary} />
+            <Feather name="chevron-right" size={22} color={C.textPrimary} />
           </Pressable>
         </View>
       </View>
