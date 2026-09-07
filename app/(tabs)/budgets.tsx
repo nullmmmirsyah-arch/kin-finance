@@ -198,8 +198,8 @@ export default function Budgets() {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[28px] font-bold tracking-[-0.02em] leading-7 text-text-primary dark:text-text-primary-dark">Budgets</Text>
-          <Text className="text-[15px] leading-5 tracking-wide text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
+          <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">Budgets</Text>
+          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
         </View>
         {stale && (
           <View className="pt-2">
@@ -237,8 +237,8 @@ export default function Budgets() {
       <View className="px-5 pt-5">
         <View className="flex-row items-center justify-between">
           <View className="gap-1">
-            <Text className="text-[28px] font-bold tracking-[-0.02em] leading-7 text-text-primary dark:text-text-primary-dark">Budgets</Text>
-            <Text className="text-[15px] leading-5 tracking-wide text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">Budgets</Text>
+            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               Honey pantry • {budgets.length > 0 ? `${budgets.length} jars` : "bear family"}
             </Text>
           </View>

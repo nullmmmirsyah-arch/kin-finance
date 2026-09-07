@@ -95,7 +95,7 @@ export default function Categories() {
         <View className="px-5 pt-4">
           <View className="flex-row items-center gap-2">
             <View style={{ width: 48, height: 48 }} />
-            <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
               Categories
             </Text>
           </View>
@@ -137,7 +137,7 @@ export default function Categories() {
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
             Categories
           </Text>
         </View>
