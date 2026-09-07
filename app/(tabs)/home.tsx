@@ -154,9 +154,9 @@ const BudgetPill = memo(function BudgetPill({
         </Text>
       </View>
 
-      <View className="flex-1 gap-1.5">
+      <View className="flex-1 gap-1">
         <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className="flex-1 text-sm font-medium text-text-primary dark:text-text-primary-dark">
+          <Text numberOfLines={1} className="flex-1 text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
             {pill.name}
           </Text>
           <View className="flex-row items-center gap-1.5">
@@ -170,14 +170,15 @@ const BudgetPill = memo(function BudgetPill({
               }}
             />
             <Text
-              style={{ fontSize: 10, fontWeight: "600", letterSpacing: 0.6 }}
-              className={over ? "text-error dark:text-error-dark" : "text-text-secondary dark:text-text-secondary-dark"}
+              numberOfLines={1}
+              className="text-[14px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-secondary dark:text-text-secondary-dark"
+              style={{ color: over ? C.error : undefined }}
             >
               {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST EMPTY" : `${Math.round(honeyLevel * 100)}% LEFT`}
             </Text>
           </View>
         </View>
-        <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+        <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
           {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted • hidden"}
         </Text>
         {pill.progress !== undefined ? (
@@ -956,11 +957,8 @@ export default function Home() {
                               <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" }}>
                                 <Feather name="archive" size={15} color={C.textSecondary} />
                               </View>
-                              <View>
-                                <Text className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">Budgets</Text>
-                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                                  {budgetPills.length > 0 ? `${budgetPills.length} jars` : "Honey pantry"}
-                                </Text>
+                                <View>
+                                <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">Budgets</Text>
                               </View>
                             </View>
                             {budgetPills.length > 0 && (
