@@ -44,17 +44,17 @@ export function DeltaCard({ currentClosing, prevClosing, currentNet, prevNet, cu
     <GradientCard>
       <View className="flex-row items-center justify-between">
         <View className="gap-1">
-          <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">{currentLabel} net</Text>
-          <Text className="text-base font-bold text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">{currentLabel} net</Text>
+          <Text className="text-[16px] font-bold leading-5 tracking-[-0.015em] tabular-nums text-text-primary dark:text-text-primary-dark">
             {formatNumber(effectiveCurrent)}
           </Text>
-          <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
             Prev {prevLabel}: {formatNumber(effectivePrev)}
           </Text>
         </View>
-        <Animated.View style={[aStyle]} className="flex-row items-center gap-1">
-          <Feather name={iconName} size={14} color={deltaColor} />
-          <Text style={{ color: deltaColor, fontWeight: "600", fontSize: 12 }}>{label}</Text>
+        <Animated.View style={[aStyle]} className="flex-row items-center gap-1.5">
+          <Feather name={iconName} size={15} color={deltaColor} />
+          <Text style={{ color: deltaColor }} className="text-[13px] font-semibold leading-4 tracking-wide tabular-nums">{label}</Text>
         </Animated.View>
       </View>
     </GradientCard>
