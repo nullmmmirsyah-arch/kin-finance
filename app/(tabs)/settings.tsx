@@ -184,7 +184,7 @@ export default function Settings() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+        <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
           Settings
         </Text>
       </View>

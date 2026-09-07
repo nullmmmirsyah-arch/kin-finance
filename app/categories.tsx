@@ -95,7 +95,7 @@ export default function Categories() {
         <View className="px-5 pt-4">
           <View className="flex-row items-center gap-2">
             <View style={{ width: 48, height: 48 }} />
-            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
               Categories
             </Text>
           </View>
@@ -117,7 +117,7 @@ export default function Categories() {
   if (categories === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+        <Text className="text-center text-[15px] leading-5 tracking-wide text-text-secondary dark:text-text-secondary-dark">
           You are not a member of a household.
         </Text>
       </SafeAreaView>
@@ -137,7 +137,7 @@ export default function Categories() {
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
             Categories
           </Text>
         </View>
