@@ -198,8 +198,8 @@ export default function Budgets() {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[28px] font-semibold tracking-tight text-text-primary dark:text-text-primary-dark">Budgets</Text>
-          <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
+          <Text className="text-[28px] font-bold tracking-[-0.02em] leading-7 text-text-primary dark:text-text-primary-dark">Budgets</Text>
+          <Text className="text-[15px] leading-5 tracking-wide text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
         </View>
         {stale && (
           <View className="pt-2">
@@ -237,8 +237,8 @@ export default function Budgets() {
       <View className="px-5 pt-5">
         <View className="flex-row items-center justify-between">
           <View className="gap-1">
-            <Text className="text-[26px] font-semibold tracking-tight text-text-primary dark:text-text-primary-dark">Budgets</Text>
-            <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[28px] font-bold tracking-[-0.02em] leading-7 text-text-primary dark:text-text-primary-dark">Budgets</Text>
+            <Text className="text-[15px] leading-5 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               Honey pantry • {budgets.length > 0 ? `${budgets.length} jars` : "bear family"}
             </Text>
           </View>
@@ -282,8 +282,8 @@ export default function Budgets() {
               gap: 4,
             }}
           >
-            <Text className="text-[10px] font-semibold tracking-wide text-text-secondary dark:text-text-secondary-dark">PERIOD</Text>
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">PERIOD</Text>
+            <Text className="text-[15px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
               {formatMonthLabel(periodStart, timezone)}
             </Text>
             <View className="flex-row items-center gap-1.5 pt-1">
@@ -374,12 +374,12 @@ export default function Budgets() {
                         <View style={{ height: 3, backgroundColor: C.pantryWood, opacity: 0.5 }} />
                         <View style={{ padding: 16, gap: 12 }}>
                           <View className="flex-row items-center justify-between">
-                            <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">
+                            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
                               TOTAL • {budgets.length} JARS
                             </Text>
                             <Text
                               style={{ color: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : overallProgress > 0.8 ? C.primary : C.textSecondary }}
-                              className="text-[11px] font-semibold tracking-wide"
+                              className="text-[11px] font-semibold tracking-[0.08em] leading-3"
                             >
                               {summary.hasRedacted ? "SOME PRIVATE" : overallProgress > 1 ? "OVER" : overallProgress > 0.8 ? "ALMOST EMPTY" : "ON TRACK"}
                             </Text>
@@ -387,24 +387,24 @@ export default function Budgets() {
 
                           <View className="flex-row gap-4">
                             <View className="flex-1 gap-1">
-                              <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
-                              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
-                              <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
+                              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
+                              <Text className="text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
+                              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
                             </View>
                             <View style={{ width: 1, backgroundColor: C.border, opacity: 0.6 }} />
                             <View className="flex-1 gap-1">
-                              <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
+                              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
                               {summary.hasRedacted ? (
-                                <Text className="text-base font-semibold text-text-secondary dark:text-text-secondary-dark">—</Text>
+                                <Text className="text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-secondary dark:text-text-secondary-dark">—</Text>
                               ) : (
                                 <Text
                                   style={{ color: overallProgress > 1 ? C.error : undefined }}
-                                  className={`text-base font-semibold ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
+                                  className={`text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
                                 >
                                   {formatNumber(summary.spent)}
                                 </Text>
                               )}
-                              <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+                              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                                 {summary.hasRedacted ? "Frosted" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
                               </Text>
                             </View>
@@ -444,10 +444,10 @@ export default function Budgets() {
                                 />
                               </View>
                               <View className="flex-row justify-between">
-                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                                   {overallProgress > 1 ? "Empty • overflow" : `${Math.round(overallHoneyLevel * 100)}% honey left`}
                                 </Text>
-                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">{budgets.length} categories</Text>
+                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">{budgets.length} categories</Text>
                               </View>
                             </View>
                           )}
