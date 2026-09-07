@@ -37,8 +37,9 @@ import { CategoryGrid } from "@/components/transaction/CategoryGrid";
 import { TransferDual } from "@/components/transaction/TransferDual";
 import { AccountPill } from "@/components/transaction/AccountPill";
 import { Keypad } from "@/components/transaction/Keypad";
-import { formatNumber } from "@/utils/format";
-import { formatDateShort } from "@/utils/date";
+import { formatAmountInput, formatNumber, wasDecimalTruncated } from "@/utils/format";
+import { formatDateShortTz, getDayBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
 import { evaluateKeypadExpression } from "@/utils/keypadEval";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
@@ -65,6 +66,7 @@ export default function TransactionForm() {
   const accountResult = useQuery(api.accounts.list);
   const categoryResult = useQuery(api.categories.list);
   const household = useQuery(api.households.getActive);
+  const tz = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
   const createTransaction = useMutation(api.transactions.create);
   const updateTransaction = useMutation(api.transactions.update);
   const removeTransaction = useMutation(api.transactions.remove);
@@ -197,7 +199,14 @@ export default function TransactionForm() {
     if (accountId !== null) return;
     if (!accountOptions.some((o) => o.id === lastTransaction.accountId)) return;
     setAccountId(lastTransaction.accountId);
-  }, [isEdit, accountResult, lastTransaction, accountId, accountOptions]);
+    if (
+      lastTransaction.toAccountId &&
+      toAccountId === null &&
+      accountOptions.some((o) => o.id === lastTransaction.toAccountId)
+    ) {
+      setToAccountId(lastTransaction.toAccountId);
+    }
+  }, [isEdit, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
 
   const handleTypeChange = useCallback(
     (t: TransactionType) => {
@@ -220,8 +229,10 @@ export default function TransactionForm() {
     [categoryId, show],
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleAmountChange = useCallback((text: string) => {
-    setAmountText(text);
+    const hasOp = /[+\-×÷*\/]/.test(text);
+    setAmountText(hasOp ? text : formatAmountInput(text));
     if (amountError) setAmountError(null);
     if (error) setError(null);
   }, [amountError, error]);
@@ -238,6 +249,7 @@ export default function TransactionForm() {
   const signedAmount =
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleAmountBlur = useCallback(() => {
     if (amountValue !== null && amountValue <= 0) {
       setAmountError("Enter an amount greater than zero.");
@@ -268,40 +280,6 @@ export default function TransactionForm() {
     setCategoryError(null);
     if (error) setError(null);
   }, [error]);
-
-  const handleKeypad = useCallback((k: string) => {
-    if (k === "⌫") {
-      setAmountText((prev) => prev.slice(0, -1));
-      if (amountError) setAmountError(null);
-      if (error) setError(null);
-      return;
-    }
-    if (k === "✓") {
-      void handleSubmit();
-      return;
-    }
-    if (k === "Today") {
-      const today = new Date();
-      setDate(today);
-      setDateDraft(today);
-      setShowDatePicker(true);
-      return;
-    }
-    // operators and digits
-    if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
-      const op = k === "*" ? "×" : k === "/" ? "÷" : k;
-      setAmountText((prev) => prev + op);
-      if (amountError) setAmountError(null);
-      if (error) setError(null);
-      return;
-    }
-    if (k === "." || /^\d$/.test(k)) {
-      setAmountText((prev) => prev + k);
-      if (amountError) setAmountError(null);
-      if (error) setError(null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amountError, error]);
 
   const canSubmit =
     validateTransactionAmount(signedAmount, type) === null &&
@@ -352,7 +330,7 @@ export default function TransactionForm() {
     isDirty: hasInteracted,
   });
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     setError(null);
     setAmountError(null);
     setAccountError(null);
@@ -495,7 +473,61 @@ export default function TransactionForm() {
     }
 
     await doCreate();
-  };
+  }, [
+    amountValue,
+    signedAmount,
+    type,
+    accountId,
+    toAccountId,
+    categoryId,
+    date,
+    note,
+    isEdit,
+    dupeCheck,
+    transactionId,
+    updateTransaction,
+    createTransaction,
+    show,
+    markIntentional,
+    router,
+  ]);
+
+  const handleKeypad = useCallback(
+    (k: string) => {
+      if (k === "⌫") {
+        setAmountText((prev) => prev.slice(0, -1));
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+        return;
+      }
+      if (k === "✓") {
+        void handleSubmit();
+        return;
+      }
+      if (k === "Today") {
+        const now = new Date();
+        const todayEnd = getDayBounds(now, tz).end;
+        const clamped = now.getTime() >= todayEnd ? new Date(todayEnd - 1) : now;
+        setDate(clamped);
+        setDateDraft(clamped);
+        setShowDatePicker(true);
+        return;
+      }
+      if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
+        const op = k === "*" ? "×" : k === "/" ? "÷" : k;
+        setAmountText((prev) => prev + op);
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+        return;
+      }
+      if (k === "." || /^\d$/.test(k)) {
+        setAmountText((prev) => prev + k);
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+      }
+    },
+    [amountError, error, handleSubmit, tz],
+  );
 
   const handleDelete = () => {
     setError(null);
@@ -736,13 +768,26 @@ export default function TransactionForm() {
           >
             <View className="flex-row items-end justify-end gap-2">
               <Text className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
-                {amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : amountText ? amountText : "0"}
+                {(() => {
+                  const hasOp = /[+\-×÷*\/]/.test(amountText);
+                  if (hasOp) {
+                    return evalValue !== null ? formatNumber(evalValue) : amountText || "0";
+                  }
+                  const formatted = formatAmountInput(amountText);
+                  if (formatted) return formatted;
+                  return amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : "0";
+                })()}
               </Text>
               <Text className="pb-1 text-sm font-medium" style={{ color: C.textSecondary }}>
                 IDR
               </Text>
             </View>
           </Pressable>
+          {wasDecimalTruncated(amountText) ? (
+            <Text className="pt-1 text-right text-xs" style={{ color: C.chartAmber }}>
+              Decimals truncated — whole numbers only
+            </Text>
+          ) : null}
           {amountError ? (
             <Text className="pt-1 text-right text-xs text-error dark:text-error-dark">{amountError}</Text>
           ) : null}
@@ -753,11 +798,6 @@ export default function TransactionForm() {
               </Text>
             </View>
           ) : null}
-          {/* Hidden handlers to preserve parity for amount change/blur */}
-          <View className="hidden">
-            <Text onPress={() => handleAmountChange(amountText)}>{amountText}</Text>
-            <Text onPress={() => handleAmountBlur()}>{amountError}</Text>
-          </View>
         </View>
 
         {/* Account pill for expense/income */}
@@ -790,7 +830,7 @@ export default function TransactionForm() {
             >
               <Feather name="calendar" size={14} color={C.textSecondary} />
               <Text className="text-xs font-medium" style={{ color: C.textPrimary }}>
-                {formatDateShort(date.getTime())}
+                {formatDateShortTz(date.getTime(), tz)}
               </Text>
             </Pressable>
           </View>
@@ -812,7 +852,7 @@ export default function TransactionForm() {
             >
               <Feather name="calendar" size={14} color={C.textSecondary} />
               <Text className="text-xs font-medium" style={{ color: C.textPrimary }}>
-                {formatDateShort(date.getTime())}
+                {formatDateShortTz(date.getTime(), tz)}
               </Text>
             </Pressable>
             {dateError ? (
@@ -1001,9 +1041,13 @@ export default function TransactionForm() {
                     value={dateDraft ?? date}
                     mode="date"
                     display="spinner"
-                    maximumDate={new Date()}
+                    maximumDate={new Date(getDayBounds(new Date(), tz).end - 1)}
                     onChange={(event: DateTimePickerEvent, d?: Date) => {
-                      if (event.type === "set" && d) setDateDraft(d);
+                      if (event.type === "set" && d) {
+                        const todayEndInner = getDayBounds(new Date(), tz).end;
+                        const clamped = d.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : d;
+                        setDateDraft(clamped);
+                      }
                     }}
                   />
                   <Button title="Cancel" variant="ghost" onPress={() => setShowDatePicker(false)} />
@@ -1011,7 +1055,11 @@ export default function TransactionForm() {
                     title="Done"
                     variant="secondary"
                     onPress={() => {
-                      if (dateDraft) setDate(dateDraft);
+                      if (dateDraft) {
+                        const todayEndInner = getDayBounds(new Date(), tz).end;
+                        const clamped = dateDraft.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : dateDraft;
+                        setDate(clamped);
+                      }
                       setShowDatePicker(false);
                     }}
                   />
@@ -1023,10 +1071,14 @@ export default function TransactionForm() {
               value={date}
               mode="date"
               display="default"
-              maximumDate={new Date()}
+              maximumDate={new Date(getDayBounds(new Date(), tz).end - 1)}
               onChange={(event: DateTimePickerEvent, d?: Date) => {
                 setShowDatePicker(false);
-                if (event.type === "set" && d) setDate(d);
+                if (event.type === "set" && d) {
+                  const todayEndInner = getDayBounds(new Date(), tz).end;
+                  const clamped = d.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : d;
+                  setDate(clamped);
+                }
               }}
             />
           )

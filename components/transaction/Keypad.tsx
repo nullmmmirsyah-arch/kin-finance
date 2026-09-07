@@ -6,7 +6,8 @@ const KEYS: string[][] = [
   ["1", "2", "3", "⌫"],
   ["4", "5", "6", "+"],
   ["7", "8", "9", "-"],
-  [".", "0", "Today", "✓"],
+  [".", "0", "×", "÷"],
+  ["Today", "✓", "", ""],
 ];
 
 type KeyButtonProps = {
@@ -53,9 +54,10 @@ export function Keypad({ onKey }: KeypadProps) {
     >
       {KEYS.map((row, i) => (
         <View key={i} className="flex-row gap-1.5">
-          {row.map((k) => (
-            <KeyButton key={k} label={k} onKey={onKey} />
-          ))}
+          {row.map((k, j) => {
+            if (k === "") return <View key={`empty-${i}-${j}`} style={{ flex: 1, height: 52 }} />;
+            return <KeyButton key={k} label={k} onKey={onKey} />;
+          })}
         </View>
       ))}
     </View>
