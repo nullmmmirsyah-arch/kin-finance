@@ -661,7 +661,7 @@ export default function Accounts() {
               <Feather name="credit-card" size={18} color={C.primary} />
             </View>
             <View>
-              <Text className="text-[28px] font-bold leading-8 text-text-primary dark:text-text-primary-dark">
+              <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
                 Accounts
               </Text>
               <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
@@ -728,7 +728,7 @@ export default function Accounts() {
             <Feather name="credit-card" size={20} color={C.primary} />
           </View>
           <View className="flex-1">
-            <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
               Accounts
             </Text>
             <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
