@@ -475,7 +475,7 @@ function HeroVault({
               <Text className="mt-1 text-[28px] font-bold leading-8 tracking-tight text-text-primary dark:text-text-primary-dark">
                 {formatNumber(filter === "all" ? totals.total : totals.filteredTotal)}
               </Text>
-              <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 {filter === "all"
                   ? `${totals.count} accounts • Tap a card to manage`
                   : `Filtered • ${totals.visibleCount} of ${totals.count} shown`}
@@ -519,13 +519,13 @@ function HeroVault({
                 >
                   <View className="flex-row items-center gap-1.5">
                     <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: col }} />
-                    <Text className="text-[10px] font-bold tracking-widest text-text-secondary dark:text-text-secondary-dark">
+                    <Text className="text-[11px] font-bold tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">
                       {type === "credit_card" ? "CREDIT" : type.toUpperCase()}
                     </Text>
                   </View>
                   <Text
                     numberOfLines={1}
-                    className="mt-1 text-xs font-semibold tabular-nums text-text-primary dark:text-text-primary-dark"
+                    className="mt-1 text-[13px] font-semibold leading-4 tracking-[-0.01em] tabular-nums text-text-primary dark:text-text-primary-dark"
                   >
                     {formatNumber(val)}
                   </Text>
@@ -664,7 +664,7 @@ export default function Accounts() {
               <Text className="text-[28px] font-bold leading-8 text-text-primary dark:text-text-primary-dark">
                 Accounts
               </Text>
-              <Text className="text-xs font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">
+              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 Household vault
               </Text>
             </View>
@@ -700,7 +700,7 @@ export default function Accounts() {
   if (accounts === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">
+        <Text className="text-center text-[15px] leading-5 text-text-secondary dark:text-text-secondary-dark">
           You are not a member of a household.
         </Text>
       </SafeAreaView>
@@ -728,10 +728,10 @@ export default function Accounts() {
             <Feather name="credit-card" size={20} color={C.primary} />
           </View>
           <View className="flex-1">
-            <Text className="text-[28px] font-bold leading-7 text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
               Accounts
             </Text>
-            <Text className="text-xs font-semibold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
               HOUSEHOLD VAULT • {accounts.length} {accounts.length === 1 ? "ACCOUNT" : "ACCOUNTS"}
             </Text>
           </View>
@@ -857,14 +857,14 @@ export default function Accounts() {
             </View>
             {visibleAccounts !== null && visibleAccounts.length === 0 ? null : (
               <View className="flex-row items-center justify-between pt-1">
-                <Text className="text-xs font-semibold tracking-[0.12em] text-text-secondary dark:text-text-secondary-dark">
+                <Text className="text-[13px] font-semibold tracking-wide text-text-secondary dark:text-text-secondary-dark">
                   {filter === "all"
                     ? `${visibleAccounts?.length ?? 0} IN VAULT`
                     : `${visibleAccounts?.length ?? 0} • ${filter.toUpperCase()}`}
                 </Text>
                 <View className="flex-row items-center gap-1">
                   <View style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: C.primary }} />
-                  <Text className="text-[11px] font-medium text-text-secondary dark:text-text-secondary-dark">
+                  <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                     Tap card to edit
                   </Text>
                 </View>
