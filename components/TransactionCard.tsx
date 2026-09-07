@@ -92,18 +92,18 @@ export function TransactionCard({
         )}
       </View>
       <View className="flex-1 gap-1">
-        <Text numberOfLines={1} className="text-[16px] font-medium leading-5 text-text-primary dark:text-text-primary-dark">
+        <Text numberOfLines={1} className="text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
           {displayNote}
         </Text>
         <Text
           numberOfLines={1}
-          className="text-[13.5px] leading-4 text-text-secondary dark:text-text-secondary-dark"
+          className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark"
         >
           {subtitle}
         </Text>
       </View>
       <Text
-        className="text-[16px] font-semibold tracking-tight"
+        className="text-[16px] font-semibold tracking-[-0.015em] leading-5 tabular-nums"
         style={{ color: amountColor }}
       >
         {amountLabel}
