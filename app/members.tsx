@@ -362,7 +362,7 @@ export default function Members() {
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
             Invite Code
           </Text>
         </View>
@@ -391,7 +391,7 @@ export default function Members() {
         <View className="px-5 pt-4">
           <View className="flex-row items-center gap-2">
             <View style={{ width: 48, height: 48 }} />
-            <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
               Household Members
             </Text>
           </View>
@@ -426,7 +426,7 @@ export default function Members() {
           >
             <Feather name="arrow-left" size={22} color={C.textPrimary} />
           </Pressable>
-          <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+          <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
             Household Members
           </Text>
         </View>

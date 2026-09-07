@@ -50,13 +50,13 @@ export function CategoryCard({
       >
         <CategoryIcon name={icon} size={32} />
       </View>
-      <View className="flex-1">
-        <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+      <View className="flex-1 gap-1">
+        <Text className="text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
           {name}
         </Text>
-        <View className="mt-1 self-start rounded-full border border-border bg-background px-2 py-0.5 dark:border-border-dark dark:bg-background-dark">
+        <View className="self-start rounded-full border border-border bg-background px-2.5 py-1 dark:border-border-dark dark:bg-background-dark">
           <Text
-            className={`text-xs font-medium ${isIncome ? "text-success dark:text-success-dark" : "text-error dark:text-error-dark"}`}
+            className={`text-[11px] font-semibold tracking-[0.08em] leading-3 ${isIncome ? "text-success dark:text-success-dark" : "text-error dark:text-error-dark"}`}
           >
             {isIncome ? "Income" : "Expense"}
           </Text>
