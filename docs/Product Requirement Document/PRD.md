@@ -452,9 +452,9 @@ balance equality, shared timestamp, no orphan on missing category).
 ```text
 Home → "+" → sheet (Expenses/Income/Transfer tabs)
   → pick category from scroll grid (or transfer: Payment/Receive cards + swap)
-  → amount via custom keypad (+ - × ÷ live eval, Today key)
+  → amount via custom keypad (+ - × ÷ live eval)
   → account pill, date pill, note with auto-suggest
-  → ✓ Save → transactions.create → balances auto-updated → back
+  → Save → transactions.create → balances auto-updated → back
 ```
 
 **Sheet UX (as of 2026-09-08 — supersedes the three-section form below,

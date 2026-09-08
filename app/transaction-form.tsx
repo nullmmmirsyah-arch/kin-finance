@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -205,6 +205,31 @@ export default function TransactionForm() {
       setCategoryId(null);
     }
   }, [categoryResult, type, categoryId, categoryOptions]);
+
+  // Auto-select a category created via the Add tile: snapshot option IDs on
+  // focus; when returning with a fresh ID (and nothing selected), pick it.
+  // The flag ensures only an explicit Add-tile trip triggers selection —
+  // tab switches and remote adds never auto-select.
+  const expectCategoryRef = useRef(false);
+  const categoryIdsRef = useRef<string[] | null>(null);
+  const handleAddCategory = useCallback(() => {
+    expectCategoryRef.current = true;
+    router.push("/category-form");
+  }, [router]);
+  useFocusEffect(
+    useCallback(() => {
+      const ids = categoryOptions.map((o) => o.id);
+      const prev = categoryIdsRef.current;
+      categoryIdsRef.current = ids;
+      if (expectCategoryRef.current) {
+        expectCategoryRef.current = false;
+        if (prev !== null && categoryId === null && type !== "transfer") {
+          const fresh = ids.filter((id) => !prev.includes(id));
+          if (fresh.length > 0) setCategoryId(fresh[fresh.length - 1]);
+        }
+      }
+    }, [categoryOptions, categoryId, type]),
+  );
 
   // Default account when creating: lastTransaction account if still visible,
   // else first visible account so new users can save without manual selection.
@@ -757,7 +782,7 @@ export default function TransactionForm() {
               value={categoryId}
               onSelect={handleCategorySelect}
               isOwner={categoryResult?.isOwner ?? false}
-              onAdd={() => router.push("/category-form")}
+              onAdd={handleAddCategory}
             />
           ) : (
             <TransferDual

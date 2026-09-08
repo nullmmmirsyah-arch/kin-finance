@@ -254,7 +254,7 @@ git commit -m "feat: add transaction sheet isolated UI pieces"
 Replace return JSX di `transaction-form.tsx:539` dengan:
 Header: `SafeAreaView` → top bar `X` + tabs `Expenses/Income/Transfer` (underline `C.primary` h 3px) + pill `household?.name ?? "General"`
 Body: `CategoryGrid` jika `type!==transfer` else `TransferDual` + `FlatList` accounts sheet modal
-Bottom: amount row (`formatNumber` live, no currency symbol per PRD §1), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), `Today` sets today without opening the picker (as-built per review; date pill opens the `DateField` modal timezone-aware), Save `Button` + Delete if edit.
+Bottom: amount row (`formatNumber` live, no currency symbol per PRD §1), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), date pill opens the `DateField` modal timezone-aware, Save `Button` (single submit action) + Delete if edit.
 
 Preserve: `handleTypeChange`, `handleAmountChange` via `evaluateKeypadExpression` + `formatAmountInput`/`wasDecimalTruncated`, `handleAccountSelect`, `handleToAccountSelect`, `handleCategorySelect`, `handleSubmit` duplicate Alert, `handleDelete`, `canSubmit`, `hasInteracted` → `useDiscardGuard`.
 
@@ -270,7 +270,7 @@ Run: `npm run lint` Expected: PASS
 
 - [ ] **Step 4: Manual smoke via expo**
 
-Run: `npx expo start` check light/dark, grid scroll, transfer swap, keypad Today→date, note suggest, save
+Run: `npx expo start` check light/dark, grid scroll, transfer swap, date pill→picker, note suggest, save
 
 - [ ] **Step 5: Commit**
 
