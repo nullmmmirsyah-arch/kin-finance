@@ -757,6 +757,7 @@ export default function TransactionForm() {
             }}
           >
             <View className="flex-row items-end justify-end gap-2">
+              {/* Currency-agnostic: bare whole number, no symbol (PRD §1). */}
               <Text className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
                 {(() => {
                   const hasOp = /[+\-×÷*\/]/.test(amountText);
@@ -767,9 +768,6 @@ export default function TransactionForm() {
                   if (formatted) return formatted;
                   return amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : "0";
                 })()}
-              </Text>
-              <Text className="pb-1 text-sm font-medium" style={{ color: C.textSecondary }}>
-                IDR
               </Text>
             </View>
           </Pressable>

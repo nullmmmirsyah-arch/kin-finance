@@ -252,7 +252,7 @@ git commit -m "feat: add transaction sheet isolated UI pieces"
 Replace return JSX di `transaction-form.tsx:539` dengan:
 Header: `SafeAreaView` → top bar `X` + tabs `Expenses/Income/Transfer` (underline `C.primary` h 3px) + pill `household?.name ?? "General"`
 Body: `CategoryGrid` jika `type!==transfer` else `TransferDual` + `FlatList` accounts sheet modal
-Bottom: amount row (`formatNumber` live, `IDR` label kecil), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), `Today` sets today without opening the picker (as-built per review; date pill opens the `DateField` modal timezone-aware), Save `Button` + Delete if edit.
+Bottom: amount row (`formatNumber` live, no currency symbol per PRD §1), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), `Today` sets today without opening the picker (as-built per review; date pill opens the `DateField` modal timezone-aware), Save `Button` + Delete if edit.
 
 Preserve: `handleTypeChange`, `handleAmountChange` via `evaluateKeypadExpression` + `formatAmountInput`/`wasDecimalTruncated`, `handleAccountSelect`, `handleToAccountSelect`, `handleCategorySelect`, `handleSubmit` duplicate Alert, `handleDelete`, `canSubmit`, `hasInteracted` → `useDiscardGuard`.
 
@@ -321,7 +321,7 @@ git commit -m "feat: retain validation parity for sheet"
 - [ ] **Step 1: Update PRD §3.6 Transactions Form UX**
 
 Ganti paragraf "Form UX: contextual subtitle/type icon..." dengan:
-"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare number + IDR hint, keypad custom 5×4 (+ - × ÷ live thousand `formatAmountInput`, Today sets today without picker, date pill→picker household timezone), Note 200 + auto-suggest same category (5 chips), duplicate 24h Alert, discard guard (auto account defaults never dirty)."
+"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare whole number no currency symbol, keypad custom 5×4 (+ - × ÷ live thousand `formatAmountInput`, Today sets today without picker, date pill→picker household timezone), Note 200 + auto-suggest same category (5 chips), duplicate 24h Alert, discard guard (auto account defaults never dirty)."
 
 - [ ] **Step 2: Add Change Log entry**
 

@@ -277,7 +277,7 @@ Core records of financial activity: income, expense, or transfer.
 - `createdBy` / `updatedBy` recorded on every transaction.
 - Members cannot create on hidden accounts/categories or reassign to them, but
   can edit existing transactions referencing hidden accounts.
-- **Sheet UX (as of 2026-09-08 — add transaction sheet):** header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA → `/category-form`, back auto-select), Transfer dual card + swap, pill akun tappable default lastTransaction (fallback first visible), amount bare number + IDR hint (`formatAmountInput` live thousand, `formatNumber` eval result, amber Decimals truncated warning via `wasDecimalTruncated`), keypad custom 5-row (`+ - × ÷` live eval left-to-right via `utils/keypadEval`, Today sets today without opening the picker, ✓ submit; date pill opens the calendar modal household-timezone-aware via `resolveTimezone`/`getDayBounds`/`formatDateShortTz`), Note 200 + auto-suggest same category (5 chips via `hooks/useNoteSuggestions`), duplicate 24h Alert, discard guard (`useDiscardGuard` header X + hardware back; auto account defaults never dirty), Repeat last pill. See §4.4 for details.
+- **Sheet UX (as of 2026-09-08 — add transaction sheet):** header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA → `/category-form`, back auto-select), Transfer dual card + swap, pill akun tappable default lastTransaction (fallback first visible), amount bare whole number with no currency symbol (`formatAmountInput` live thousand, `formatNumber` eval result, amber Decimals truncated warning via `wasDecimalTruncated`), keypad custom 5-row (`+ - × ÷` live eval left-to-right via `utils/keypadEval`, Today sets today without opening the picker, ✓ submit; date pill opens the calendar modal household-timezone-aware via `resolveTimezone`/`getDayBounds`/`formatDateShortTz`), Note 200 + auto-suggest same category (5 chips via `hooks/useNoteSuggestions`), duplicate 24h Alert, discard guard (`useDiscardGuard` header X + hardware back; auto account defaults never dirty), Repeat last pill. See §4.4 for details.
 - **Day-grouped net totals:** the Transactions list shows a net total per day
   header (income − expense; transfers excluded because they move money between
   owned accounts and do not change household net worth), colored by sign.
@@ -464,8 +464,8 @@ Transfer`, active underline `C.primary`) + household-name pill; scrollable
 category creation with return note); transfer dual card with swap;
 tappable account pill defaulting to lastTransaction account else first
 visible account (user-touched flag drives the discard guard, auto-defaults
-never count as interaction and are never reapplied); bare-number amount
-with IDR hint, live thousand separators, custom 5-row keypad
+never count as interaction and are never reapplied); bare whole-number amount
+with no currency symbol, live thousand separators, custom 5-row keypad
 (`1-9`, `0`, `.`, `+ - × ÷` left-to-right integer eval via
 `utils/keypadEval.ts`, `⌫`, `Today` sets today without opening the picker,
 `✓` submits; operator presses on empty/trailing-operator input are
