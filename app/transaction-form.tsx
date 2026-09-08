@@ -754,11 +754,9 @@ export default function TransactionForm() {
 
         <KeyboardAwareScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "space-between" }}
           keyboardShouldPersistTaps="handled"
           bottomOffset={16}
         >
-        <View>
         {/* Repeat last pill */}
         {!isEdit && lastTransaction ? (
           <Pressable
@@ -807,9 +805,11 @@ export default function TransactionForm() {
             <Text className="px-4 pt-1 text-xs text-error dark:text-error-dark">{accountError}</Text>
           ) : null}
         </View>
-        </View>
 
-        <View className="px-4 pb-2 gap-2">
+        </KeyboardAwareScrollView>
+
+        {/* Bottom fixed section: Account pill + Bottom card + Keypad + Save bar */}
+        <View className="px-4 gap-2" style={{ backgroundColor: C.background }}>
         {/* Account pill for expense/income */}
         {type !== "transfer" ? (
           <View className="z-10 flex-row items-center gap-2 px-6" style={{ marginBottom: -14 }}>
@@ -974,8 +974,6 @@ export default function TransactionForm() {
           <Text className="text-xs text-error dark:text-error-dark">{dateError}</Text>
         ) : null}
         </View>
-
-        </KeyboardAwareScrollView>
 
         {/* Keypad or spacer when note focused */}
         {!noteFocused ? (
