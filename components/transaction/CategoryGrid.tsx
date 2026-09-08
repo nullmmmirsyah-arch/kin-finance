@@ -1,4 +1,4 @@
-import { FlatList, Pressable, Text, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
@@ -50,66 +50,68 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
       renderItem={({ item }) => {
         if (item.kind === "add") {
           return (
-            <Pressable
-              onPress={onAdd}
-              accessibilityRole="button"
-              accessibilityLabel="Add category"
-              style={[
-                Shadow.card,
-                {
-                  width: cell,
-                  aspectRatio: 1,
-                  borderRadius: Radius.md,
-                  backgroundColor: C.background,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  borderStyle: "dashed",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                },
-              ]}
-            >
-              <Feather name="plus" size={28} color={C.primary} />
-              <Text className="text-[11px] font-medium" style={{ color: C.primary }}>
-                Add
-              </Text>
-            </Pressable>
+            <View style={{ width: cell, alignItems: "center", gap: 6 }}>
+              <Pressable
+                onPress={onAdd}
+                accessibilityRole="button"
+                accessibilityLabel="Add category"
+                style={[
+                  Shadow.card,
+                  {
+                    width: cell,
+                    aspectRatio: 1,
+                    borderRadius: Radius.md,
+                    backgroundColor: C.background,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderStyle: "dashed",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  },
+                ]}
+              >
+                <Feather name="plus" size={28} color={C.primary} />
+                <Text className="text-[11px] font-medium" style={{ color: C.primary }}>
+                  Add
+                </Text>
+              </Pressable>
+            </View>
           );
         }
         const active = item.option.id === value;
         return (
-          <Pressable
-            onPress={() => onSelect(item.option.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={item.option.label}
-            style={[
-              Shadow.card,
-              {
-                width: cell,
-                aspectRatio: 1,
-                borderRadius: Radius.md,
-                backgroundColor: C.background,
-                borderWidth: active ? 2 : 1,
-                borderColor: active ? C.primary : C.border,
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              },
-            ]}
-            className="p-2"
-          >
-            <CategoryIcon name={item.option.icon ?? "other"} size={32} />
+          <View style={{ width: cell, alignItems: "center", gap: 6 }}>
+            <Pressable
+              onPress={() => onSelect(item.option.id)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={item.option.label}
+              style={[
+                Shadow.card,
+                {
+                  width: "100%",
+                  aspectRatio: 1,
+                  borderRadius: Radius.md,
+                  backgroundColor: C.background,
+                  borderWidth: active ? 2 : 1,
+                  borderColor: active ? C.primary : C.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+              ]}
+            >
+              <CategoryIcon name={item.option.icon ?? "other"} size={32} />
+            </Pressable>
             <Text
               numberOfLines={1}
               ellipsizeMode="tail"
-              className="text-center text-[11px]"
+              className="text-center text-xs"
               style={{ color: C.textPrimary, maxWidth: "100%" }}
             >
               {item.option.label}
             </Text>
-          </Pressable>
+          </View>
         );
       }}
     />
