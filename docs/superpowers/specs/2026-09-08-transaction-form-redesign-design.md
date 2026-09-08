@@ -30,7 +30,9 @@ Scope: `app/transaction-form.tsx`, `components/transaction/*`, `hooks/useNoteSug
 SafeAreaView
  └ View flex-1
     ├ Header (X | Expenses Income Transfer | household pill) — tidak berubah
-    ├ ScrollView flex-1 (kategori saja)
+    ├ ScrollView flex-1 = `KeyboardAwareScrollView` (`contentContainer
+    │   flexGrow:1, space-between`; tetap satu-satunya mekanisme keyboard —
+    │   tanpa `KeyboardAvoidingView` sesuai PRD)
     │   ├ Repeat-last pill (tidak berubah)
     │   └ CategoryGrid / TransferDual
     └ Bottom fixed (di luar ScrollView)
@@ -57,12 +59,15 @@ Gap hilang karena bottom selalu nempel bawah, tidak lagi tergantung tinggi grid.
 - Satu card: `[✎ TextInput note .... amount + IDR]`, tanpa ikon kamera.
   Kamera dihilangkan — tidak ada fitur receipt di scope ini. Amount read-only display (tap → kembali ke keypad mode).
 - Chips: `FlatList` horizontal dalam card, `max 5`, dari transaksi terakhir
-  kategori ini (atau global jika kategori null). Tampil saat `noteFocused`
-  walau draft kosong; tap chip → `setNote(chip)`. Saat draft ada → filter
-  `includes` seperti sekarang.
-- Keyboard: `noteFocused=true` → keypad unmount. Bottom card terangkat di atas
-  keyboard device via `react-native-keyboard-controller` (sticky/avoiding) +
-  `scrollToEnd`/focus-scroll agar field tidak ketutup. `keyboardShouldPersistTaps="handled"`.
+  kategori ini. Hanya saat kategori dipilih (expense/income); transfer tidak
+  ada kategori → tidak ada chips. Tampil saat `noteFocused` walau draft kosong;
+  tap chip → `setNote(chip)`. Saat draft ada → filter `includes` seperti sekarang.
+- Keyboard (PRD melarang `KeyboardAvoidingView`): note input tetap di dalam
+  satu `KeyboardAwareScrollView` dengan `contentContainer {flexGrow:1,
+  justifyContent:'space-between'}` (blok atas: kategori, blok bawah menempel
+  bawah: akun + card + chips). Saat `noteFocused`, keypad unmount dan
+  `KeyboardAwareScrollView` otomatis scroll field ke atas keyboard device
+  (`keyboardShouldPersistTaps="handled"`). Tidak ada kode scroll manual.
 - Counter `n/200` tetap, warna amber ≥150, error ≥180.
 
 ## 6. Keypad
