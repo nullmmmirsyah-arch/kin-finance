@@ -187,7 +187,7 @@ export default function BudgetForm() {
           bottomOffset={16}
         >
           <View className="gap-1.5">
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
               Month
             </Text>
             <View
@@ -206,7 +206,7 @@ export default function BudgetForm() {
 
           {isEdit ? (
             <View className="gap-1.5">
-              <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+              <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                 Category
               </Text>
               <View

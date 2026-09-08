@@ -73,37 +73,37 @@ export function TransactionCard({
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
-      className="flex-row items-center gap-3 rounded-[16px] px-4 py-3"
+      className="flex-row items-center gap-3.5 rounded-[20px] px-5 py-4"
       style={pressed ? { backgroundColor: C.surface } : undefined}
     >
       <View
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: Radius.sm,
+          width: 48,
+          height: 48,
+          borderRadius: Radius.md,
           backgroundColor: C.surface,
         }}
         className="items-center justify-center overflow-hidden"
       >
         {isTransfer ? (
-          <Feather name="arrow-right" size={18} color={C.primary} />
+          <Feather name="arrow-right" size={20} color={C.primary} />
         ) : (
-          <Icon ref={categoryIcon ?? "other"} size={28} />
+          <Icon ref={categoryIcon ?? "other"} size={32} />
         )}
       </View>
-      <View className="flex-1">
-        <Text numberOfLines={1} className="text-base text-text-primary dark:text-text-primary-dark">
+      <View className="flex-1 gap-1">
+        <Text numberOfLines={1} className="text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
           {displayNote}
         </Text>
         <Text
           numberOfLines={1}
-          className="text-xs text-text-secondary dark:text-text-secondary-dark"
+          className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark"
         >
           {subtitle}
         </Text>
       </View>
       <Text
-        className="text-base font-semibold"
+        className="text-[16px] font-semibold tracking-[-0.015em] leading-5 tabular-nums"
         style={{ color: amountColor }}
       >
         {amountLabel}

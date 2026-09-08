@@ -6,7 +6,15 @@ module.exports = {
   theme: {
     extend: {
       fontSize: {
-        display: ["28px", { lineHeight: "1.2" }],
+        display: ["28px", { lineHeight: "1.0", letterSpacing: "-0.02em", fontWeight: "700" }],
+        heading: ["18px", { lineHeight: "1.33", letterSpacing: "-0.02em", fontWeight: "700" }],
+        subheading: ["15px", { lineHeight: "1.33", letterSpacing: "-0.01em", fontWeight: "500" }],
+        body: ["16px", { lineHeight: "1.25", letterSpacing: "-0.01em", fontWeight: "500" }],
+        label: ["14px", { lineHeight: "1.4", letterSpacing: "0.02em", fontWeight: "600" }],
+        detail: ["13px", { lineHeight: "1.33", letterSpacing: "0.04em", fontWeight: "400" }],
+        caption: ["12px", { lineHeight: "1.33", letterSpacing: "0.02em", fontWeight: "400" }],
+        micro: ["11px", { lineHeight: "1.0", letterSpacing: "0.08em", fontWeight: "600" }],
+        nav: ["11px", { lineHeight: "1.0", letterSpacing: "0.02em", fontWeight: "600" }],
       },
       colors: {
         primary: "#92400E",

@@ -22,9 +22,9 @@ export function BillRankingCard({ type, segments }: Props) {
       className="px-4 py-4"
     >
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">Bill Amount Ranking TOP 10</Text>
-        <View style={{ backgroundColor: C.primaryLight, borderRadius: 999 }} className="px-3 py-1">
-          <Text className="text-xs font-semibold" style={{ color: C.textPrimary }}>
+        <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">Bill Amount Ranking TOP 10</Text>
+        <View style={{ backgroundColor: C.primaryLight, borderRadius: 999 }} className="px-3.5 py-1.5">
+          <Text className="text-[13px] font-semibold tracking-wide" style={{ color: C.textPrimary }}>
             {type === "expenses" ? "Expenses" : "Income"}
           </Text>
         </View>
@@ -38,10 +38,10 @@ export function BillRankingCard({ type, segments }: Props) {
         <View className="mt-3 gap-2">
           {top10.map((s, idx) => (
             <View key={`${s.name}-${idx}`} className="flex-row items-center justify-between py-1.5">
-              <Text numberOfLines={1} className="flex-1 text-sm text-text-primary dark:text-text-primary-dark">
+              <Text numberOfLines={1} className="flex-1 text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
                 {idx + 1} {s.name}
               </Text>
-              <Text className="ml-2 text-sm font-medium text-text-primary dark:text-text-primary-dark">{formatNumber(s.amount)}</Text>
+              <Text className="ml-2 text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-primary dark:text-text-primary-dark">{formatNumber(s.amount)}</Text>
             </View>
           ))}
         </View>

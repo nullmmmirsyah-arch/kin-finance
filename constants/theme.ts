@@ -94,7 +94,11 @@ export const Radius = {
 export const FontSize = {
   display: 28,
   heading: 18,
+  subheading: 15,
   body: 16,
   label: 14,
+  detail: 13,
   caption: 12,
+  micro: 11,
+  nav: 11,
 } as const;

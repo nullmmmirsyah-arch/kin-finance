@@ -184,13 +184,13 @@ export default function Settings() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <Text className="text-[28px] font-bold text-text-primary dark:text-text-primary-dark">
+        <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
           Settings
         </Text>
       </View>
 
       <View className="mt-6 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Household
         </Text>
 
@@ -221,10 +221,10 @@ export default function Settings() {
               <Feather name="users" size={20} color={C.primary} />
             </View>
             <View>
-              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+              <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5 text-text-primary dark:text-text-primary-dark">
                 {household?.name ?? "Household"}
               </Text>
-              <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
+              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 {memberCount === 1
                   ? "1 member"
                   : `${memberCount} members`}
@@ -236,13 +236,13 @@ export default function Settings() {
 
         <View className="mt-3">
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
-              Balance Mode
+            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">
+              BALANCE MODE
             </Text>
             {isOwner === false ? (
               <View className="flex-row items-center gap-1">
                 <Feather name="info" size={12} color={C.textSecondary} />
-                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">Owner only</Text>
+                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">OWNER ONLY</Text>
               </View>
             ) : null}
           </View>
@@ -270,7 +270,7 @@ export default function Settings() {
                     className="flex-1 items-center justify-center py-3"
                   >
                     <Text
-                      className={`text-sm font-medium ${
+                      className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
                         selected
                           ? "text-background dark:text-background-dark"
                           : "text-text-secondary dark:text-text-secondary-dark"
@@ -305,10 +305,10 @@ export default function Settings() {
                   <Feather name="info" size={16} color={C.primary} />
                 </View>
                 <View>
-                  <Text className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+                  <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                     {balanceModeLabel}
                   </Text>
-                  <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                  <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                     Balance per period
                   </Text>
                 </View>
@@ -317,8 +317,8 @@ export default function Settings() {
                 style={{ backgroundColor: C.surface, borderRadius: 999 }}
                 className="px-2.5 py-1"
               >
-                <Text className="text-xs font-medium" style={{ color: C.textSecondary }}>
-                  Read only
+                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none" style={{ color: C.textSecondary }}>
+                  READ ONLY
                 </Text>
               </View>
             </View>
@@ -326,7 +326,7 @@ export default function Settings() {
 
           <View className="mt-1.5 flex-row items-center gap-1">
             <Feather name="info" size={12} color={C.textSecondary} />
-            <Text className="flex-1 text-xs text-text-secondary dark:text-text-secondary-dark">
+            <Text className="flex-1 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               {balanceMode === "fresh" ? "Each period starts fresh" : "Closing balance carries to next period"}
             </Text>
           </View>
@@ -334,7 +334,7 @@ export default function Settings() {
       </View>
 
       <View className="mt-6 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Appearance
         </Text>
 
@@ -358,7 +358,7 @@ export default function Settings() {
                   color={selected ? C.background : C.textSecondary}
                 />
                 <Text
-                  className={`text-sm font-medium ${
+                  className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
                     selected
                       ? "text-background dark:text-background-dark"
                       : "text-text-secondary dark:text-text-secondary-dark"
@@ -373,7 +373,7 @@ export default function Settings() {
       </View>
 
       <View className="mt-6 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Categories
         </Text>
 
@@ -403,7 +403,7 @@ export default function Settings() {
             >
               <Feather name="tag" size={20} color={C.primary} />
             </View>
-            <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
+            <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5 text-text-primary dark:text-text-primary-dark">
               Categories
             </Text>
           </View>
@@ -412,7 +412,7 @@ export default function Settings() {
       </View>
 
       <View className="mt-6 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Danger Zone
         </Text>
         <View
@@ -429,11 +429,11 @@ export default function Settings() {
         >
           <View className="flex-row items-center gap-2">
             <Feather name="alert-triangle" size={18} color={C.error} />
-            <Text className="text-sm font-semibold" style={{ color: C.error }}>
+            <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5" style={{ color: C.error }}>
               {isOwner ? "Delete Household" : "Leave Household"}
             </Text>
           </View>
-          <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
             {isOwner
               ? "Permanently delete all household data for everyone. This cannot be undone."
               : "You will lose access to all household data. Your transactions will remain in the household."}
@@ -446,7 +446,7 @@ export default function Settings() {
             disabled={isDeletingHousehold || isOwner === undefined}
           />
           {isOwner ? (
-            <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
               To keep the household, transfer ownership in Members first.
             </Text>
           ) : null}
@@ -454,7 +454,7 @@ export default function Settings() {
       </View>
 
       <View className="mt-6 px-5">
-        <Text className="mb-2 text-sm font-medium text-text-secondary dark:text-text-secondary-dark">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Account
         </Text>
 
