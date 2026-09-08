@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Feather from "@expo/vector-icons/Feather";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -205,6 +206,31 @@ export default function TransactionForm() {
     }
   }, [categoryResult, type, categoryId, categoryOptions]);
 
+  // Auto-select a category created via the Add tile: snapshot option IDs on
+  // focus; when returning with a fresh ID (and nothing selected), pick it.
+  // The flag ensures only an explicit Add-tile trip triggers selection —
+  // tab switches and remote adds never auto-select.
+  const expectCategoryRef = useRef(false);
+  const categoryIdsRef = useRef<string[] | null>(null);
+  const handleAddCategory = useCallback(() => {
+    expectCategoryRef.current = true;
+    router.push("/category-form");
+  }, [router]);
+  useFocusEffect(
+    useCallback(() => {
+      const ids = categoryOptions.map((o) => o.id);
+      const prev = categoryIdsRef.current;
+      categoryIdsRef.current = ids;
+      if (expectCategoryRef.current) {
+        expectCategoryRef.current = false;
+        if (prev !== null && categoryId === null && type !== "transfer") {
+          const fresh = ids.filter((id) => !prev.includes(id));
+          if (fresh.length > 0) setCategoryId(fresh[fresh.length - 1]);
+        }
+      }
+    }, [categoryOptions, categoryId, type]),
+  );
+
   // Default account when creating: lastTransaction account if still visible,
   // else first visible account so new users can save without manual selection.
   // Never reapply once the user has touched account selection.
@@ -279,6 +305,9 @@ export default function TransactionForm() {
     setCategoryId(id);
     setCategoryError(null);
     if (error) setError(null);
+    // Return to keypad mode when picking a category mid-typing.
+    setNoteFocused(false);
+    Keyboard.dismiss();
   }, [error]);
 
   const canSubmit =
@@ -335,6 +364,8 @@ export default function TransactionForm() {
   // the second invocation from creating a duplicate transaction.
   const submittingRef = useRef(false);
   const runSubmit = useCallback(async () => {
+    Keyboard.dismiss();
+    setNoteFocused(false);
     setError(null);
     setAmountError(null);
     setAccountError(null);
@@ -506,24 +537,14 @@ export default function TransactionForm() {
     }
   }, [runSubmit]);
 
+  // Keypad is digits + operators only: no Today key (date pill beside the
+  // account covers it), no ✓ (the Save bar is the single submit action).
   const handleKeypad = useCallback(
     (k: string) => {
       if (k === "⌫") {
         setAmountText((prev) => prev.slice(0, -1));
         if (amountError) setAmountError(null);
         if (error) setError(null);
-        return;
-      }
-      if (k === "✓") {
-        void handleSubmit();
-        return;
-      }
-      if (k === "Today") {
-        // Household-day start (Q8: Today = 00:00) — no picker; the date pill
-        // opens it. Start-of-day can never be in the future, so no clamping.
-        const start = new Date(getDayBounds(new Date(), tz).start);
-        setDate(start);
-        setDateDraft(start);
         return;
       }
       if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
@@ -541,7 +562,7 @@ export default function TransactionForm() {
         if (error) setError(null);
       }
     },
-    [amountError, error, amountText, handleSubmit, tz],
+    [amountError, error, amountText],
   );
 
   const handleDelete = () => {
@@ -731,6 +752,12 @@ export default function TransactionForm() {
           </View>
         </View>
 
+        <KeyboardAwareScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
+        >
         {/* Repeat last pill */}
         {!isEdit && lastTransaction ? (
           <Pressable
@@ -748,14 +775,14 @@ export default function TransactionForm() {
         ) : null}
 
         {/* Category grid or Transfer dual */}
-        <View className="flex-1 pt-2">
+        <View className="pt-2">
           {type !== "transfer" ? (
             <CategoryGrid
               options={categoryOptions}
               value={categoryId}
               onSelect={handleCategorySelect}
               isOwner={categoryResult?.isOwner ?? false}
-              onAdd={() => router.push("/category-form")}
+              onAdd={handleAddCategory}
             />
           ) : (
             <TransferDual
@@ -947,6 +974,8 @@ export default function TransactionForm() {
           ) : null}
         </View>
 
+        </KeyboardAwareScrollView>
+
         {/* Keypad or spacer when note focused */}
         {!noteFocused ? (
           <Keypad onKey={handleKeypad} />
@@ -954,7 +983,7 @@ export default function TransactionForm() {
           <View style={{ height: 12 }} />
         )}
 
-        {/* Save bar */}
+        {/* Save bar (fixed bottom; dismiss note keyboard to reach it) */}
         <View className="px-4 py-3 gap-2 border-t" style={{ borderColor: C.border, backgroundColor: C.background }}>
           <Button
             title={isEdit ? "Save Changes" : "Save"}

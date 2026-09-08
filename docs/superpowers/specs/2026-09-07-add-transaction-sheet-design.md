@@ -23,12 +23,12 @@ Out of scope V1: tags chips, fee, foto/OCR, time picker, currency picker.
 ## 3. Components (isolated, testable)
 
 1. **SheetHeader** — `X` kiri (close → `handleBack` discard guard), tabs `Expenses | Income | Transfer` tengah (underline pakai `C.primary`, bukan kuning referensi — Q11 note), pill `General` kanan (ambil `household.name` via `api.households.getActive`, fallback "General").
-2. **CategoryGrid** — scroll vertikal (`ScrollView`), 4 kolom, data = `categoryOptions` filtered by `type` (Q2). Render `CategoryIcon` 32px dalam circle 56px (reuse `components/CategoryIcon.tsx:1`). Hidden logic sudah di server `categories.list`. Empty state: jika `isOwner` & `length===0` → tombol `Create category` → `router.push("/category-form")`, on back auto-refetch Convex (reactive). Selected border `2px C.primary`.
+2. **CategoryGrid** — `FlatList` 4 kolom `scrollEnabled={false}` (di dalam `KeyboardAwareScrollView`), sel ukuran tetap dari `useWindowDimensions` (tidak pernah melar — satu kategori tetap kotak kecil rata kiri), data = `categoryOptions` filtered by `type` (Q2) + tile `Add` (plus, dashed border, owner-only → `router.push("/category-form")`; member tanpa tile). Kategori yang baru dibuat terpilih otomatis saat kembali (`useFocusEffect` diff ID + flag eksplisit — tab switch / remote add tidak ikut). Render `CategoryIcon` 32px (reuse `components/CategoryIcon.tsx:1`), label 1 baris + ellipsis (nama panjang terpotong seragam — referensi pun memotong, mis. "Daily nes."). Hidden logic sudah di server `categories.list`. Selected border `2px C.primary`.
 3. **TransferDualCard** (hanya `type===transfer`) — dua kartu `Payment account` / `Receive account` (border `C.border`, `Shadow.card`, `Radius.md`), tap buka **AccountSheet**, tombol tengah `⇄` swap (`[accountId,toAccountId]=[toAccountId,accountId]`).
 4. **AccountPill + AccountSheet** — pill `BCA` style (Q6): menampilkan `account.name`, tap buka sheet akun (reuse `SelectField`-style sheet tapi tanpa search jika <8). Default awal: `lastTransaction.accountId` jika masih visible, else first visible. Member hanya lihat visible.
-5. **Amount + Keypad** — amount besar kanan, bare whole number tanpa simbol currency (Q5 direvisi opsi A per PRD §1 currency-agnostic — label `IDR` dihapus). Input display = `formatAmountInput` live + evaluasi ekspresi. Keypad custom 5 baris × 4 kolom (as-built, satu-satunya layout): `[1,2,3,⌫]`, `[4,5,6,+]`, `[7,8,9,-]`, `[.,0,×,÷]`, `[Today,✓]` (+2 sel placeholder) — mencakup semua operator `utils/keypadEval.ts` (`+ - × ÷`), `.` (trigger amber warning `wasDecimalTruncated`, operan desimal ditolak evaluator), `⌫`, `Today`, `✓` (`C.primary`). Evaluasi: parse `amountExpr` → token number/operator → hitung `left-to-right` (tanpa precedence, kontrak kalkulator — disengaja) via evaluator manual integer-only, tolak operan desimal, division truncates + zero → null. On `✓` → `handleSubmit`; on `Today` → set tanggal hari ini (tanpa membuka picker).
-6. **NoteField + AutoSuggest** — `Add a note` placeholder, max 200 (`NOTE_MAX_LENGTH`). Saat fokus: system keyboard? Q4 note: keypad diganti Gboard saat note focused (Image2). Implement: `noteFocused` → hide custom keypad, show `TextInput` dengan `autoFocus`, suggestion dropdown di bawah input: query `api.transactions.list({categoryIds:[categoryId], limit:20})` ambil `note` unik, filter `includes` draft, tampil 3-5 chips tappable untuk fill. No tags chip storage.
-7. **DatePicker** — tombol `Today` di keypad + pill tanggal menampilkan `formatDateShortTz`. Modal kalender (reuse `components/DateField` + `MonthPicker` logic: `maximumDate today`, future disabled `opacity 0.4`, timezone via `household.timezone` → `getPeriodBounds`). Q8 tanggal saja, simpan `date.getTime()` 00:00 household tz.
+5. **Amount + Keypad** — amount besar kanan, bare whole number tanpa simbol currency (Q5 direvisi opsi A per PRD §1 currency-agnostic — label `IDR` dihapus). Input display = `formatAmountInput` live + evaluasi ekspresi. Keypad custom 4×4 penuh (uji user): `[1,2,3,⌫]`, `[4,5,6,+]`, `[7,8,9,-]`, `[.,0,×,÷]` — tanpa tombol `Today` (pill tanggal di samping akun mencukupi) dan tanpa `✓` (Save bar satu-satunya aksi simpan). Kolom operator dipisah visual (spacer + bg `C.surface` + teks `C.primary`); digit bg `C.background`. Evaluasi: parse `amountExpr` → token number/operator → hitung `left-to-right` (tanpa precedence, kontrak kalkulator — disengaja) via evaluator manual integer-only, tolak operan desimal, division truncates + zero → null; operator diabaikan saat input kosong/berakhiran operator.
+6. **NoteField + AutoSuggest** — `Add a note` placeholder, max 200 (`NOTE_MAX_LENGTH`). Q4 note: keypad diganti Gboard saat note focused (Image2). Layar dibungkus `KeyboardAwareScrollView` (`react-native-keyboard-controller`, `keyboardShouldPersistTaps="handled"`) agar field note terangkat di atas keyboard device; keypad kustom disembunyikan saat mengetik, Save bar fixed di bawah (dismiss keyboard untuk mencapai). Pilih kategori saat mengetik men-dismiss keyboard kembali ke mode keypad. Suggestion chips di bawah input: query `api.transactions.list({categoryIds:[categoryId], limit:20})` ambil `note` unik, filter `includes` draft, tampil 3-5 chips tappable untuk fill. No tags chip storage.
+7. **DatePicker** — pill tanggal menampilkan `formatDateShortTz`. Modal kalender (reuse `components/DateField` + `MonthPicker` logic: `maximumDate today`, future disabled `opacity 0.4`, timezone via `household.timezone` → `getPeriodBounds`). Q8 tanggal saja, simpan `date.getTime()` 00:00 household tz. Tidak ada tombol `Today` di keypad (uji user).
 8. **Save Bar** — error inline (amount/account/category/date), `Button` Save disabled via `canSubmit` (same logic as now). Mas ulang `hapticSuccess/Warning/Error`, `Snackbar`, `duplicate Alert`, `discard guard`.
 
 ## 4. Data Flow
@@ -60,7 +60,7 @@ user input → validation (validateTransactionAmount/Note/Date) → create/updat
 ## 7. Testing
 
 - `npx tsc --noEmit`, `npm run lint`, `vitest` untuk pure utils (`formatAmountInput` eval, dupe logic).
-- Manual: Expo SDK 54 `expo start`, cek light/dark, Member vs Owner, hidden, edit flow (?id=), add category back, note suggest, keypad Today→date picker, swap transfer.
+- Manual: Expo SDK 54 `expo start`, cek light/dark, Member vs Owner, hidden, edit flow (?id=), add category back + auto-select, note suggest, date-pill→picker, swap transfer.
 - Convex: `npx convex codegen` setelah schema (tidak ubah) + `npx convex dev` sync.
 
 ## 8. Documentation Updates (post-implement)
@@ -79,10 +79,10 @@ user input → validation (validateTransactionAmount/Note/Date) → create/updat
 
 ## 10. Verification Checklist
 
-- [ ] Grid filtered by type, hidden respected, add category → back selected
+- [ ] Grid filtered by type, hidden respected, fixed cells, Add tile → back selected
 - [ ] Transfer swap & pill, From≠To validation
-- [ ] Keypad + - × ÷ live thousand, ✓ submit, Today sets today (date pill → picker timezone-aware)
-- [ ] Note suggest same category, max 200, dark/light
+- [ ] Keypad 4×4 digits/ops separated, Save submits, date pill → picker timezone-aware
+- [ ] Note visible above device keyboard, suggest same category, max 200, dark/light
 - [ ] Amount bare whole number, no currency symbol + whole-number warning
 - [ ] Header X/tabs/General, Kin primary underline
 - [ ] Duplicate, hidden, discard, Repeat last tetap

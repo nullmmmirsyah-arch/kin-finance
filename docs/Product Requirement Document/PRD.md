@@ -277,7 +277,7 @@ Core records of financial activity: income, expense, or transfer.
 - `createdBy` / `updatedBy` recorded on every transaction.
 - Members cannot create on hidden accounts/categories or reassign to them, but
   can edit existing transactions referencing hidden accounts.
-- **Sheet UX (as of 2026-09-08 — add transaction sheet):** header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA → `/category-form`, back auto-select), Transfer dual card + swap, pill akun tappable default lastTransaction (fallback first visible), amount bare whole number with no currency symbol (`formatAmountInput` live thousand, `formatNumber` eval result, amber Decimals truncated warning via `wasDecimalTruncated`), keypad custom 5-row (`+ - × ÷` live eval left-to-right via `utils/keypadEval`, Today sets today without opening the picker, ✓ submit; date pill opens the calendar modal household-timezone-aware via `resolveTimezone`/`getDayBounds`/`formatDateShortTz`), Note 200 + auto-suggest same category (5 chips via `hooks/useNoteSuggestions`), duplicate 24h Alert, discard guard (`useDiscardGuard` header X + hardware back; auto account defaults never dirty), Repeat last pill. See §4.4 for details.
+- **Sheet UX (as of 2026-09-08 — add transaction sheet):** header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA → `/category-form`, back auto-select), Transfer dual card + swap, pill akun tappable default lastTransaction (fallback first visible), amount bare whole number with no currency symbol (`formatAmountInput` live thousand, `formatNumber` eval result, amber Decimals truncated warning via `wasDecimalTruncated`), keypad custom 4×4 penuh (`+ - × ÷` live eval left-to-right via `utils/keypadEval`, kolom operator dipisah visual, tanpa tombol Today/✓ — Save bar satu-satunya aksi simpan; date pill opens the calendar modal household-timezone-aware via `resolveTimezone`/`getDayBounds`/`formatDateShortTz`), Note 200 + auto-suggest same category (5 chips via `hooks/useNoteSuggestions`), duplicate 24h Alert, discard guard (`useDiscardGuard` header X + hardware back; auto account defaults never dirty), Repeat last pill. See §4.4 for details.
 - **Day-grouped net totals:** the Transactions list shows a net total per day
   header (income − expense; transfers excluded because they move money between
   owned accounts and do not change household net worth), colored by sign.
@@ -452,27 +452,33 @@ balance equality, shared timestamp, no orphan on missing category).
 ```text
 Home → "+" → sheet (Expenses/Income/Transfer tabs)
   → pick category from scroll grid (or transfer: Payment/Receive cards + swap)
-  → amount via custom keypad (+ - × ÷ live eval, Today key)
+  → amount via custom keypad (+ - × ÷ live eval)
   → account pill, date pill, note with auto-suggest
-  → ✓ Save → transactions.create → balances auto-updated → back
+  → Save → transactions.create → balances auto-updated → back
 ```
 
-**Sheet UX (as of 2026-09-08 — supersedes the three-section form below):**
+**Sheet UX (as of 2026-09-08 — supersedes the three-section form below,
+rev. user-test fixes):**
 see §3.6 "Sheet UX". In brief: header X + tabs (`Expenses | Income |
-Transfer`, active underline `C.primary`) + household-name pill; scrollable
-4-column category grid filtered by type (hidden-aware; empty state links to
-category creation with return note); transfer dual card with swap;
+Transfer`, active underline `C.primary`) + household-name pill; 4-column
+category grid with fixed-size cells (never stretches; single category stays
+a small left-aligned box) filtered by type (hidden-aware; owner-only `Add`
+tile with dashed border links to category creation, reactive return note);
+transfer dual card with swap;
 tappable account pill defaulting to lastTransaction account else first
 visible account (user-touched flag drives the discard guard, auto-defaults
 never count as interaction and are never reapplied); bare whole-number amount
-with no currency symbol, live thousand separators, custom 5-row keypad
+with no currency symbol, live thousand separators, custom 4×4 keypad
 (`1-9`, `0`, `.`, `+ - × ÷` left-to-right integer eval via
-`utils/keypadEval.ts`, `⌫`, `Today` sets today without opening the picker,
-`✓` submits; operator presses on empty/trailing-operator input are
+`utils/keypadEval.ts`, `⌫`; operator column visually separated; no Today
+key — date pill beside the account covers it; no ✓ — Save bar is the
+single submit action; operator presses on empty/trailing-operator input are
 ignored); date pill opening a calendar modal (`maximumDate` today,
 household-timezone-aware via `resolveTimezone`/`getDayBounds`/
 `formatDateShortTz`); note (max 200, counter with amber/red feedback at
-150/180) with same-category auto-suggest chips (5 max via
+150/180) lifted above the device keyboard via `KeyboardAwareScrollView`
+(custom keypad hidden while typing; picking a category or submitting
+dismisses the keyboard) with same-category auto-suggest chips (5 max via
 `hooks/useNoteSuggestions.ts`); duplicate 24h confirmation Alert;
 discard guard on X + hardware back via shared `useDiscardGuard`.
 
