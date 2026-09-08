@@ -754,6 +754,7 @@ export default function TransactionForm() {
 
         <KeyboardAwareScrollView
           className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           bottomOffset={16}
         >
@@ -806,9 +807,7 @@ export default function TransactionForm() {
           ) : null}
         </View>
 
-        </KeyboardAwareScrollView>
-
-        {/* Bottom fixed section: Account pill + Bottom card + Keypad + Save bar */}
+        {/* Bottom section: Account pill + Bottom card (inside ScrollView for keyboard avoidance) */}
         <View className="px-4 gap-2" style={{ backgroundColor: C.background }}>
         {/* Account pill for expense/income */}
         {type !== "transfer" ? (
@@ -975,6 +974,10 @@ export default function TransactionForm() {
         ) : null}
         </View>
 
+        </KeyboardAwareScrollView>
+
+        {/* Fixed bottom: Keypad + Save bar */}
+        <View style={{ backgroundColor: C.background }}>
         {/* Keypad or spacer when note focused */}
         {!noteFocused ? (
           <Keypad onKey={handleKeypad} />
@@ -999,6 +1002,7 @@ export default function TransactionForm() {
               disabled={isLoading}
             />
           ) : null}
+        </View>
         </View>
 
         {/* Account sheet modal */}
