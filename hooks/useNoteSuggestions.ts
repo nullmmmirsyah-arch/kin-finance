@@ -10,6 +10,11 @@ export function filterNoteSuggestions(notes: string[], draft: string, limit = 5)
   return uniq.slice(0, limit);
 }
 
+export function recentNoteSuggestions(notes: string[], limit = 5): string[] {
+  const uniq = Array.from(new Set(notes.filter((n) => n && n.trim())));
+  return uniq.slice(0, limit);
+}
+
 export function useNoteSuggestions(categoryId: string | null, draft: string) {
   // Intentional dep: refresh the query upper bound when the category changes,
   // without re-subscribing on every render (Date.now() is impure).
@@ -30,5 +35,11 @@ export function useNoteSuggestions(categoryId: string | null, draft: string) {
     () => (res?.transactions ?? []).map((t) => t.note).filter(Boolean) as string[],
     [res],
   );
-  return useMemo(() => filterNoteSuggestions(notes, draft, 5), [notes, draft]);
+  return useMemo(
+    () =>
+      draft.trim()
+        ? filterNoteSuggestions(notes, draft, 5)
+        : recentNoteSuggestions(notes, 5),
+    [notes, draft],
+  );
 }
