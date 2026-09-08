@@ -754,10 +754,11 @@ export default function TransactionForm() {
 
         <KeyboardAwareScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "space-between" }}
           keyboardShouldPersistTaps="handled"
           bottomOffset={16}
         >
+        <View>
         {/* Repeat last pill */}
         {!isEdit && lastTransaction ? (
           <Pressable
@@ -806,51 +807,12 @@ export default function TransactionForm() {
             <Text className="px-4 pt-1 text-xs text-error dark:text-error-dark">{accountError}</Text>
           ) : null}
         </View>
-
-        {/* Amount row */}
-        <View className="px-4 py-3 border-t" style={{ borderColor: C.border, backgroundColor: C.background }}>
-          <Pressable
-            onPress={() => {
-              // keep amount editing via keypad; hide note keyboard
-              setNoteFocused(false);
-              Keyboard.dismiss();
-            }}
-          >
-            <View className="flex-row items-end justify-end gap-2">
-              {/* Currency-agnostic: bare whole number, no symbol (PRD §1). */}
-              <Text className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
-                {(() => {
-                  const hasOp = /[+\-×÷*\/]/.test(amountText);
-                  if (hasOp) {
-                    return evalValue !== null ? formatNumber(evalValue) : amountText || "0";
-                  }
-                  const formatted = formatAmountInput(amountText);
-                  if (formatted) return formatted;
-                  return amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : "0";
-                })()}
-              </Text>
-            </View>
-          </Pressable>
-          {wasDecimalTruncated(amountText) ? (
-            <Text className="pt-1 text-right text-xs" style={{ color: C.chartAmber }}>
-              Decimals truncated — whole numbers only
-            </Text>
-          ) : null}
-          {amountError ? (
-            <Text className="pt-1 text-right text-xs text-error dark:text-error-dark">{amountError}</Text>
-          ) : null}
-          {error ? (
-            <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: `${C.error}14` }}>
-              <Text className="text-xs font-medium" style={{ color: C.error }}>
-                {error}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
+        <View className="px-4 pb-2 gap-2">
         {/* Account pill for expense/income */}
         {type !== "transfer" ? (
-          <View className="px-4 pb-2 flex-row items-center gap-2">
+          <View className="z-10 flex-row items-center gap-2 px-6" style={{ marginBottom: -14 }}>
             <AccountPill
               label="Select account"
               account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
@@ -883,7 +845,7 @@ export default function TransactionForm() {
             </Pressable>
           </View>
         ) : (
-          <View className="px-4 pb-2 flex-row items-center gap-2">
+          <View className="z-10 flex-row items-center gap-2 px-6" style={{ marginBottom: -14 }}>
             <Pressable
               onPress={openDatePicker}
               style={{
@@ -909,16 +871,12 @@ export default function TransactionForm() {
           </View>
         )}
 
-        {/* Note field + suggestions */}
-        <View className="px-4 pb-2 gap-2">
-          <View
-            className="flex-row items-center gap-2 rounded-xl border px-3"
-            style={{
-              borderColor: noteFocused ? C.primary : C.border,
-              backgroundColor: C.background,
-              height: 48,
-            }}
-          >
+        {/* Amount + note bottom card */}
+        <View
+          className="gap-2 rounded-2xl border p-3"
+          style={{ borderColor: noteFocused ? C.primary : C.border, backgroundColor: C.background, paddingTop: 22 }}
+        >
+          <View className="flex-row items-center gap-2">
             <Feather name="edit-3" size={16} color={C.textSecondary} />
             <TextInput
               placeholder="Add a note"
@@ -933,6 +891,28 @@ export default function TransactionForm() {
               returnKeyType="done"
               onSubmitEditing={() => setNoteFocused(false)}
             />
+            <Pressable
+              onPress={() => {
+                setNoteFocused(false);
+                Keyboard.dismiss();
+              }}
+            >
+              <View className="items-end">
+                <Text className="text-2xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
+                  {(() => {
+                    const hasOp = /[+\-×÷*\/]/.test(amountText);
+                    if (hasOp) {
+                      return evalValue !== null ? formatNumber(evalValue) : amountText || "0";
+                    }
+                    const formatted = formatAmountInput(amountText);
+                    if (formatted) return formatted;
+                    return amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : "0";
+                  })()}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+          <View className="flex-row items-center justify-end">
             <Text
               className="text-xs"
               style={{
@@ -947,11 +927,31 @@ export default function TransactionForm() {
               {note.length}/{NOTE_MAX_LENGTH}
             </Text>
           </View>
-          {noteSuggestions.length > 0 ? (
-            <View className="flex-row flex-wrap gap-2">
-              {noteSuggestions.map((s) => (
+          {wasDecimalTruncated(amountText) ? (
+            <Text className="text-right text-xs" style={{ color: C.chartAmber }}>
+              Decimals truncated — whole numbers only
+            </Text>
+          ) : null}
+          {amountError ? (
+            <Text className="text-right text-xs text-error dark:text-error-dark">{amountError}</Text>
+          ) : null}
+          {error ? (
+            <View className="rounded-xl px-3 py-2" style={{ backgroundColor: `${C.error}14` }}>
+              <Text className="text-xs font-medium" style={{ color: C.error }}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+          {noteFocused && noteSuggestions.length > 0 ? (
+            <FlatList
+              data={noteSuggestions}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(s) => s}
+              contentContainerStyle={{ gap: 8 }}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item: s }) => (
                 <Pressable
-                  key={s}
                   onPress={() => setNote(s)}
                   style={{
                     borderWidth: 1,
@@ -966,12 +966,13 @@ export default function TransactionForm() {
                     {s}
                   </Text>
                 </Pressable>
-              ))}
-            </View>
+              )}
+            />
           ) : null}
-          {dateError && type !== "transfer" ? (
-            <Text className="text-xs text-error dark:text-error-dark">{dateError}</Text>
-          ) : null}
+        </View>
+        {dateError && type !== "transfer" ? (
+          <Text className="text-xs text-error dark:text-error-dark">{dateError}</Text>
+        ) : null}
         </View>
 
         </KeyboardAwareScrollView>
