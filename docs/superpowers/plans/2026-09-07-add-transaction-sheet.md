@@ -104,7 +104,7 @@ git commit -m "feat: add keypad evaluator pure util"
 import { filterNoteSuggestions } from "@/hooks/useNoteSuggestions";
 import { describe,it,expect } from "vitest";
 describe("filterNoteSuggestions",()=>{
-  it("filters by substring case-insensitive",()=> expect(filterNoteSuggestions(["Pisang goreng","Test future","Rajal"],["pisang"])).toEqual(["Pisang goreng"]));
+  it("filters by substring case-insensitive",()=> expect(filterNoteSuggestions(["Pisang goreng","Test future","Rajal"],"pisang")).toEqual(["Pisang goreng"]));
   it("limits results",()=> expect(filterNoteSuggestions(["a1","a2","a3","a4"],"a",2)).toHaveLength(2));
 });
 ```
@@ -129,7 +129,11 @@ export function filterNoteSuggestions(notes: string[], draft: string, limit=5): 
   return uniq.slice(0,limit);
 }
 export function useNoteSuggestions(categoryId: string|null, draft: string){
-  const res = useQuery(api.transactions.list, categoryId ? { startDate:0, endDate: Date.now(), limit:20, categoryIds: [categoryId as Id<"categories">] as any } : "skip" as any);
+  // As-built: endDate memoized per category (no per-render resubscribe),
+  // categoryId cast at the typed Id<"categories"> boundary — no `as any`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional refresh per category
+  const endDate = useMemo(() => Date.now(), [categoryId]);
+  const res = useQuery(api.transactions.list, categoryId ? { startDate:0, endDate, limit:20, categoryIds: [categoryId as Id<"categories">] } : "skip");
   const notes = useMemo(()=> (res?.transactions ?? []).map(t=>t.note).filter(Boolean) as string[], [res]);
   return useMemo(()=> filterNoteSuggestions(notes, draft, 5), [notes,draft]);
 }
@@ -207,14 +211,18 @@ export function TransferDual({from,to,fromAcc,toAcc,options,onSelectFrom,onSelec
 import { Pressable,Text,View } from "react-native";
 import { useThemeColors, Shadow, Radius } from "@/constants/theme";
 import { useState } from "react";
-const KEYS=[["1","2","3","⌫"],["4","5","6","+"],["7","8","9","-"],[".","0","Today","✓"]];
+// As-built: 5 rows × 4 cols (includes × ÷ per utils/keypadEval); KeyButton
+// extracted so pressed-state useState is NOT called inside the map loop.
+const KEYS=[["1","2","3","⌫"],["4","5","6","+"],["7","8","9","-"],[".","0","×","÷"],["Today","✓","",""]];
+function KeyButton({label,onKey}:{label:string;onKey:(k:string)=>void}){
+  const C=useThemeColors();
+  const [pressed,setPressed]=useState(false);
+  const isConfirm=label==="✓";
+  return <Pressable onPress={()=>onKey(label)} onPressIn={()=>setPressed(true)} onPressOut={()=>setPressed(false)} accessibilityRole="button" accessibilityLabel={label} style={{flex:1,height:52,borderRadius:Radius.md,backgroundColor:isConfirm?C.primary: pressed?C.surface:C.background,borderWidth:1,borderColor:isConfirm?C.primary:C.border,alignItems:"center",justifyContent:"center"}}><Text style={{color:isConfirm?C.background:C.textPrimary,fontWeight:"700"}}>{label}</Text></Pressable>
+}
 export function Keypad({onKey}:{onKey:(k:string)=>void}){
   const C=useThemeColors();
-  return <View className="gap-1.5 p-3 bg-background dark:bg-background-dark" style={{borderTopWidth:1,borderColor:C.border}}>{KEYS.map((row,i)=><View key={i} className="flex-row gap-1.5">{row.map(k=>{
-    const isConfirm=k==="✓";
-    const [pressed,setPressed]=useState(false);
-    return <Pressable key={k} onPress={()=>onKey(k)} onPressIn={()=>setPressed(true)} onPressOut={()=>setPressed(false)} style={{flex:1,height:52,borderRadius:Radius.md,backgroundColor:isConfirm?C.primary: pressed?C.surface:C.background,borderWidth:1,borderColor:isConfirm?C.primary:C.border,alignItems:"center",justifyContent:"center"}}><Text style={{color:isConfirm?C.background:C.textPrimary,fontWeight:"700"}}>{k}</Text></Pressable>
-  })}</View>)}</View>
+  return <View className="gap-1.5 p-3 bg-background dark:bg-background-dark" style={{borderTopWidth:1,borderColor:C.border}}>{KEYS.map((row,i)=><View key={i} className="flex-row gap-1.5">{row.map(k=>k===""?<View key={`e-${i}`} style={{flex:1,height:52}}/>:<KeyButton key={k} label={k} onKey={onKey}/>)}</View>)}</View>
 }
 ```
 
@@ -244,7 +252,7 @@ git commit -m "feat: add transaction sheet isolated UI pieces"
 Replace return JSX di `transaction-form.tsx:539` dengan:
 Header: `SafeAreaView` → top bar `X` + tabs `Expenses/Income/Transfer` (underline `C.primary` h 3px) + pill `household?.name ?? "General"`
 Body: `CategoryGrid` jika `type!==transfer` else `TransferDual` + `FlatList` accounts sheet modal
-Bottom: amount row (`formatNumber` live, `IDR` label kecil), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), `Today` opens `DateField` modal timezone-aware, Save `Button` + Delete if edit.
+Bottom: amount row (`formatNumber` live, `IDR` label kecil), `NoteField` (`TextInput` + `filterNoteSuggestions` chips), keypad area (show `Keypad` when !noteFocused else system keyboard), `Today` sets today without opening the picker (as-built per review; date pill opens the `DateField` modal timezone-aware), Save `Button` + Delete if edit.
 
 Preserve: `handleTypeChange`, `handleAmountChange` via `evaluateKeypadExpression` + `formatAmountInput`/`wasDecimalTruncated`, `handleAccountSelect`, `handleToAccountSelect`, `handleCategorySelect`, `handleSubmit` duplicate Alert, `handleDelete`, `canSubmit`, `hasInteracted` → `useDiscardGuard`.
 
@@ -313,7 +321,7 @@ git commit -m "feat: retain validation parity for sheet"
 - [ ] **Step 1: Update PRD §3.6 Transactions Form UX**
 
 Ganti paragraf "Form UX: contextual subtitle/type icon..." dengan:
-"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare number + IDR hint, keypad custom 4×4 (+ - × ÷ live thousand `formatAmountInput`, Today→date picker household timezone), Note 200 + auto-suggest same category (5 chips), duplicate 24h Alert, discard guard."
+"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare number + IDR hint, keypad custom 5×4 (+ - × ÷ live thousand `formatAmountInput`, Today sets today without picker, date pill→picker household timezone), Note 200 + auto-suggest same category (5 chips), duplicate 24h Alert, discard guard (auto account defaults never dirty)."
 
 - [ ] **Step 2: Add Change Log entry**
 

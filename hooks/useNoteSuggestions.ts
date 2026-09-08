@@ -18,13 +18,13 @@ export function useNoteSuggestions(categoryId: string | null, draft: string) {
   const res = useQuery(
     api.transactions.list,
     categoryId
-      ? ({
+      ? {
           startDate: 0,
           endDate,
           limit: 20,
-          categoryIds: [categoryId as Id<"categories">] as any,
-        } as any)
-      : ("skip" as any),
+          categoryIds: [categoryId as Id<"categories">],
+        }
+      : "skip",
   );
   const notes = useMemo(
     () => (res?.transactions ?? []).map((t) => t.note).filter(Boolean) as string[],

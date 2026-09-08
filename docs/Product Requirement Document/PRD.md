@@ -450,14 +450,34 @@ balance equality, shared timestamp, no orphan on missing category).
 ### 4.4 Create Transaction
 
 ```text
-Transactions tab → "+" → type toggle (Income/Expense/Transfer)
-  → amount input with thousand-separator formatting
-  → account, category (income/expense), date, note
-  → or transfer: from/to account
-  → Save → transactions.create → balances auto-updated → list
+Home → "+" → sheet (Expenses/Income/Transfer tabs)
+  → pick category from scroll grid (or transfer: Payment/Receive cards + swap)
+  → amount via custom keypad (+ - × ÷ live eval, Today key)
+  → account pill, date pill, note with auto-suggest
+  → ✓ Save → transactions.create → balances auto-updated → back
 ```
 
-**Form UX (as of 2026-08-17):**
+**Sheet UX (as of 2026-09-08 — supersedes the three-section form below):**
+see §3.6 "Sheet UX". In brief: header X + tabs (`Expenses | Income |
+Transfer`, active underline `C.primary`) + household-name pill; scrollable
+4-column category grid filtered by type (hidden-aware; empty state links to
+category creation with return note); transfer dual card with swap;
+tappable account pill defaulting to lastTransaction account else first
+visible account (user-touched flag drives the discard guard, auto-defaults
+never count as interaction and are never reapplied); bare-number amount
+with IDR hint, live thousand separators, custom 5-row keypad
+(`1-9`, `0`, `.`, `+ - × ÷` left-to-right integer eval via
+`utils/keypadEval.ts`, `⌫`, `Today` sets today without opening the picker,
+`✓` submits; operator presses on empty/trailing-operator input are
+ignored); date pill opening a calendar modal (`maximumDate` today,
+household-timezone-aware via `resolveTimezone`/`getDayBounds`/
+`formatDateShortTz`); note (max 200, counter with amber/red feedback at
+150/180) with same-category auto-suggest chips (5 max via
+`hooks/useNoteSuggestions.ts`); duplicate 24h confirmation Alert;
+discard guard on X + hardware back via shared `useDiscardGuard`.
+
+**Form UX (as of 2026-08-17 — superseded by the Sheet UX above; retained
+for the account, category, and budget forms which still use it):**
 
 - Header shows contextual subtitle ("Track an expense" / "Record incoming
   money" / "Move money between accounts") and a dynamic type icon.
@@ -486,19 +506,21 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - **Inline validation:** field-specific error states (`amountError`,
   `accountError`, `categoryError`, `dateError`) display directly beneath
   each field on blur or submit attempt. Type change clears all error states.
-- **Three-section layout:** Type + Amount (bordered container),
+- **Three-section layout (account/category/budget forms only):** Type + Amount (bordered container),
   Account + Category or From/To Account (bordered container with
   `bg-surface`), Date + Note (bordered container). Consistent bordered
   treatment without gradient card — clean visual rhythm with background
   color differentiation for account/category emphasis.
-- **Keyboard behavior:** tapping any non-text-input field (Account/Category/
+- **Keyboard behavior (account/category/budget forms):** tapping any non-text-input field (Account/Category/
   From-To selector, Date, type chip, "Repeat last") dismisses the keyboard
   before the field action runs; tapping a text input (Amount, Note) keeps the
   keyboard open so focus transfers. The form scrolls via `KeyboardAwareScrollView`
    so the focused input stays visible above the keyboard on both platforms.
+  The transaction sheet instead uses a custom keypad (no system keyboard
+  except while the note field is focused).
 - **Loading state:** while form data loads (the account list on create, the
   transaction on edit), the screen renders the header plus Skeleton
-  placeholders mirroring the three-section layout instead of plain text.
+  placeholders mirroring the form layout instead of plain text.
 
 ### 4.5 Owner Invites Member
 

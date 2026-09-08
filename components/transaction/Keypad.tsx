@@ -15,6 +15,14 @@ type KeyButtonProps = {
   onKey: (k: string) => void;
 };
 
+const KEY_LABELS: Record<string, string> = {
+  "⌫": "Backspace",
+  "✓": "Confirm",
+  "×": "Multiply",
+  "÷": "Divide",
+  Today: "Today",
+};
+
 function KeyButton({ label, onKey }: KeyButtonProps) {
   const C = useThemeColors();
   const [pressed, setPressed] = useState(false);
@@ -25,6 +33,8 @@ function KeyButton({ label, onKey }: KeyButtonProps) {
       onPress={() => onKey(label)}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={KEY_LABELS[label] ?? label}
       style={{
         flex: 1,
         height: 52,

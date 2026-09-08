@@ -94,6 +94,9 @@ export default function TransactionForm() {
 
   const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
   const [lastChecked, setLastChecked] = useState(false);
+  // True once the user explicitly picks/swaps/repeats an account — auto-applied
+  // defaults must not count as interaction (discard guard) nor be reapplied.
+  const [accountTouched, setAccountTouched] = useState(false);
   // Load persisted repeat-last (survives unmount / app restart) — P0-3
   useEffect(() => {
     if (isEdit) return;
@@ -155,6 +158,7 @@ export default function TransactionForm() {
     setCategoryId(last.categoryId ?? null);
     setDate(new Date());
     setNote("");
+    setAccountTouched(true);
   };
 
   const accountOptions = useMemo(() => {
@@ -194,9 +198,10 @@ export default function TransactionForm() {
   }, [categoryResult, type, categoryId, categoryOptions]);
 
   // Default account when creating: lastTransaction account if still visible,
-  // else first visible account so new users can save without manual selection
+  // else first visible account so new users can save without manual selection.
+  // Never reapply once the user has touched account selection.
   useEffect(() => {
-    if (isEdit || !lastChecked) return;
+    if (isEdit || !lastChecked || accountTouched) return;
     if (accountResult === undefined) return;
     if (accountId !== null) return;
     if (accountOptions.length === 0) return;
@@ -213,7 +218,7 @@ export default function TransactionForm() {
       return;
     }
     setAccountId(accountOptions[0].id);
-  }, [isEdit, lastChecked, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
+  }, [isEdit, lastChecked, accountTouched, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
 
   const handleTypeChange = useCallback(
     (t: TransactionType) => {
@@ -250,12 +255,14 @@ export default function TransactionForm() {
 
   const handleAccountSelect = useCallback((id: string) => {
     setAccountId(id);
+    setAccountTouched(true);
     setAccountError(null);
     if (error) setError(null);
   }, [error]);
 
   const handleToAccountSelect = useCallback((id: string) => {
     setToAccountId(id);
+    setAccountTouched(true);
     setAccountError(null);
     if (error) setError(null);
   }, [error]);
@@ -280,8 +287,7 @@ export default function TransactionForm() {
     if (!isEdit) {
       return (
         amountText !== "" ||
-        accountId !== null ||
-        toAccountId !== null ||
+        accountTouched ||
         categoryId !== null ||
         note !== "" ||
         type !== "expense" ||
@@ -306,6 +312,7 @@ export default function TransactionForm() {
     amountText,
     accountId,
     toAccountId,
+    accountTouched,
     categoryId,
     date,
     note,
@@ -495,10 +502,11 @@ export default function TransactionForm() {
         const clamped = now.getTime() >= todayEnd ? new Date(todayEnd - 1) : now;
         setDate(clamped);
         setDateDraft(clamped);
-        setShowDatePicker(true);
         return;
       }
       if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
+        // Ignore operators on empty input or after another operator/dot.
+        if (amountText === "" || /[+\-×÷*/.]$/.test(amountText)) return;
         const op = k === "*" ? "×" : k === "/" ? "÷" : k;
         setAmountText((prev) => prev + op);
         if (amountError) setAmountError(null);
@@ -511,7 +519,7 @@ export default function TransactionForm() {
         if (error) setError(null);
       }
     },
-    [amountError, error, handleSubmit, tz],
+    [amountError, error, amountText, handleSubmit, tz],
   );
 
   const handleDelete = () => {
@@ -620,7 +628,6 @@ export default function TransactionForm() {
   }
 
   const selectedAccount = accountResult.accounts.find((a) => a._id === accountId) ?? null;
-  const fromAcc = accountResult.accounts.find((a) => a._id === accountId) ?? null;
   const toAcc = accountResult.accounts.find((a) => a._id === toAccountId) ?? null;
 
   const handleSwap = () => {
@@ -628,6 +635,7 @@ export default function TransactionForm() {
     const prevTo = toAccountId;
     setAccountId(prevTo);
     setToAccountId(prevFrom);
+    setAccountTouched(true);
     setAccountError(null);
   };
 
@@ -718,7 +726,7 @@ export default function TransactionForm() {
             />
           ) : (
             <TransferDual
-              fromAcc={fromAcc ? { name: fromAcc.name, type: fromAcc.type } : null}
+              fromAcc={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
               toAcc={toAcc ? { name: toAcc.name, type: toAcc.type } : null}
               onSelectFrom={() => {
                 setAccountSheetTarget("from");

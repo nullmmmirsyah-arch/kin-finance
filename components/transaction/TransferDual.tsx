@@ -18,6 +18,8 @@ export function TransferDual({ fromAcc, toAcc, onSelectFrom, onSelectTo, onSwap 
       <AccountPill label="Payment account" account={fromAcc} onPress={onSelectFrom} />
       <Pressable
         onPress={onSwap}
+        accessibilityRole="button"
+        accessibilityLabel="Swap payment and receive accounts"
         style={{
           width: 40,
           height: 40,

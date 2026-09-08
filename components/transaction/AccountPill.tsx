@@ -21,6 +21,8 @@ export function AccountPill({ label, account, onPress }: Props) {
       style={[
         Shadow.card,
         {
+          flex: 1,
+          minWidth: 0,
           borderRadius: 999,
           borderWidth: 1,
           borderColor: C.border,
