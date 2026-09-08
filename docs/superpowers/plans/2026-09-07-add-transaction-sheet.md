@@ -158,6 +158,7 @@ git commit -m "feat: add note suggest helper"
 **Interfaces:**
 - Consumes: `CategoryIcon`, `AccountIcon`, `useThemeColors()`, `Shadow`, `Radius`
 - Produces: `CategoryGrid({options, value, onSelect, isOwner})`, `AccountPill({account, onPress})`, `TransferDual({fromId,toId, options, onSwap, onSelect})`, `Keypad({expr,onChange,onSubmit,onToday})`
+- As-built (coderabbit re-review): `TransferDual({fromAcc, toAcc, onSelectFrom, onSelectTo, onSwap})`, `Keypad({onKey})` — plan draft names diverged during implementation; final fix wave also removed dead `from`/`to`/`options` props.
 
 - [ ] **Step 1: Create CategoryGrid**
 
