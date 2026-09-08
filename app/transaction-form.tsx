@@ -330,7 +330,11 @@ export default function TransactionForm() {
     isDirty: hasInteracted,
   });
 
-  const handleSubmit = useCallback(async () => {
+  // Synchronous re-entrancy lock: Button `disabled` and keypad both funnel
+  // here, but rapid taps can land before React re-renders — the ref blocks
+  // the second invocation from creating a duplicate transaction.
+  const submittingRef = useRef(false);
+  const runSubmit = useCallback(async () => {
     setError(null);
     setAmountError(null);
     setAccountError(null);
@@ -492,6 +496,16 @@ export default function TransactionForm() {
     router,
   ]);
 
+  const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await runSubmit();
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [runSubmit]);
+
   const handleKeypad = useCallback(
     (k: string) => {
       if (k === "⌫") {
@@ -505,11 +519,11 @@ export default function TransactionForm() {
         return;
       }
       if (k === "Today") {
-        const now = new Date();
-        const todayEnd = getDayBounds(now, tz).end;
-        const clamped = now.getTime() >= todayEnd ? new Date(todayEnd - 1) : now;
-        setDate(clamped);
-        setDateDraft(clamped);
+        // Household-day start (Q8: Today = 00:00) — no picker; the date pill
+        // opens it. Start-of-day can never be in the future, so no clamping.
+        const start = new Date(getDayBounds(new Date(), tz).start);
+        setDate(start);
+        setDateDraft(start);
         return;
       }
       if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
@@ -645,6 +659,17 @@ export default function TransactionForm() {
     setToAccountId(prevFrom);
     setAccountTouched(true);
     setAccountError(null);
+  };
+
+  // Date draft lifecycle: sync draft on open so Done can't write a stale
+  // draft (e.g. after Repeat Last changed the date), clear on dismiss.
+  const openDatePicker = () => {
+    setDateDraft(date);
+    setShowDatePicker(true);
+  };
+  const closeDatePicker = () => {
+    setDateDraft(null);
+    setShowDatePicker(false);
   };
 
   return (
@@ -811,7 +836,7 @@ export default function TransactionForm() {
               <Text className="text-xs text-error dark:text-error-dark">{accountError}</Text>
             ) : null}
             <Pressable
-              onPress={() => setShowDatePicker(true)}
+              onPress={openDatePicker}
               style={{
                 borderWidth: 1,
                 borderColor: C.border,
@@ -833,7 +858,7 @@ export default function TransactionForm() {
         ) : (
           <View className="px-4 pb-2 flex-row items-center gap-2">
             <Pressable
-              onPress={() => setShowDatePicker(true)}
+              onPress={openDatePicker}
               style={{
                 borderWidth: 1,
                 borderColor: C.border,
@@ -1017,12 +1042,11 @@ export default function TransactionForm() {
               visible={showDatePicker}
               transparent
               animationType="fade"
-              onRequestClose={() => setShowDatePicker(false)}
+              onRequestClose={() => closeDatePicker()}
             >
               <Pressable
-                className="flex-1 items-center justify-center px-6"
-                style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
-                onPress={() => setShowDatePicker(false)}
+                className="flex-1 items-center justify-center bg-black/40 px-6"
+                onPress={() => closeDatePicker()}
               >
                 <Pressable
                   style={[
@@ -1045,7 +1069,7 @@ export default function TransactionForm() {
                       }
                     }}
                   />
-                  <Button title="Cancel" variant="ghost" onPress={() => setShowDatePicker(false)} />
+                  <Button title="Cancel" variant="ghost" onPress={() => closeDatePicker()} />
                   <Button
                     title="Done"
                     variant="secondary"
@@ -1055,7 +1079,7 @@ export default function TransactionForm() {
                         const clamped = dateDraft.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : dateDraft;
                         setDate(clamped);
                       }
-                      setShowDatePicker(false);
+                      closeDatePicker();
                     }}
                   />
                 </Pressable>
@@ -1068,7 +1092,7 @@ export default function TransactionForm() {
               display="default"
               maximumDate={new Date(getDayBounds(new Date(), tz).end - 1)}
               onChange={(event: DateTimePickerEvent, d?: Date) => {
-                setShowDatePicker(false);
+                closeDatePicker();
                 if (event.type === "set" && d) {
                   const todayEndInner = getDayBounds(new Date(), tz).end;
                   const clamped = d.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : d;

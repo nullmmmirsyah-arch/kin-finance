@@ -143,6 +143,7 @@
   <div style="display:flex;gap:8px"><button class="btn" onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">↑ Atas</button><button class="btn primary" onclick="exportJSON()">Export JSON ↓</button></div>
 </div>
 <script>
+function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 const QUESTIONS=[
 {q:"Q1 — Tata letak entry",desc:"Referensi full-screen sheet: tabs di atas, grid kategori tengah, input+keypad bawah. Kin sekarang halaman push biasa. Mana yang diinginkan?",visual:"Image1 grid 4×4 + BCA pill bawah",opts:[
 {a:"A — Ganti total (Recommended)",d:"Hapus transaction-form lama, ganti dengan sheet ala referensi (modal full-screen, grid kategori, keypad terintegrasi). Paling mirip referensi."},
@@ -215,7 +216,7 @@ function render(){
    const val=data['q'+(i+1)]||{};
    return `<div class="q" id="q${i+1}"><h3>${qq.q}</h3><small>${qq.desc}</small><div style="margin-top:8px;font-size:11px;color:#92400E;background:#FEF3C7;display:inline-block;padding:4px 8px;border-radius:999px">Visual: ${qq.visual}</div>
    <div class="opts">${qq.opts.map((o,oi)=>`<label class="opt ${val.choice===String(oi)?'active':''}"><input type="radio" name="q${i+1}" value="${oi}" ${val.choice===String(oi)?'checked':''} onchange="pick(${i+1},${oi})"><div><b>${o.a}</b><p>${o.d}</p></div></label>`).join('')}</div>
-   <div style="margin-top:10px"><div style="font-size:12px;font-weight:600">Catatan / preferensi</div><textarea rows="2" placeholder="${qq.extra}" oninput="note(${i+1},this.value)">${val.note||''}</textarea></div></div>`;
+   <div style="margin-top:10px"><div style="font-size:12px;font-weight:600">Catatan / preferensi</div><textarea rows="2" placeholder="${qq.extra}" oninput="note(${i+1},this.value)">${escapeHtml(val.note||'')}</textarea></div></div>`;
  }).join('');
  updateProg();
 }
