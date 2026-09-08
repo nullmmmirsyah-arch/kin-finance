@@ -151,10 +151,18 @@ export default function TransactionForm() {
     Keyboard.dismiss();
     const last = lastTransaction;
     if (!last) return;
+    // Persisted IDs may be stale (account hidden/deleted since) — validate
+    // against visible options; fall back instead of saving stale IDs.
+    const isVisible = (id: string | undefined) =>
+      id !== undefined && accountOptions.some((o) => o.id === id);
     setType(last.type);
     setAmountText(formatNumber(last.amount));
-    setAccountId(last.accountId);
-    setToAccountId(last.toAccountId ?? null);
+    setAccountId(
+      isVisible(last.accountId) ? last.accountId : (accountOptions[0]?.id ?? null),
+    );
+    setToAccountId(
+      last.toAccountId && isVisible(last.toAccountId) ? last.toAccountId : null,
+    );
     setCategoryId(last.categoryId ?? null);
     setDate(new Date());
     setNote("");
