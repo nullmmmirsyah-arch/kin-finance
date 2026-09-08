@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Feather from "@expo/vector-icons/Feather";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -279,6 +280,9 @@ export default function TransactionForm() {
     setCategoryId(id);
     setCategoryError(null);
     if (error) setError(null);
+    // Return to keypad mode when picking a category mid-typing.
+    setNoteFocused(false);
+    Keyboard.dismiss();
   }, [error]);
 
   const canSubmit =
@@ -335,6 +339,8 @@ export default function TransactionForm() {
   // the second invocation from creating a duplicate transaction.
   const submittingRef = useRef(false);
   const runSubmit = useCallback(async () => {
+    Keyboard.dismiss();
+    setNoteFocused(false);
     setError(null);
     setAmountError(null);
     setAccountError(null);
@@ -506,24 +512,14 @@ export default function TransactionForm() {
     }
   }, [runSubmit]);
 
+  // Keypad is digits + operators only: no Today key (date pill beside the
+  // account covers it), no ✓ (the Save bar is the single submit action).
   const handleKeypad = useCallback(
     (k: string) => {
       if (k === "⌫") {
         setAmountText((prev) => prev.slice(0, -1));
         if (amountError) setAmountError(null);
         if (error) setError(null);
-        return;
-      }
-      if (k === "✓") {
-        void handleSubmit();
-        return;
-      }
-      if (k === "Today") {
-        // Household-day start (Q8: Today = 00:00) — no picker; the date pill
-        // opens it. Start-of-day can never be in the future, so no clamping.
-        const start = new Date(getDayBounds(new Date(), tz).start);
-        setDate(start);
-        setDateDraft(start);
         return;
       }
       if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
@@ -541,7 +537,7 @@ export default function TransactionForm() {
         if (error) setError(null);
       }
     },
-    [amountError, error, amountText, handleSubmit, tz],
+    [amountError, error, amountText],
   );
 
   const handleDelete = () => {
@@ -731,6 +727,12 @@ export default function TransactionForm() {
           </View>
         </View>
 
+        <KeyboardAwareScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={16}
+        >
         {/* Repeat last pill */}
         {!isEdit && lastTransaction ? (
           <Pressable
@@ -748,7 +750,7 @@ export default function TransactionForm() {
         ) : null}
 
         {/* Category grid or Transfer dual */}
-        <View className="flex-1 pt-2">
+        <View className="pt-2">
           {type !== "transfer" ? (
             <CategoryGrid
               options={categoryOptions}
@@ -947,6 +949,8 @@ export default function TransactionForm() {
           ) : null}
         </View>
 
+        </KeyboardAwareScrollView>
+
         {/* Keypad or spacer when note focused */}
         {!noteFocused ? (
           <Keypad onKey={handleKeypad} />
@@ -954,7 +958,7 @@ export default function TransactionForm() {
           <View style={{ height: 12 }} />
         )}
 
-        {/* Save bar */}
+        {/* Save bar (fixed bottom; dismiss note keyboard to reach it) */}
         <View className="px-4 py-3 gap-2 border-t" style={{ borderColor: C.border, backgroundColor: C.background }}>
           <Button
             title={isEdit ? "Save Changes" : "Save"}

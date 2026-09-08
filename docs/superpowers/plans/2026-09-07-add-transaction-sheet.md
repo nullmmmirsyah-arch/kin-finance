@@ -211,18 +211,20 @@ export function TransferDual({from,to,fromAcc,toAcc,options,onSelectFrom,onSelec
 import { Pressable,Text,View } from "react-native";
 import { useThemeColors, Shadow, Radius } from "@/constants/theme";
 import { useState } from "react";
-// As-built: 5 rows × 4 cols (includes × ÷ per utils/keypadEval); KeyButton
-// extracted so pressed-state useState is NOT called inside the map loop.
-const KEYS=[["1","2","3","⌫"],["4","5","6","+"],["7","8","9","-"],[".","0","×","÷"],["Today","✓","",""]];
+// As-built rev2 (uji user): 4 rows × 4 cols penuh, tanpa Today/✓;
+// kolom operator dipisah visual (spacer + tone). KeyButton extracted so
+// pressed-state useState is NOT called inside the map loop.
+const KEYS=[["1","2","3","⌫"],["4","5","6","+"],["7","8","9","-"],[".","0","×","÷"]];
+const OP_KEYS=["+","-","×","÷"];
 function KeyButton({label,onKey}:{label:string;onKey:(k:string)=>void}){
   const C=useThemeColors();
   const [pressed,setPressed]=useState(false);
-  const isConfirm=label==="✓";
-  return <Pressable onPress={()=>onKey(label)} onPressIn={()=>setPressed(true)} onPressOut={()=>setPressed(false)} accessibilityRole="button" accessibilityLabel={label} style={{flex:1,height:52,borderRadius:Radius.md,backgroundColor:isConfirm?C.primary: pressed?C.surface:C.background,borderWidth:1,borderColor:isConfirm?C.primary:C.border,alignItems:"center",justifyContent:"center"}}><Text style={{color:isConfirm?C.background:C.textPrimary,fontWeight:"700"}}>{label}</Text></Pressable>
+  const isOp=OP_KEYS.includes(label);
+  return <Pressable onPress={()=>onKey(label)} onPressIn={()=>setPressed(true)} onPressOut={()=>setPressed(false)} accessibilityRole="button" accessibilityLabel={label} style={{flex:1,height:52,borderRadius:Radius.md,backgroundColor:pressed||isOp?C.surface:C.background,borderWidth:1,borderColor:C.border,alignItems:"center",justifyContent:"center"}}><Text style={{color:isOp?C.primary:C.textPrimary,fontWeight:"700",fontSize:16}}>{label}</Text></Pressable>
 }
 export function Keypad({onKey}:{onKey:(k:string)=>void}){
   const C=useThemeColors();
-  return <View className="gap-1.5 p-3 bg-background dark:bg-background-dark" style={{borderTopWidth:1,borderColor:C.border}}>{KEYS.map((row,i)=><View key={i} className="flex-row gap-1.5">{row.map(k=>k===""?<View key={`e-${i}`} style={{flex:1,height:52}}/>:<KeyButton key={k} label={k} onKey={onKey}/>)}</View>)}</View>
+  return <View className="gap-1.5 p-3 bg-background dark:bg-background-dark" style={{borderTopWidth:1,borderColor:C.border}}>{KEYS.map((row,i)=><View key={i} className="flex-row gap-1.5">{row.slice(0,3).map(k=><KeyButton key={k} label={k} onKey={onKey}/>)}<View style={{width:8}}/><KeyButton label={row[3]} onKey={onKey}/></View>)}</View>
 }
 ```
 
@@ -321,7 +323,7 @@ git commit -m "feat: retain validation parity for sheet"
 - [ ] **Step 1: Update PRD §3.6 Transactions Form UX**
 
 Ganti paragraf "Form UX: contextual subtitle/type icon..." dengan:
-"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare whole number no currency symbol, keypad custom 5×4 (+ - × ÷ live thousand `formatAmountInput`, Today sets today without picker, date pill→picker household timezone), Note 200 + auto-suggest same category (5 chips), duplicate 24h Alert, discard guard (auto account defaults never dirty)."
+"Sheet UX: header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA), Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare whole number no currency symbol, keypad custom 4×4 (+ - × ÷ live thousand `formatAmountInput`, kolom ops terpisah, tanpa Today/✓ — Save bar satu-satunya submit; date pill→picker household timezone), Note 200 + auto-suggest same category (5 chips) di atas keyboard via `KeyboardAwareScrollView`, grid sel tetap + tile Add, duplicate 24h Alert, discard guard (auto account defaults never dirty)."
 
 - [ ] **Step 2: Add Change Log entry**
 

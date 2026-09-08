@@ -2,31 +2,32 @@ import { Pressable, Text, View } from "react-native";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { useState } from "react";
 
+// 4 rows × 4 cols, fully filled: digits left, operators separated right.
+// No Today key (date pill beside account covers it), no ✓ (Save bar submits).
 const KEYS: string[][] = [
   ["1", "2", "3", "⌫"],
   ["4", "5", "6", "+"],
   ["7", "8", "9", "-"],
   [".", "0", "×", "÷"],
-  ["Today", "✓", "", ""],
 ];
+
+const OP_KEYS = ["+", "-", "×", "÷"];
+
+const KEY_LABELS: Record<string, string> = {
+  "⌫": "Backspace",
+  "×": "Multiply",
+  "÷": "Divide",
+};
 
 type KeyButtonProps = {
   label: string;
   onKey: (k: string) => void;
 };
 
-const KEY_LABELS: Record<string, string> = {
-  "⌫": "Backspace",
-  "✓": "Confirm",
-  "×": "Multiply",
-  "÷": "Divide",
-  Today: "Today",
-};
-
 function KeyButton({ label, onKey }: KeyButtonProps) {
   const C = useThemeColors();
   const [pressed, setPressed] = useState(false);
-  const isConfirm = label === "✓";
+  const isOp = OP_KEYS.includes(label);
 
   return (
     <Pressable
@@ -39,14 +40,22 @@ function KeyButton({ label, onKey }: KeyButtonProps) {
         flex: 1,
         height: 52,
         borderRadius: Radius.md,
-        backgroundColor: isConfirm ? C.primary : pressed ? C.surface : C.background,
+        backgroundColor: pressed || isOp ? C.surface : C.background,
         borderWidth: 1,
-        borderColor: isConfirm ? C.primary : C.border,
+        borderColor: C.border,
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: isConfirm ? C.background : C.textPrimary, fontWeight: "700" }}>{label}</Text>
+      <Text
+        style={{
+          color: isOp ? C.primary : C.textPrimary,
+          fontWeight: "700",
+          fontSize: 16,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -64,10 +73,12 @@ export function Keypad({ onKey }: KeypadProps) {
     >
       {KEYS.map((row, i) => (
         <View key={i} className="flex-row gap-1.5">
-          {row.map((k, j) => {
-            if (k === "") return <View key={`empty-${i}-${j}`} style={{ flex: 1, height: 52 }} />;
-            return <KeyButton key={k} label={k} onKey={onKey} />;
-          })}
+          {row.slice(0, 3).map((k) => (
+            <KeyButton key={k} label={k} onKey={onKey} />
+          ))}
+          {/* Visual separation between digits and operators */}
+          <View style={{ width: 8 }} />
+          <KeyButton label={row[3]} onKey={onKey} />
         </View>
       ))}
     </View>
