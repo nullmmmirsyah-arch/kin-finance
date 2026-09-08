@@ -11,8 +11,16 @@ export function filterNoteSuggestions(notes: string[], draft: string, limit = 5)
 }
 
 export function recentNoteSuggestions(notes: string[], limit = 5): string[] {
-  const uniq = Array.from(new Set(notes.filter((n) => n && n.trim())));
-  return uniq.slice(0, limit);
+  const seen = new Map<string, string>();
+  for (const n of notes) {
+    if (n && n.trim()) {
+      const key = n.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, n);
+      }
+    }
+  }
+  return Array.from(seen.values()).slice(0, limit);
 }
 
 export function useNoteSuggestions(categoryId: string | null, draft: string) {

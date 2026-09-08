@@ -15,3 +15,8 @@ it("returns unique recent notes when draft is empty", () =>
 
 it("limits recent notes", () =>
   expect(recentNoteSuggestions(["a", "b", "c", "d"], 2)).toEqual(["a", "b"]));
+
+it("dedupes case-insensitively keeping original capitalization", () =>
+  expect(
+    recentNoteSuggestions(["Jajan", "jajan", "JAJAN", "Test future", "test future"]),
+  ).toEqual(["Jajan", "Test future"]));
