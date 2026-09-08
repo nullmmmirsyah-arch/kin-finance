@@ -93,11 +93,13 @@ export default function TransactionForm() {
   const noteSuggestions = useNoteSuggestions(categoryId, note);
 
   const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
+  const [lastChecked, setLastChecked] = useState(false);
   // Load persisted repeat-last (survives unmount / app restart) — P0-3
   useEffect(() => {
     if (isEdit) return;
     void getLastTransaction().then((v) => {
       if (v) setLastTransactionState(v);
+      setLastChecked(true);
     });
   }, [isEdit]);
 
@@ -191,22 +193,27 @@ export default function TransactionForm() {
     }
   }, [categoryResult, type, categoryId, categoryOptions]);
 
-  // Default account from lastTransaction when creating
+  // Default account when creating: lastTransaction account if still visible,
+  // else first visible account so new users can save without manual selection
   useEffect(() => {
-    if (isEdit) return;
+    if (isEdit || !lastChecked) return;
     if (accountResult === undefined) return;
-    if (!lastTransaction) return;
     if (accountId !== null) return;
-    if (!accountOptions.some((o) => o.id === lastTransaction.accountId)) return;
-    setAccountId(lastTransaction.accountId);
-    if (
-      lastTransaction.toAccountId &&
-      toAccountId === null &&
-      accountOptions.some((o) => o.id === lastTransaction.toAccountId)
-    ) {
-      setToAccountId(lastTransaction.toAccountId);
+    if (accountOptions.length === 0) return;
+    const lastId = lastTransaction?.accountId;
+    if (lastId && accountOptions.some((o) => o.id === lastId)) {
+      setAccountId(lastId);
+      if (
+        lastTransaction?.toAccountId &&
+        toAccountId === null &&
+        accountOptions.some((o) => o.id === lastTransaction.toAccountId)
+      ) {
+        setToAccountId(lastTransaction.toAccountId);
+      }
+      return;
     }
-  }, [isEdit, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
+    setAccountId(accountOptions[0].id);
+  }, [isEdit, lastChecked, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
 
   const handleTypeChange = useCallback(
     (t: TransactionType) => {
@@ -935,8 +942,7 @@ export default function TransactionForm() {
           onRequestClose={() => setShowAccountSheet(false)}
         >
           <Pressable
-            className="flex-1 justify-end"
-            style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+            className="flex-1 justify-end bg-black/40"
             onPress={() => setShowAccountSheet(false)}
           >
             <Pressable

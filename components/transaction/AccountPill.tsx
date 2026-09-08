@@ -34,7 +34,11 @@ export function AccountPill({ label, account, onPress }: Props) {
       ]}
     >
       <AccountIcon type={account?.type ?? "cash"} size={20} />
-      <Text className="text-sm font-medium" style={{ color: C.textPrimary }}>
+      <Text
+        numberOfLines={1}
+        className="flex-1 text-sm font-medium"
+        style={{ color: C.textPrimary }}
+      >
         {account?.name ?? label}
       </Text>
     </Pressable>

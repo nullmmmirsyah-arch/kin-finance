@@ -6,6 +6,10 @@ export function evaluateKeypadExpression(expr: string): number | null {
   if (!s || /[+\-*/.]$/.test(s)) return null;
   if (/[^0-9+\-*/.]/.test(s)) return null;
   const tokens = s.split(/([+\-*/])/).filter(Boolean);
+  // Whole numbers only — reject decimal operands (e.g. "1.5+0.5", "12.5×2").
+  for (let i = 0; i < tokens.length; i += 2) {
+    if (!/^\d+$/.test(tokens[i])) return null;
+  }
   let acc = Number(tokens[0]);
   if (!Number.isFinite(acc)) return null;
   for (let i = 1; i < tokens.length; i += 2) {
