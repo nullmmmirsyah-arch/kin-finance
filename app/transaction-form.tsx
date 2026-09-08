@@ -3,17 +3,23 @@ import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  FlatList,
   Keyboard,
+  Modal,
+  Platform,
   Pressable,
   Text,
+  TextInput,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { TRANSACTION_TYPES, TransactionType } from "@/constants/transactions";
 import {
   validateNote,
@@ -22,14 +28,19 @@ import {
   NOTE_MAX_LENGTH,
 } from "@/constants/validation";
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { Chip } from "@/components/Chip";
-import { SelectField } from "@/components/SelectField";
-import { DateField } from "@/components/DateField";
-import { useSnackbar } from "@/components/Snackbar";
 import { Skeleton } from "@/components/Skeleton";
+import { AccountIcon } from "@/components/AccountIcon";
+import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
-import { formatNumber } from "@/utils/format";
+import { useNoteSuggestions } from "@/hooks/useNoteSuggestions";
+import { CategoryGrid } from "@/components/transaction/CategoryGrid";
+import { TransferDual } from "@/components/transaction/TransferDual";
+import { AccountPill } from "@/components/transaction/AccountPill";
+import { Keypad } from "@/components/transaction/Keypad";
+import { formatAmountInput, formatNumber, wasDecimalTruncated } from "@/utils/format";
+import { formatDateShortTz, getDayBounds } from "@/utils/date";
+import { resolveTimezone } from "@/constants/timezones";
+import { evaluateKeypadExpression } from "@/utils/keypadEval";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import {
@@ -54,6 +65,8 @@ export default function TransactionForm() {
   );
   const accountResult = useQuery(api.accounts.list);
   const categoryResult = useQuery(api.categories.list);
+  const household = useQuery(api.households.getActive);
+  const tz = useMemo(() => resolveTimezone(household?.timezone), [household?.timezone]);
   const createTransaction = useMutation(api.transactions.create);
   const updateTransaction = useMutation(api.transactions.update);
   const removeTransaction = useMutation(api.transactions.remove);
@@ -71,13 +84,25 @@ export default function TransactionForm() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [noteFocused, setNoteFocused] = useState(false);
+  const [showAccountSheet, setShowAccountSheet] = useState(false);
+  const [accountSheetTarget, setAccountSheetTarget] = useState<"single" | "from" | "to">("single");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateDraft, setDateDraft] = useState<Date | null>(null);
+
+  const noteSuggestions = useNoteSuggestions(categoryId, note);
 
   const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
+  const [lastChecked, setLastChecked] = useState(false);
+  // True once the user explicitly picks/swaps/repeats an account — auto-applied
+  // defaults must not count as interaction (discard guard) nor be reapplied.
+  const [accountTouched, setAccountTouched] = useState(false);
   // Load persisted repeat-last (survives unmount / app restart) — P0-3
   useEffect(() => {
     if (isEdit) return;
     void getLastTransaction().then((v) => {
       if (v) setLastTransactionState(v);
+      setLastChecked(true);
     });
   }, [isEdit]);
 
@@ -126,13 +151,22 @@ export default function TransactionForm() {
     Keyboard.dismiss();
     const last = lastTransaction;
     if (!last) return;
+    // Persisted IDs may be stale (account hidden/deleted since) — validate
+    // against visible options; fall back instead of saving stale IDs.
+    const isVisible = (id: string | undefined) =>
+      id !== undefined && accountOptions.some((o) => o.id === id);
     setType(last.type);
     setAmountText(formatNumber(last.amount));
-    setAccountId(last.accountId);
-    setToAccountId(last.toAccountId ?? null);
+    setAccountId(
+      isVisible(last.accountId) ? last.accountId : (accountOptions[0]?.id ?? null),
+    );
+    setToAccountId(
+      last.toAccountId && isVisible(last.toAccountId) ? last.toAccountId : null,
+    );
     setCategoryId(last.categoryId ?? null);
     setDate(new Date());
     setNote("");
+    setAccountTouched(true);
   };
 
   const accountOptions = useMemo(() => {
@@ -171,6 +205,29 @@ export default function TransactionForm() {
     }
   }, [categoryResult, type, categoryId, categoryOptions]);
 
+  // Default account when creating: lastTransaction account if still visible,
+  // else first visible account so new users can save without manual selection.
+  // Never reapply once the user has touched account selection.
+  useEffect(() => {
+    if (isEdit || !lastChecked || accountTouched) return;
+    if (accountResult === undefined) return;
+    if (accountId !== null) return;
+    if (accountOptions.length === 0) return;
+    const lastId = lastTransaction?.accountId;
+    if (lastId && accountOptions.some((o) => o.id === lastId)) {
+      setAccountId(lastId);
+      if (
+        lastTransaction?.toAccountId &&
+        toAccountId === null &&
+        accountOptions.some((o) => o.id === lastTransaction.toAccountId)
+      ) {
+        setToAccountId(lastTransaction.toAccountId);
+      }
+      return;
+    }
+    setAccountId(accountOptions[0].id);
+  }, [isEdit, lastChecked, accountTouched, accountResult, lastTransaction, accountId, accountOptions, toAccountId]);
+
   const handleTypeChange = useCallback(
     (t: TransactionType) => {
       Keyboard.dismiss();
@@ -192,41 +249,28 @@ export default function TransactionForm() {
     [categoryId, show],
   );
 
-  const handleAmountChange = useCallback((text: string) => {
-    setAmountText(text);
-    if (amountError) setAmountError(null);
-    if (error) setError(null);
-  }, [amountError, error]);
-
+  // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
+  const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
   const parsedAmount = amountText.replace(/,/g, "");
   const amountValue =
-    parsedAmount === "" || parsedAmount === "-"
-      ? null
-      : Number(parsedAmount);
+    evalValue !== null
+      ? evalValue
+      : parsedAmount === "" || parsedAmount === "-"
+        ? null
+        : Number(parsedAmount);
   const signedAmount =
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
-  const handleAmountBlur = useCallback(() => {
-    if (amountValue !== null && amountValue <= 0) {
-      setAmountError("Enter an amount greater than zero.");
-      void hapticWarning();
-      return;
-    }
-    const err = validateTransactionAmount(signedAmount, type);
-    if (err) {
-      setAmountError(err);
-      void hapticWarning();
-    }
-  }, [amountValue, signedAmount, type]);
-
   const handleAccountSelect = useCallback((id: string) => {
     setAccountId(id);
+    setAccountTouched(true);
     setAccountError(null);
     if (error) setError(null);
   }, [error]);
 
   const handleToAccountSelect = useCallback((id: string) => {
     setToAccountId(id);
+    setAccountTouched(true);
     setAccountError(null);
     if (error) setError(null);
   }, [error]);
@@ -251,8 +295,7 @@ export default function TransactionForm() {
     if (!isEdit) {
       return (
         amountText !== "" ||
-        accountId !== null ||
-        toAccountId !== null ||
+        accountTouched ||
         categoryId !== null ||
         note !== "" ||
         type !== "expense" ||
@@ -277,6 +320,7 @@ export default function TransactionForm() {
     amountText,
     accountId,
     toAccountId,
+    accountTouched,
     categoryId,
     date,
     note,
@@ -286,7 +330,11 @@ export default function TransactionForm() {
     isDirty: hasInteracted,
   });
 
-  const handleSubmit = async () => {
+  // Synchronous re-entrancy lock: Button `disabled` and keypad both funnel
+  // here, but rapid taps can land before React re-renders — the ref blocks
+  // the second invocation from creating a duplicate transaction.
+  const submittingRef = useRef(false);
+  const runSubmit = useCallback(async () => {
     setError(null);
     setAmountError(null);
     setAccountError(null);
@@ -429,7 +477,72 @@ export default function TransactionForm() {
     }
 
     await doCreate();
-  };
+  }, [
+    amountValue,
+    signedAmount,
+    type,
+    accountId,
+    toAccountId,
+    categoryId,
+    date,
+    note,
+    isEdit,
+    dupeCheck,
+    transactionId,
+    updateTransaction,
+    createTransaction,
+    show,
+    markIntentional,
+    router,
+  ]);
+
+  const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await runSubmit();
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [runSubmit]);
+
+  const handleKeypad = useCallback(
+    (k: string) => {
+      if (k === "⌫") {
+        setAmountText((prev) => prev.slice(0, -1));
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+        return;
+      }
+      if (k === "✓") {
+        void handleSubmit();
+        return;
+      }
+      if (k === "Today") {
+        // Household-day start (Q8: Today = 00:00) — no picker; the date pill
+        // opens it. Start-of-day can never be in the future, so no clamping.
+        const start = new Date(getDayBounds(new Date(), tz).start);
+        setDate(start);
+        setDateDraft(start);
+        return;
+      }
+      if (k === "+" || k === "-" || k === "×" || k === "÷" || k === "*" || k === "/") {
+        // Ignore operators on empty input or after another operator/dot.
+        if (amountText === "" || /[+\-×÷*/.]$/.test(amountText)) return;
+        const op = k === "*" ? "×" : k === "/" ? "÷" : k;
+        setAmountText((prev) => prev + op);
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+        return;
+      }
+      if (k === "." || /^\d$/.test(k)) {
+        setAmountText((prev) => prev + k);
+        if (amountError) setAmountError(null);
+        if (error) setError(null);
+      }
+    },
+    [amountError, error, amountText, handleSubmit, tz],
+  );
 
   const handleDelete = () => {
     setError(null);
@@ -536,213 +649,319 @@ export default function TransactionForm() {
     );
   }
 
+  const selectedAccount = accountResult.accounts.find((a) => a._id === accountId) ?? null;
+  const toAcc = accountResult.accounts.find((a) => a._id === toAccountId) ?? null;
+
+  const handleSwap = () => {
+    const prevFrom = accountId;
+    const prevTo = toAccountId;
+    setAccountId(prevTo);
+    setToAccountId(prevFrom);
+    setAccountTouched(true);
+    setAccountError(null);
+  };
+
+  // Date draft lifecycle: sync draft on open so Done can't write a stale
+  // draft (e.g. after Repeat Last changed the date), clear on dismiss.
+  const openDatePicker = () => {
+    setDateDraft(date);
+    setShowDatePicker(true);
+  };
+  const closeDatePicker = () => {
+    setDateDraft(null);
+    setShowDatePicker(false);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="flex-1">
-        <View className="flex-row items-center gap-3 px-5 pt-4">
+        {/* Header: X | tabs Expenses Income Transfer | pill General */}
+        <View className="flex-row items-center justify-between px-4 pt-2">
           <Pressable
             onPress={handleBack}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
-            className="h-12 w-12 items-center justify-center"
+            accessibilityLabel="Close"
+            style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
           >
-            <Feather name="arrow-left" size={22} color={C.textPrimary} />
+            <Feather name="x" size={22} color={C.textPrimary} />
           </Pressable>
-          <View className="flex-1">
-            <Text className="text-[28px] font-bold tracking-[-0.02em] leading-none text-text-primary dark:text-text-primary-dark">
-              {isEdit ? "Edit Transaction" : "New Transaction"}
-            </Text>
-            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-              {type === "transfer" ? "Move money between accounts" : type === "income" ? "Record incoming money" : "Track an expense"}
-            </Text>
+          <View className="flex-1 flex-row items-center justify-center gap-5">
+            {TRANSACTION_TYPES.map((t) => {
+              const active = type === t.id;
+              const label = t.id === "expense" ? "Expenses" : t.id === "income" ? "Income" : "Transfer";
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => handleTypeChange(t.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  className="items-center pb-2"
+                >
+                  <Text
+                    className={`text-[15px] font-semibold ${active ? "text-text-primary dark:text-text-primary-dark" : "text-text-secondary dark:text-text-secondary-dark"}`}
+                  >
+                    {label}
+                  </Text>
+                  {active ? (
+                    <View style={{ height: 3, backgroundColor: C.primary, width: 32, borderRadius: 999, marginTop: 4 }} />
+                  ) : (
+                    <View style={{ height: 3, marginTop: 4, width: 32 }} />
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
-          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary-dark/10">
-            <Feather
-              name={type === "transfer" ? "repeat" : type === "income" ? "arrow-down-left" : "arrow-up-right"}
-              size={22}
-              color={C.primary}
-            />
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.border,
+              backgroundColor: C.background,
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              flexDirection: "row",
+              gap: 6,
+              alignItems: "center",
+            }}
+          >
+            <Feather name="book" size={14} color={C.textSecondary} />
+            <Text numberOfLines={1} className="text-xs font-medium" style={{ color: C.textPrimary }}>
+              {household?.name ?? "General"}
+            </Text>
           </View>
         </View>
 
-        <KeyboardAwareScrollView
-          className="flex-1"
-          contentContainerClassName="gap-4 px-5 py-6"
-          keyboardShouldPersistTaps="handled"
-          bottomOffset={16}
-        >
+        {/* Repeat last pill */}
+        {!isEdit && lastTransaction ? (
+          <Pressable
+            onPress={handleRepeatLast}
+            accessibilityRole="button"
+            accessibilityLabel="Repeat last transaction"
+            className="mx-4 mt-2 flex-row items-center gap-2 rounded-xl border px-4 py-3"
+            style={{ borderColor: C.border, backgroundColor: C.background }}
+          >
+            <Feather name="repeat" size={16} color={C.primary} />
+            <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
+              Repeat last • {lastTransaction.type} {formatNumber(lastTransaction.amount)}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* Category grid or Transfer dual */}
+        <View className="flex-1 pt-2">
+          {type !== "transfer" ? (
+            <CategoryGrid
+              options={categoryOptions}
+              value={categoryId}
+              onSelect={handleCategorySelect}
+              isOwner={categoryResult?.isOwner ?? false}
+              onAdd={() => router.push("/category-form")}
+            />
+          ) : (
+            <TransferDual
+              fromAcc={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
+              toAcc={toAcc ? { name: toAcc.name, type: toAcc.type } : null}
+              onSelectFrom={() => {
+                setAccountSheetTarget("from");
+                setShowAccountSheet(true);
+              }}
+              onSelectTo={() => {
+                setAccountSheetTarget("to");
+                setShowAccountSheet(true);
+              }}
+              onSwap={handleSwap}
+            />
+          )}
+          {type !== "transfer" && categoryError ? (
+            <Text className="px-4 pt-1 text-xs text-error dark:text-error-dark">{categoryError}</Text>
+          ) : null}
+          {type === "transfer" && accountError ? (
+            <Text className="px-4 pt-1 text-xs text-error dark:text-error-dark">{accountError}</Text>
+          ) : null}
+        </View>
+
+        {/* Amount row */}
+        <View className="px-4 py-3 border-t" style={{ borderColor: C.border, backgroundColor: C.background }}>
+          <Pressable
+            onPress={() => {
+              // keep amount editing via keypad; hide note keyboard
+              setNoteFocused(false);
+              Keyboard.dismiss();
+            }}
+          >
+            <View className="flex-row items-end justify-end gap-2">
+              {/* Currency-agnostic: bare whole number, no symbol (PRD §1). */}
+              <Text className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
+                {(() => {
+                  const hasOp = /[+\-×÷*\/]/.test(amountText);
+                  if (hasOp) {
+                    return evalValue !== null ? formatNumber(evalValue) : amountText || "0";
+                  }
+                  const formatted = formatAmountInput(amountText);
+                  if (formatted) return formatted;
+                  return amountValue !== null && amountValue !== 0 ? formatNumber(amountValue) : "0";
+                })()}
+              </Text>
+            </View>
+          </Pressable>
+          {wasDecimalTruncated(amountText) ? (
+            <Text className="pt-1 text-right text-xs" style={{ color: C.chartAmber }}>
+              Decimals truncated — whole numbers only
+            </Text>
+          ) : null}
+          {amountError ? (
+            <Text className="pt-1 text-right text-xs text-error dark:text-error-dark">{amountError}</Text>
+          ) : null}
           {error ? (
-            <View className="rounded-2xl bg-error/10 px-4 py-3">
-              <Text className="text-[13px] leading-4 tracking-wide font-medium text-error dark:text-error-dark">{error}</Text>
+            <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: `${C.error}14` }}>
+              <Text className="text-xs font-medium" style={{ color: C.error }}>
+                {error}
+              </Text>
             </View>
           ) : null}
+        </View>
 
-          <View className="rounded-2xl border border-border bg-background px-4 py-4 dark:border-border-dark dark:bg-background-dark">
-            <View className="gap-4">
-              <View className="gap-1.5">
-                <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
-                  Type
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {TRANSACTION_TYPES.map((t) => (
-                    <Chip
-                      key={t.id}
-                      label={t.label}
-                      active={type === t.id}
-                      onPress={() => handleTypeChange(t.id)}
-                    />
-                  ))}
-                </View>
-              </View>
+        {/* Account pill for expense/income */}
+        {type !== "transfer" ? (
+          <View className="px-4 pb-2 flex-row items-center gap-2">
+            <AccountPill
+              label="Select account"
+              account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
+              onPress={() => {
+                setAccountSheetTarget("single");
+                setShowAccountSheet(true);
+              }}
+            />
+            {accountError ? (
+              <Text className="text-xs text-error dark:text-error-dark">{accountError}</Text>
+            ) : null}
+            <Pressable
+              onPress={openDatePicker}
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                backgroundColor: C.background,
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                flexDirection: "row",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <Feather name="calendar" size={14} color={C.textSecondary} />
+              <Text className="text-xs font-medium" style={{ color: C.textPrimary }}>
+                {formatDateShortTz(date.getTime(), tz)}
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View className="px-4 pb-2 flex-row items-center gap-2">
+            <Pressable
+              onPress={openDatePicker}
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                backgroundColor: C.background,
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                flexDirection: "row",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <Feather name="calendar" size={14} color={C.textSecondary} />
+              <Text className="text-xs font-medium" style={{ color: C.textPrimary }}>
+                {formatDateShortTz(date.getTime(), tz)}
+              </Text>
+            </Pressable>
+            {dateError ? (
+              <Text className="text-xs text-error dark:text-error-dark">{dateError}</Text>
+            ) : null}
+          </View>
+        )}
 
-              {!isEdit && lastTransaction ? (
+        {/* Note field + suggestions */}
+        <View className="px-4 pb-2 gap-2">
+          <View
+            className="flex-row items-center gap-2 rounded-xl border px-3"
+            style={{
+              borderColor: noteFocused ? C.primary : C.border,
+              backgroundColor: C.background,
+              height: 48,
+            }}
+          >
+            <Feather name="edit-3" size={16} color={C.textSecondary} />
+            <TextInput
+              placeholder="Add a note"
+              placeholderTextColor={C.textSecondary}
+              value={note}
+              onChangeText={setNote}
+              maxLength={NOTE_MAX_LENGTH}
+              onFocus={() => setNoteFocused(true)}
+              onBlur={() => setNoteFocused(false)}
+              className="flex-1 text-sm"
+              style={{ color: C.textPrimary }}
+              returnKeyType="done"
+              onSubmitEditing={() => setNoteFocused(false)}
+            />
+            <Text
+              className="text-xs"
+              style={{
+                color:
+                  note.length >= 180
+                    ? C.error
+                    : note.length >= 150
+                      ? C.chartAmber
+                      : C.textSecondary,
+              }}
+            >
+              {note.length}/{NOTE_MAX_LENGTH}
+            </Text>
+          </View>
+          {noteSuggestions.length > 0 ? (
+            <View className="flex-row flex-wrap gap-2">
+              {noteSuggestions.map((s) => (
                 <Pressable
-                  onPress={handleRepeatLast}
-                  accessibilityRole="button"
-                  accessibilityLabel="Repeat last transaction"
-                  className="min-h-12 flex-row items-center gap-2 rounded-xl border border-border bg-background px-4 dark:border-border-dark dark:bg-background-dark"
+                  key={s}
+                  onPress={() => setNote(s)}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.surface,
+                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                  }}
                 >
-                  <Feather name="repeat" size={16} color={C.primary} />
-                  <View className="flex-1">
-                    <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-primary dark:text-primary-dark">
-                      Repeat last
-                    </Text>
-                    <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                      {`Copies ${lastTransaction.type}, ${formatNumber(lastTransaction.amount)} — tap to reuse`}
-                    </Text>
-                  </View>
+                  <Text className="text-xs" style={{ color: C.textPrimary }}>
+                    {s}
+                  </Text>
                 </Pressable>
-              ) : null}
-
-              <View className="gap-1.5">
-                <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
-                  Amount
-                </Text>
-                <Input
-                  placeholder="0"
-                  value={amountText}
-                  onChangeText={handleAmountChange}
-                  onBlur={handleAmountBlur}
-                  keyboardType="number-pad"
-                  amount
-                  error={amountError}
-                />
-                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                  Enter a positive number — {type === "transfer" ? "this is the transfer amount" : type === "income" ? "income is recorded as positive" : "expenses will be recorded as negative"}
-                </Text>
-              </View>
+              ))}
             </View>
-          </View>
+          ) : null}
+          {dateError && type !== "transfer" ? (
+            <Text className="text-xs text-error dark:text-error-dark">{dateError}</Text>
+          ) : null}
+        </View>
 
-          <View className="rounded-2xl border border-border bg-surface px-4 py-4 dark:border-border-dark dark:bg-surface-dark">
-            {type === "transfer" ? (
-              <View className="gap-4">
-                <SelectField
-                  label="From account"
-                  placeholder="Select account"
-                  value={accountId}
-                  options={accountOptions}
-                  onSelect={handleAccountSelect}
-                  error={accountError}
-                />
-                <SelectField
-                  label="To account"
-                  placeholder="Select account"
-                  value={toAccountId}
-                  options={accountOptions.filter((o) => o.id !== accountId)}
-                  onSelect={handleToAccountSelect}
-                  error={accountError}
-                />
-              </View>
-            ) : (
-              <View className="gap-4">
-                <SelectField
-                  label="Account"
-                  placeholder="Select account"
-                  value={accountId}
-                  options={accountOptions}
-                  onSelect={handleAccountSelect}
-                  error={accountError}
-                />
-                <SelectField
-                  label="Category"
-                  placeholder="Select category"
-                  value={categoryId}
-                  options={categoryOptions}
-                  onSelect={handleCategorySelect}
-                  error={categoryError}
-                />
-                {categoryResult !== undefined && categoryOptions.length === 0 ? (
-                  <View className="gap-1.5">
-                    <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                      {categoryResult?.isOwner === true
-                        ? `No ${type === "income" ? "income" : "expense"} categories yet. Create one to continue.`
-                        : `No ${type === "income" ? "income" : "expense"} categories available yet.`}
-                    </Text>
-                    {categoryResult?.isOwner === true ? (
-                      <View className="gap-1">
-                        <Pressable
-                          onPress={() => router.push("/category-form")}
-                          accessibilityRole="button"
-                          accessibilityLabel="Create a category"
-                          className="min-h-12 items-center justify-center"
-                        >
-                          <Text className="text-sm font-medium text-primary dark:text-primary-dark">
-                            Create a category
-                          </Text>
-                        </Pressable>
-                        <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                          After creating a category, come back here to continue
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            )}
-          </View>
+        {/* Keypad or spacer when note focused */}
+        {!noteFocused ? (
+          <Keypad onKey={handleKeypad} />
+        ) : (
+          <View style={{ height: 12 }} />
+        )}
 
-          <View className="rounded-2xl border border-border bg-background px-4 py-4 dark:border-border-dark dark:bg-background-dark">
-            <View className="gap-4">
-              <View className="gap-1.5">
-                <DateField
-                  label="Date"
-                  value={date}
-                  maximumDate={new Date()}
-                  onChange={setDate}
-                  error={dateError}
-                />
-                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                  Today&apos;s date is pre-filled — you can backdate transactions
-                </Text>
-              </View>
-
-              <View className="gap-1.5">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
-                    Note (optional)
-                  </Text>
-                  <Text className={`text-[13px] leading-4 tracking-wide ${note.length >= 180 ? "text-error dark:text-error-dark" : note.length >= 150 ? "text-amber-600 dark:text-amber-400" : "text-text-secondary dark:text-text-secondary-dark"}`}>
-                    {note.length}/{NOTE_MAX_LENGTH}
-                  </Text>
-                </View>
-                <Input
-                  placeholder="e.g. Lunch with colleagues"
-                  value={note}
-                  onChangeText={setNote}
-                  maxLength={NOTE_MAX_LENGTH}
-                />
-              </View>
-            </View>
-          </View>
-
+        {/* Save bar */}
+        <View className="px-4 py-3 gap-2 border-t" style={{ borderColor: C.border, backgroundColor: C.background }}>
           <Button
-            title={isEdit ? "Save Changes" : "Save Transaction"}
+            title={isEdit ? "Save Changes" : "Save"}
             onPress={handleSubmit}
             loading={isLoading}
             disabled={!canSubmit}
           />
-
           {isEdit ? (
             <Button
               title="Delete Transaction"
@@ -752,7 +971,137 @@ export default function TransactionForm() {
               disabled={isLoading}
             />
           ) : null}
-        </KeyboardAwareScrollView>
+        </View>
+
+        {/* Account sheet modal */}
+        <Modal
+          visible={showAccountSheet}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAccountSheet(false)}
+        >
+          <Pressable
+            className="flex-1 justify-end bg-black/40"
+            onPress={() => setShowAccountSheet(false)}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={[
+                Shadow.elevated,
+                {
+                  backgroundColor: C.background,
+                  borderTopLeftRadius: Radius.lg,
+                  borderTopRightRadius: Radius.lg,
+                  maxHeight: 420,
+                  padding: 16,
+                },
+              ]}
+            >
+              <Text className="mb-3 text-base font-semibold" style={{ color: C.textPrimary }}>
+                Select account
+              </Text>
+              <FlatList
+                data={accountOptions}
+                keyExtractor={(o) => o.id}
+                renderItem={({ item }) => {
+                  const acc = accountResult.accounts.find((a) => a._id === item.id) ?? null;
+                  const isSelected =
+                    (accountSheetTarget === "single" && accountId === item.id) ||
+                    (accountSheetTarget === "from" && accountId === item.id) ||
+                    (accountSheetTarget === "to" && toAccountId === item.id);
+                  return (
+                    <Pressable
+                      onPress={() => {
+                        if (accountSheetTarget === "to") {
+                          handleToAccountSelect(item.id);
+                        } else {
+                          handleAccountSelect(item.id);
+                        }
+                        setShowAccountSheet(false);
+                      }}
+                      className="flex-row items-center gap-3 py-3"
+                      style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
+                    >
+                      <AccountIcon type={acc?.type ?? "cash"} size={20} />
+                      <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
+                        {item.label}
+                      </Text>
+                      {isSelected ? <Feather name="check" size={16} color={C.primary} /> : null}
+                    </Pressable>
+                  );
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Date picker modal */}
+        {showDatePicker ? (
+          Platform.OS === "ios" ? (
+            <Modal
+              visible={showDatePicker}
+              transparent
+              animationType="fade"
+              onRequestClose={() => closeDatePicker()}
+            >
+              <Pressable
+                className="flex-1 items-center justify-center bg-black/40 px-6"
+                onPress={() => closeDatePicker()}
+              >
+                <Pressable
+                  style={[
+                    Shadow.card,
+                    { borderRadius: Radius.md, backgroundColor: C.background, padding: 16 },
+                  ]}
+                  className="gap-2"
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <DateTimePicker
+                    value={dateDraft ?? date}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date(getDayBounds(new Date(), tz).end - 1)}
+                    onChange={(event: DateTimePickerEvent, d?: Date) => {
+                      if (event.type === "set" && d) {
+                        const todayEndInner = getDayBounds(new Date(), tz).end;
+                        const clamped = d.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : d;
+                        setDateDraft(clamped);
+                      }
+                    }}
+                  />
+                  <Button title="Cancel" variant="ghost" onPress={() => closeDatePicker()} />
+                  <Button
+                    title="Done"
+                    variant="secondary"
+                    onPress={() => {
+                      if (dateDraft) {
+                        const todayEndInner = getDayBounds(new Date(), tz).end;
+                        const clamped = dateDraft.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : dateDraft;
+                        setDate(clamped);
+                      }
+                      closeDatePicker();
+                    }}
+                  />
+                </Pressable>
+              </Pressable>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              maximumDate={new Date(getDayBounds(new Date(), tz).end - 1)}
+              onChange={(event: DateTimePickerEvent, d?: Date) => {
+                closeDatePicker();
+                if (event.type === "set" && d) {
+                  const todayEndInner = getDayBounds(new Date(), tz).end;
+                  const clamped = d.getTime() >= todayEndInner ? new Date(todayEndInner - 1) : d;
+                  setDate(clamped);
+                }
+              }}
+            />
+          )
+        ) : null}
       </View>
     </SafeAreaView>
   );
