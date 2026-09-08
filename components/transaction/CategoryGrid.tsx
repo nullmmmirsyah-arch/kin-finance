@@ -20,7 +20,8 @@ type Props = {
 const COLS = 4;
 const GAP = 10;
 const PAD = 12;
-const ADD_ID = "__add_category__";
+
+type GridItem = { kind: "category"; option: CategoryOption } | { kind: "add" };
 
 export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props) {
   const C = useThemeColors();
@@ -28,9 +29,10 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
   // Fixed-size cells: identical boxes no matter how full the last row is —
   // a lone category must not stretch to fill the container.
   const cell = (width - PAD * 2 - GAP * (COLS - 1)) / COLS;
-  const data: CategoryOption[] = isOwner
-    ? [...options, { id: ADD_ID, label: "Add" }]
-    : options;
+  const data: GridItem[] = [
+    ...options.map((option) => ({ kind: "category" as const, option })),
+    ...(isOwner ? [{ kind: "add" as const }] : []),
+  ];
 
   if (data.length === 0) {
     return <Text style={{ color: C.textSecondary }}>No categories</Text>;
@@ -40,13 +42,13 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
     <FlatList
       data={data}
       numColumns={COLS}
-      keyExtractor={(o) => o.id}
+      keyExtractor={(item) => (item.kind === "add" ? "add-tile" : item.option.id)}
       scrollEnabled={false}
       extraData={value}
       contentContainerStyle={{ gap: GAP, padding: PAD }}
       columnWrapperStyle={{ gap: GAP }}
       renderItem={({ item }) => {
-        if (item.id === ADD_ID) {
+        if (item.kind === "add") {
           return (
             <Pressable
               onPress={onAdd}
@@ -75,13 +77,13 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
             </Pressable>
           );
         }
-        const active = item.id === value;
+        const active = item.option.id === value;
         return (
           <Pressable
-            onPress={() => onSelect(item.id)}
+            onPress={() => onSelect(item.option.id)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={item.label}
+            accessibilityLabel={item.option.label}
             style={[
               Shadow.card,
               {
@@ -98,14 +100,14 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
             ]}
             className="p-2"
           >
-            <CategoryIcon name={item.icon ?? "other"} size={32} />
+            <CategoryIcon name={item.option.icon ?? "other"} size={32} />
             <Text
               numberOfLines={1}
               ellipsizeMode="tail"
               className="text-center text-[11px]"
               style={{ color: C.textPrimary, maxWidth: "100%" }}
             >
-              {item.label}
+              {item.option.label}
             </Text>
           </Pressable>
         );
