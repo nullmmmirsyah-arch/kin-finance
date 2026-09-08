@@ -229,14 +229,6 @@ export default function TransactionForm() {
     [categoryId, show],
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleAmountChange = useCallback((text: string) => {
-    const hasOp = /[+\-×÷*\/]/.test(text);
-    setAmountText(hasOp ? text : formatAmountInput(text));
-    if (amountError) setAmountError(null);
-    if (error) setError(null);
-  }, [amountError, error]);
-
   // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
   const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
   const parsedAmount = amountText.replace(/,/g, "");
@@ -248,20 +240,6 @@ export default function TransactionForm() {
         : Number(parsedAmount);
   const signedAmount =
     type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleAmountBlur = useCallback(() => {
-    if (amountValue !== null && amountValue <= 0) {
-      setAmountError("Enter an amount greater than zero.");
-      void hapticWarning();
-      return;
-    }
-    const err = validateTransactionAmount(signedAmount, type);
-    if (err) {
-      setAmountError(err);
-      void hapticWarning();
-    }
-  }, [amountValue, signedAmount, type]);
 
   const handleAccountSelect = useCallback((id: string) => {
     setAccountId(id);
@@ -733,11 +711,8 @@ export default function TransactionForm() {
             />
           ) : (
             <TransferDual
-              from={accountId}
-              to={toAccountId}
               fromAcc={fromAcc ? { name: fromAcc.name, type: fromAcc.type } : null}
               toAcc={toAcc ? { name: toAcc.name, type: toAcc.type } : null}
-              options={accountOptions}
               onSelectFrom={() => {
                 setAccountSheetTarget("from");
                 setShowAccountSheet(true);

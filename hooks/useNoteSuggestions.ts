@@ -11,12 +11,13 @@ export function filterNoteSuggestions(notes: string[], draft: string, limit = 5)
 }
 
 export function useNoteSuggestions(categoryId: string | null, draft: string) {
+  const endDate = useMemo(() => Date.now(), [categoryId]);
   const res = useQuery(
     api.transactions.list,
     categoryId
       ? ({
           startDate: 0,
-          endDate: Date.now(),
+          endDate,
           limit: 20,
           categoryIds: [categoryId as Id<"categories">] as any,
         } as any)

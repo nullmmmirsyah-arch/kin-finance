@@ -4,17 +4,14 @@ import { useThemeColors } from "@/constants/theme";
 import { AccountPill } from "./AccountPill";
 
 type Props = {
-  from: string | null;
-  to: string | null;
   fromAcc: { name: string; type: string } | null;
   toAcc: { name: string; type: string } | null;
-  options: unknown[];
   onSelectFrom: () => void;
   onSelectTo: () => void;
   onSwap: () => void;
 };
 
-export function TransferDual({ from: _from, to: _to, fromAcc, toAcc, options: _options, onSelectFrom, onSelectTo, onSwap }: Props) {
+export function TransferDual({ fromAcc, toAcc, onSelectFrom, onSelectTo, onSwap }: Props) {
   const C = useThemeColors();
   return (
     <View className="flex-row items-center justify-between gap-3 px-4 py-3">
