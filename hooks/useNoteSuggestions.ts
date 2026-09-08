@@ -11,6 +11,9 @@ export function filterNoteSuggestions(notes: string[], draft: string, limit = 5)
 }
 
 export function useNoteSuggestions(categoryId: string | null, draft: string) {
+  // Intentional dep: refresh the query upper bound when the category changes,
+  // without re-subscribing on every render (Date.now() is impure).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const endDate = useMemo(() => Date.now(), [categoryId]);
   const res = useQuery(
     api.transactions.list,
