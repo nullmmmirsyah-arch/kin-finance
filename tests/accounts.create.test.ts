@@ -79,10 +79,22 @@ describe("accounts.create", () => {
     const result = await owner.mutation(api.accounts.create, {
       name: "Cash",
       type: "asset",
+      subType: "cash",
     });
 
     expect(result!.balance).toBe(0);
     expect(result!.name).toBe("Cash");
+  });
+
+  it("rejects sub-type outside the parent type set", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => seed(ctx));
+    await expect(
+      owner.mutation(api.accounts.create, { name: "Bad", type: "debt", subType: "cash" as any }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
+    await expect(
+      owner.mutation(api.accounts.create, { name: "Bad2", type: "asset", subType: "credit_card" as any }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
   });
 
   it("creates account with positive opening balance (income transaction)", async () => {
@@ -95,6 +107,7 @@ describe("accounts.create", () => {
     const result = await owner.mutation(api.accounts.create, {
       name: "Savings",
       type: "asset",
+      subType: "cash",
       openingBalance: 500,
     });
 
@@ -120,6 +133,7 @@ describe("accounts.create", () => {
     const result = await owner.mutation(api.accounts.create, {
       name: "Credit Card",
       type: "debt",
+      subType: "credit_card",
       openingBalance: -200,
     });
 
@@ -146,6 +160,7 @@ describe("accounts.create", () => {
       owner.mutation(api.accounts.create, {
         name: "Credit Card",
         type: "debt",
+        subType: "credit_card",
         openingBalance: -200,
       }),
     ).rejects.toThrow();
@@ -158,6 +173,25 @@ describe("accounts.create", () => {
     expect(accounts.length).toBe(0);
   });
 
+  it("validates sub-type pair on update", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => seed(ctx));
+    const acc = await owner.mutation(api.accounts.create, { name: "Cash", type: "asset", subType: "cash" });
+    // joint type+subType change to valid pair succeeds
+    const moved = await owner.mutation(api.accounts.update, { accountId: acc!._id, type: "debt", subType: "credit_card" });
+    expect(moved!.type).toBe("debt");
+    expect(moved!.subType).toBe("credit_card");
+    // joint change to invalid pair rejected
+    await expect(
+      owner.mutation(api.accounts.update, { accountId: acc!._id, type: "debt", subType: "cash" as any }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
+    // type-only change that invalidates stored sub-type rejected
+    const acc2 = await owner.mutation(api.accounts.create, { name: "Cash2", type: "asset", subType: "cash" });
+    await expect(
+      owner.mutation(api.accounts.update, { accountId: acc2!._id, type: "debt" }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
+  });
+
   it("member cannot create account", async () => {
     const member = t.withIdentity({
       tokenIdentifier: MEMBER_TOKEN,
@@ -166,7 +200,7 @@ describe("accounts.create", () => {
     await t.run(async (ctx) => seed(ctx));
 
     await expect(
-      member.mutation(api.accounts.create, { name: "Cash", type: "asset" }),
+      member.mutation(api.accounts.create, { name: "Cash", type: "asset", subType: "cash" }),
     ).rejects.toThrow();
   });
 
@@ -180,10 +214,11 @@ describe("accounts.create", () => {
     await owner.mutation(api.accounts.create, {
       name: "Cash",
       type: "asset",
+      subType: "cash",
     });
 
     await expect(
-      owner.mutation(api.accounts.create, { name: "Cash", type: "asset" }),
+      owner.mutation(api.accounts.create, { name: "Cash", type: "asset", subType: "cash" }),
     ).rejects.toThrow();
   });
 });

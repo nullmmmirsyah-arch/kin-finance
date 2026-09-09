@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   Alert,
-  FlatList,
   Pressable,
   RefreshControl,
+  SectionList,
   Text,
   View,
 } from "react-native";
@@ -32,7 +32,7 @@ import {
   useThemeColors,
   useThemeGradients,
 } from "@/constants/theme";
-import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
+import { ACCOUNT_TYPES, AccountType, SUB_TYPE_LABELS, AccountSubType } from "@/constants/accounts";
 import { Fab } from "@/components/Fab";
 import { AccountIcon } from "@/components/AccountIcon";
 import { EmptyState } from "@/components/EmptyState";
@@ -195,7 +195,7 @@ function VaultCard({
   onEdit,
   onDelete,
 }: {
-  item: { _id: Id<"accounts">; name: string; type: AccountType; balance: number; hidden?: boolean };
+  item: { _id: Id<"accounts">; name: string; type: AccountType; subType: AccountSubType; balance: number; hidden?: boolean };
   index: number;
   isOwner: boolean;
   onEdit: () => void;
@@ -288,7 +288,7 @@ function VaultCard({
           }}
           className="items-center justify-center"
         >
-          <AccountIcon type={item.type} size={32} />
+          <AccountIcon subType={item.subType} size={32} />
           {/* little type dot */}
           <View
             style={{
@@ -318,7 +318,7 @@ function VaultCard({
             ) : null}
           </View>
           <Text className="text-xs font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">
-            {meta.label.toUpperCase()}
+            {SUB_TYPE_LABELS[item.subType].toUpperCase()}
           </Text>
           {item.hidden ? (
             <View className="mt-1 self-start flex-row items-center gap-1 rounded-full border border-border bg-background px-2 py-1 dark:border-border-dark">
@@ -414,10 +414,7 @@ function HeroVault({
 
   if (!totals) return null;
 
-  const typeDots: { type: AccountType; label: string }[] = [
-    { type: "asset", label: "Wallet" },
-    { type: "debt", label: "Debt" },
-  ];
+  const typeDots = ACCOUNT_TYPES.map((t) => ({ type: t.id, label: t.label }));
 
   return (
     <Animated.View
@@ -619,6 +616,23 @@ export default function Accounts() {
     return filter === "all" ? accounts : accounts.filter((a) => a.type === filter);
   }, [accounts, filter]);
 
+  const sections = useMemo(() => {
+    if (accounts === null) return null;
+    const inFilter = (t: AccountType) => filter === "all" || filter === t;
+    const rows = (t: AccountType) =>
+      (filter === "all" || filter === t ? accounts : accounts.filter((a) => a.type === filter)).filter(
+        (a) => a.type === t,
+      );
+    return (["asset", "debt"] as AccountType[])
+      .filter(inFilter)
+      .map((t) => ({
+        type: t,
+        label: ACCOUNT_TYPES.find((x) => x.id === t)?.label ?? t,
+        total: rows(t).reduce((s, a) => s + a.balance, 0),
+        data: rows(t),
+      }));
+  }, [accounts, filter]);
+
   const handleDelete = useCallback(
     (account: { _id: Id<"accounts">; name: string }) => {
       Alert.alert("Delete Account", `Delete "${account.name}"? This cannot be undone.`, [
@@ -784,7 +798,7 @@ export default function Accounts() {
         </Animated.View>
       ) : null}
 
-      <FlatList
+      <SectionList
         className="mt-4 flex-1"
         contentContainerClassName="gap-3 px-5 pb-28"
         removeClippedSubviews
@@ -804,8 +818,15 @@ export default function Accounts() {
             tintColor={C.primary}
           />
         }
-        data={visibleAccounts ?? []}
+        sections={sections ?? []}
         keyExtractor={(item) => item._id}
+        renderSectionHeader={({ section }) => (
+          <View className="flex-row items-center justify-between pt-2">
+            <Text className="text-[13px] font-semibold tracking-wide text-text-secondary dark:text-text-secondary-dark">
+              {section.label.toUpperCase()} • {section.data.length} • {formatNumber(section.total)}
+            </Text>
+          </View>
+        )}
         ListHeaderComponent={
           <View className="gap-3 pb-1">
             <HeroVault accounts={accounts} filter={filter} />
@@ -844,7 +865,7 @@ export default function Accounts() {
                 title="Vault is empty"
                 description={
                   isOwner
-                    ? "Add your first account — a little home for your money. Wallet or debt."
+                    ? "Add your first account — a little home for your money. Asset or debt."
                     : "Only the Owner can add accounts. Ask your household Owner to open the vault."
                 }
                 actionLabel={isOwner ? "Add Account" : undefined}

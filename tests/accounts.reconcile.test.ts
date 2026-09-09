@@ -71,6 +71,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
         householdId,
         name: "Cash",
         type: "asset",
+        subType: "cash",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -80,6 +81,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
         householdId,
         name: "Bank",
         type: "asset",
+        subType: "bank",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -192,6 +194,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
     const acc = await owner.mutation(api.accounts.create, {
       name: "WithOpening",
       type: "asset",
+      subType: "cash",
       openingBalance: 750,
     });
     const v = await owner.query(api.accounts.verify, {});
@@ -207,5 +210,23 @@ describe("accounts.verify + reconcile (P0-1)", () => {
     expect(map("ewallet")).toBe("asset");
     expect(map("credit_card")).toBe("debt");
   });
+
+  it("infers sub-type from account name", () => {
+    expect(inferSubType("BCA", "asset")).toBe("bank");
+    expect(inferSubType("Dompet", "asset")).toBe("cash");
+    expect(inferSubType("GoPay", "asset")).toBe("ewallet");
+    expect(inferSubType("BSI", "asset")).toBe("bank");
+    expect(inferSubType("Random", "asset")).toBe("other");
+    expect(inferSubType("My Card", "debt")).toBe("credit_card");
+  });
 });
+
+function inferSubType(name: string, type: "asset" | "debt"): string {
+  const n = name.toLowerCase();
+  if (type === "debt") return n.includes("credit") || n.includes("kartu") || n.includes("card") ? "credit_card" : "other";
+  if (/(bca|bank|bsi|mandiri|bri|bni)/.test(n)) return "bank";
+  if (/(dompet|cash|tunai)/.test(n)) return "cash";
+  if (/(gopay|ovo|dana|shopeepay|emoney|e-money)/.test(n)) return "ewallet";
+  return "other";
+}
 

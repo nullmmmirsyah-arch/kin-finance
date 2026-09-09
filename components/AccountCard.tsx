@@ -1,22 +1,21 @@
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
+import { SUB_TYPE_LABELS, AccountSubType } from "@/constants/accounts";
 import { AccountIcon } from "@/components/AccountIcon";
 import { formatNumber } from "@/utils/format";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
   name: string;
-  type: AccountType;
+  subType: AccountSubType;
   balance: number;
   hidden?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
 };
 
-export function AccountCard({ name, type, balance, hidden, onEdit, onDelete }: Props) {
+export function AccountCard({ name, subType, balance, hidden, onEdit, onDelete }: Props) {
   const C = useThemeColors();
-  const meta = ACCOUNT_TYPES.find((t) => t.id === type) ?? ACCOUNT_TYPES[0];
 
   return (
     <View
@@ -40,14 +39,14 @@ export function AccountCard({ name, type, balance, hidden, onEdit, onDelete }: P
         }}
         className="items-center justify-center"
       >
-        <AccountIcon type={type} size={32} />
+        <AccountIcon subType={subType} size={32} />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">
           {name}
         </Text>
         <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-          {meta.label}
+          {SUB_TYPE_LABELS[subType]}
         </Text>
         {hidden ? (
           <View className="mt-1 self-start rounded-full border border-border bg-background px-2 py-0.5 dark:border-border-dark dark:bg-background-dark">

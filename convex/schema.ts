@@ -49,6 +49,13 @@ export default defineSchema({
       v.literal("asset"),
       v.literal("debt"),
     ),
+    subType: v.union(
+      v.literal("cash"),
+      v.literal("bank"),
+      v.literal("ewallet"),
+      v.literal("credit_card"),
+      v.literal("other"),
+    ),
     balance: v.number(),
     hidden: v.boolean(),
     createdAt: v.number(),

@@ -5,6 +5,7 @@ import { Shadow, useThemeColors } from "@/constants/theme";
 type AccountRef = {
   name: string;
   type: string;
+  subType: string;
 } | null;
 
 type Props = {
@@ -35,7 +36,7 @@ export function AccountPill({ label, account, onPress }: Props) {
         },
       ]}
     >
-      <AccountIcon type={account?.type ?? "asset"} size={20} />
+      <AccountIcon subType={account?.subType ?? "other"} size={20} />
       <Text
         numberOfLines={1}
         className="flex-1 text-sm font-medium"

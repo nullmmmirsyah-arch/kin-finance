@@ -786,8 +786,8 @@ export default function TransactionForm() {
             />
           ) : (
             <TransferDual
-              fromAcc={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
-              toAcc={toAcc ? { name: toAcc.name, type: toAcc.type } : null}
+              fromAcc={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
+              toAcc={toAcc ? { name: toAcc.name, type: toAcc.type, subType: toAcc.subType } : null}
               onSelectFrom={() => {
                 setAccountSheetTarget("from");
                 setShowAccountSheet(true);
@@ -814,7 +814,7 @@ export default function TransactionForm() {
           <View className="z-10 flex-row items-center gap-2 px-6" style={{ marginBottom: -14 }}>
             <AccountPill
               label="Select account"
-              account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type } : null}
+              account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
               onPress={() => {
                 setAccountSheetTarget("single");
                 setShowAccountSheet(true);
@@ -1054,7 +1054,7 @@ export default function TransactionForm() {
                       className="flex-row items-center gap-3 py-3"
                       style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
                     >
-                      <AccountIcon type={acc?.type ?? "asset"} size={20} />
+                      <AccountIcon subType={acc?.subType ?? "other"} size={20} />
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>

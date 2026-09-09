@@ -8,7 +8,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useThemeColors } from "@/constants/theme";
-import { ACCOUNT_TYPES, AccountType } from "@/constants/accounts";
+import { ACCOUNT_TYPES, AccountType, subTypesFor, AccountSubType, SUB_TYPE_LABELS } from "@/constants/accounts";
 import { validateAccountName, ACCOUNT_NAME_MAX } from "@/constants/validation";
 import { AccountIcon } from "@/components/AccountIcon";
 import { Button } from "@/components/Button";
@@ -33,6 +33,8 @@ export default function AccountForm() {
 
   const [name, setName] = useState("");
   const [type, setType] = useState<AccountType>("asset");
+  const [subType, setSubType] = useState<AccountSubType>("cash");
+  const subTypeOptions = useMemo(() => subTypesFor(type), [type]);
   const [openingBalance, setOpeningBalance] = useState("");
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export default function AccountForm() {
       seeded.current = true;
       setName(editingAccount.name);
       setType(editingAccount.type);
+      setSubType(editingAccount.subType);
       setHidden(editingAccount.hidden);
     }
   }, [editingAccount]);
@@ -58,6 +61,7 @@ export default function AccountForm() {
   const trimmedName = name.trim();
   const canSubmit =
     validateAccountName(trimmedName) === null &&
+    subTypeOptions.includes(subType) &&
     !isLoading &&
     (!isEdit || editingAccount !== undefined);
 
@@ -66,6 +70,7 @@ export default function AccountForm() {
       return (
         name.trim() !== "" ||
         type !== "asset" ||
+        subType !== "cash" ||
         openingBalance !== "" ||
         hidden !== false
       );
@@ -74,9 +79,10 @@ export default function AccountForm() {
     return (
       name !== editingAccount.name ||
       type !== editingAccount.type ||
+      subType !== editingAccount.subType ||
       hidden !== editingAccount.hidden
     );
-  }, [isEdit, editingAccount, name, type, openingBalance, hidden]);
+  }, [isEdit, editingAccount, name, type, subType, openingBalance, hidden]);
 
   const { handleBack, markIntentional } = useDiscardGuard({ isDirty });
 
@@ -97,6 +103,7 @@ export default function AccountForm() {
           accountId: accountId as Id<"accounts">,
           name: trimmedName,
           type,
+          subType,
           hidden,
         });
       } else {
@@ -114,6 +121,7 @@ export default function AccountForm() {
         await createAccount({
           name: trimmedName,
           type,
+          subType,
           openingBalance: parsedBalance,
           hidden,
         });
@@ -194,14 +202,29 @@ export default function AccountForm() {
                   key={t.id}
                   label={t.label}
                   active={type === t.id}
-                  onPress={() => setType(t.id)}
+                  onPress={() => {
+                    if (t.id === type) return;
+                    setType(t.id);
+                    setSubType(subTypesFor(t.id)[0]);
+                  }}
                 />
               ))}
             </View>
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
+              Sub-type
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {subTypeOptions.map((s) => (
+                <Chip key={s} label={SUB_TYPE_LABELS[s]} active={subType === s} onPress={() => setSubType(s)} />
+              ))}
+            </View>
             <View className="flex-row items-center gap-2">
-              <AccountIcon type={type} size={24} />
+              <AccountIcon subType={subType} size={24} />
               <Text className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                {ACCOUNT_TYPES.find((t) => t.id === type)?.label} preview
+                {SUB_TYPE_LABELS[subType]} preview
               </Text>
             </View>
           </View>

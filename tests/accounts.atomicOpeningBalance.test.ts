@@ -61,6 +61,7 @@ describe("P0-2 accounts.create atomic opening balance", () => {
     const account = await owner.mutation(api.accounts.create, {
       name: "Savings",
       type: "asset",
+      subType: "cash",
       openingBalance: 750,
     });
 
@@ -90,6 +91,7 @@ describe("P0-2 accounts.create atomic opening balance", () => {
     const account = await owner.mutation(api.accounts.create, {
       name: "Debt",
       type: "debt",
+      subType: "credit_card",
       openingBalance: -300,
     });
 
@@ -133,6 +135,7 @@ describe("P0-2 accounts.create atomic opening balance", () => {
       owner.mutation(api.accounts.create, {
         name: "ShouldFail",
         type: "asset",
+        subType: "cash",
         openingBalance: -100,
       }),
     ).rejects.toThrow("Initial Balance category not found");
@@ -159,6 +162,7 @@ describe("P0-2 accounts.create atomic opening balance", () => {
     const account = await owner.mutation(api.accounts.create, {
       name: "Zero",
       type: "asset",
+      subType: "cash",
       openingBalance: 0,
     });
 

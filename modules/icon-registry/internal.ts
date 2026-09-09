@@ -1,6 +1,7 @@
 import streamlineData from "@/constants/streamlineIconData.json";
 
 export type AccountType = "asset" | "debt";
+export type AccountSubType = "cash" | "bank" | "ewallet" | "credit_card" | "other";
 export const DEFAULT_CATEGORY_ICON = "other" as const;
 export const ALL_CATEGORY_ICONS = [
   "shopping_bag",
@@ -125,13 +126,16 @@ export const CATEGORY_STREAMLINE_MAP: Record<CategoryIconName, string> = {
   other: "tags-1",
 };
 
-export const ACCOUNT_STREAMLINE_MAP: Record<AccountType, string> = {
-  asset: "cash-payment-bill",
-  debt: "credit-card-1",
+export const ACCOUNT_STREAMLINE_MAP: Record<AccountSubType, string> = {
+  cash: "cash-payment-bill",
+  bank: "saving-bank-1",
+  ewallet: "wireless-payment-credit-card-dollar",
+  credit_card: "credit-card-1",
+  other: "tags-1",
 };
 
-export function isAccountType(x: string): x is AccountType {
-  return (["asset", "debt"] as string[]).includes(x);
+export function isAccountSubType(x: string): x is AccountSubType {
+  return (["cash", "bank", "ewallet", "credit_card", "other"] as string[]).includes(x);
 }
 
 // Lazy streamline data behind seam — no eager 50KB parse cost until first Icon render
@@ -159,13 +163,13 @@ export function getStreamlineIconName(name?: string): string {
   }
   return CATEGORY_STREAMLINE_MAP.other;
 }
-export function getAccountIconName(type?: string): string {
-  if (type && isAccountType(type)) return ACCOUNT_STREAMLINE_MAP[type];
-  return ACCOUNT_STREAMLINE_MAP.asset;
+export function getAccountIconName(subType?: string): string {
+  if (subType && isAccountSubType(subType)) return ACCOUNT_STREAMLINE_MAP[subType];
+  return ACCOUNT_STREAMLINE_MAP.other;
 }
 export function resolveIconName(ref?: string | null): string {
   if (!ref) return CATEGORY_STREAMLINE_MAP.other;
-  if (isAccountType(ref)) return ACCOUNT_STREAMLINE_MAP[ref as AccountType];
+  if (isAccountSubType(ref)) return ACCOUNT_STREAMLINE_MAP[ref];
   if ((ref as CategoryIconName) in CATEGORY_STREAMLINE_MAP) return CATEGORY_STREAMLINE_MAP[ref as CategoryIconName];
   // fallback: try category map, else other
   return getStreamlineIconName(ref);

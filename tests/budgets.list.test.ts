@@ -35,6 +35,7 @@ describe("budgets.list", () => {
       householdId,
       name: "Cash",
       type: "asset",
+      subType: "cash",
       balance: 0,
       hidden: false,
       createdAt: 1,

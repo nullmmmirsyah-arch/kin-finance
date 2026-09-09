@@ -1026,7 +1026,7 @@ export default function Home() {
                                     }}
                                     className="items-center justify-center"
                                   >
-                                    <AccountIcon type={item.type} size={30} />
+                                    <AccountIcon subType={item.subType} size={30} />
                                   </View>
                                   <Text
                                     numberOfLines={1}

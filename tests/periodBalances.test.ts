@@ -67,6 +67,7 @@ describe("periodBalances", () => {
         householdId,
         name: "Cash",
         type: "asset",
+        subType: "cash",
         balance: 0,
         hidden: false,
         createdAt,
