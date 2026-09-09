@@ -156,4 +156,43 @@ describe("multi-household create/join/leave", () => {
       "You are already a member of this household.",
     );
   });
+
+  it("leaving a non-active household keeps active unchanged", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    const ids = await t.run(async (ctx) => {
+      const h1 = await ctx.db.insert("households", { name: "H1", createdAt: 1, updatedAt: 1 });
+      const h2 = await ctx.db.insert("households", { name: "H2", createdAt: 2, updatedAt: 2 });
+      const h3 = await ctx.db.insert("households", { name: "H3", createdAt: 3, updatedAt: 3 });
+      const aId = await ctx.db.insert("users", { tokenIdentifier: A_TOKEN, clerkUserId: "c-a" });
+      const bId = await ctx.db.insert("users", { tokenIdentifier: B_TOKEN, clerkUserId: "c-b" });
+      await ctx.db.insert("householdMemberships", { householdId: h1, userId: bId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: h1, userId: aId, role: "member" });
+      await ctx.db.insert("householdMemberships", { householdId: h2, userId: bId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: h2, userId: aId, role: "member" });
+      await ctx.db.insert("householdMemberships", { householdId: h3, userId: aId, role: "owner" });
+      await ctx.db.patch(aId, { activeHouseholdId: h3 });
+      return { h1, h2, h3 };
+    });
+    await a.mutation(api.households.leaveHousehold, { householdId: ids.h2 });
+    const active = await a.query(api.households.getActive, {});
+    expect(active?._id).toEqual(ids.h3);
+  });
+
+  it("deleting a non-active household keeps active unchanged", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    const ids = await t.run(async (ctx) => {
+      const h1 = await ctx.db.insert("households", { name: "H1", createdAt: 1, updatedAt: 1 });
+      const h2 = await ctx.db.insert("households", { name: "H2", createdAt: 2, updatedAt: 2 });
+      const h3 = await ctx.db.insert("households", { name: "H3", createdAt: 3, updatedAt: 3 });
+      const aId = await ctx.db.insert("users", { tokenIdentifier: A_TOKEN, clerkUserId: "c-a" });
+      await ctx.db.insert("householdMemberships", { householdId: h1, userId: aId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: h2, userId: aId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: h3, userId: aId, role: "owner" });
+      await ctx.db.patch(aId, { activeHouseholdId: h3 });
+      return { h1, h2, h3 };
+    });
+    await a.mutation(api.households.deleteHousehold, { householdId: ids.h2 });
+    const active = await a.query(api.households.getActive, {});
+    expect(active?._id).toEqual(ids.h3);
+  });
 });

@@ -465,21 +465,23 @@ export const deleteHousehold = mutation({
       throw new ConvexError("Household not found.");
     }
     await cascadeDelete(ctx, args.householdId);
-    const remaining = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    if (remaining.length === 0) {
-      await ctx.db.patch(user._id, { activeHouseholdId: undefined });
-    } else {
-      const withDates = await Promise.all(
-        remaining.map(async (m) => ({
-          id: m.householdId,
-          createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
-        })),
-      );
-      withDates.sort((a, b) => a.createdAt - b.createdAt);
-      await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+    if (user.activeHouseholdId === args.householdId) {
+      const remaining = await ctx.db
+        .query("householdMemberships")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect();
+      if (remaining.length === 0) {
+        await ctx.db.patch(user._id, { activeHouseholdId: undefined });
+      } else {
+        const withDates = await Promise.all(
+          remaining.map(async (m) => ({
+            id: m.householdId,
+            createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
+          })),
+        );
+        withDates.sort((a, b) => a.createdAt - b.createdAt);
+        await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+      }
     }
     return null;
   },
@@ -498,21 +500,23 @@ export const leaveHousehold = mutation({
       );
     }
     await ctx.db.delete(membership._id);
-    const remaining = await ctx.db
-      .query("householdMemberships")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    if (remaining.length === 0) {
-      await ctx.db.patch(user._id, { activeHouseholdId: undefined });
-    } else {
-      const withDates = await Promise.all(
-        remaining.map(async (m) => ({
-          id: m.householdId,
-          createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
-        })),
-      );
-      withDates.sort((a, b) => a.createdAt - b.createdAt);
-      await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+    if (user.activeHouseholdId === args.householdId) {
+      const remaining = await ctx.db
+        .query("householdMemberships")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect();
+      if (remaining.length === 0) {
+        await ctx.db.patch(user._id, { activeHouseholdId: undefined });
+      } else {
+        const withDates = await Promise.all(
+          remaining.map(async (m) => ({
+            id: m.householdId,
+            createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
+          })),
+        );
+        withDates.sort((a, b) => a.createdAt - b.createdAt);
+        await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+      }
     }
     return null;
   },
