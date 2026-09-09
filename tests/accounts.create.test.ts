@@ -79,10 +79,22 @@ describe("accounts.create", () => {
     const result = await owner.mutation(api.accounts.create, {
       name: "Cash",
       type: "asset",
+      subType: "cash",
     });
 
     expect(result!.balance).toBe(0);
     expect(result!.name).toBe("Cash");
+  });
+
+  it("rejects sub-type outside the parent type set", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    await t.run(async (ctx) => seed(ctx));
+    await expect(
+      owner.mutation(api.accounts.create, { name: "Bad", type: "debt", subType: "cash" as any }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
+    await expect(
+      owner.mutation(api.accounts.create, { name: "Bad2", type: "asset", subType: "credit_card" as any }),
+    ).rejects.toThrow("Sub-type is not valid for this account type.");
   });
 
   it("creates account with positive opening balance (income transaction)", async () => {

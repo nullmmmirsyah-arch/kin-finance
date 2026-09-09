@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
 import { validateAccountName } from "../constants/validation";
+import { subTypesFor, AccountSubType } from "../constants/accounts";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { recomputeAllForHousehold } from "./periodBalances";
 
@@ -10,6 +11,12 @@ const accountType = v.union(
   v.literal("asset"),
   v.literal("debt"),
 );
+
+function assertValidSubType(type: "asset" | "debt", subType: string): asserts subType is AccountSubType {
+  if (!(subTypesFor(type) as string[]).includes(subType)) {
+    throw new ConvexError("Sub-type is not valid for this account type.");
+  }
+}
 
 export const list = query({
   args: {},
@@ -36,6 +43,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     type: accountType,
+    subType: v.string(),
     openingBalance: v.optional(v.number()),
     hidden: v.optional(v.boolean()),
   },
@@ -46,6 +54,9 @@ export const create = mutation({
     const err = validateAccountName(args.name);
     if (err) throw new ConvexError(err);
     const name = args.name.trim();
+
+    assertValidSubType(args.type, args.subType);
+    const subType = args.subType as AccountSubType;
 
     const existing = await ctx.db
       .query("accounts")
@@ -96,6 +107,7 @@ export const create = mutation({
       householdId: membership.householdId,
       name,
       type: args.type,
+      subType,
       balance: openingBalance,
       hidden: args.hidden ?? false,
       createdAt: now,
@@ -131,6 +143,7 @@ export const update = mutation({
     accountId: v.id("accounts"),
     name: v.optional(v.string()),
     type: v.optional(accountType),
+    subType: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -142,6 +155,7 @@ export const update = mutation({
     const patch: {
       name?: string;
       type?: "asset" | "debt";
+      subType?: AccountSubType;
       hidden?: boolean;
       updatedAt: number;
     } = { updatedAt: Date.now() };
@@ -172,6 +186,13 @@ export const update = mutation({
 
     if (args.type !== undefined) {
       patch.type = args.type;
+    }
+    const nextType = args.type ?? account.type;
+    if (args.subType !== undefined) {
+      assertValidSubType(nextType, args.subType);
+      patch.subType = args.subType as AccountSubType;
+    } else if (args.type !== undefined) {
+      assertValidSubType(args.type, account.subType);
     }
     if (args.hidden !== undefined) {
       patch.hidden = args.hidden;
