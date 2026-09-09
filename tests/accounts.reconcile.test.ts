@@ -70,7 +70,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
       const cashId = await ctx.db.insert("accounts", {
         householdId,
         name: "Cash",
-        type: "cash",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -79,7 +79,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -191,12 +191,21 @@ describe("accounts.verify + reconcile (P0-1)", () => {
     const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
     const acc = await owner.mutation(api.accounts.create, {
       name: "WithOpening",
-      type: "cash",
+      type: "asset",
       openingBalance: 750,
     });
     const v = await owner.query(api.accounts.verify, {});
     expect(v!.discrepancies.length).toBe(0);
     expect(acc!.balance).toBe(750);
+  });
+
+  it("legacy types map to asset/debt (cash/bank → asset, credit_card → debt)", async () => {
+    const map = (t: string) =>
+      t === "cash" || t === "bank" || t === "ewallet" ? "asset" : "debt";
+    expect(map("cash")).toBe("asset");
+    expect(map("bank")).toBe("asset");
+    expect(map("ewallet")).toBe("asset");
+    expect(map("credit_card")).toBe("debt");
   });
 });
 

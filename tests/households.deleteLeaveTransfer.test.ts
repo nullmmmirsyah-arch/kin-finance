@@ -42,7 +42,7 @@ describe("households delete/leave/transfer", () => {
     const acc = await ctx.db.insert("accounts", {
       householdId,
       name: "Cash",
-      type: "cash",
+      type: "asset",
       balance: 0,
       hidden: false,
       createdAt: 1,
@@ -128,7 +128,7 @@ describe("households delete/leave/transfer", () => {
       const acc2 = await ctx.db.insert("accounts", {
         householdId: householdId2,
         name: "Cash2",
-        type: "cash",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,

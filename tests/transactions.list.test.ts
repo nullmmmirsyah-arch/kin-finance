@@ -42,7 +42,7 @@ describe("transactions.list", () => {
     const accountId = await ctx.db.insert("accounts", {
       householdId,
       name: "Cash",
-      type: "cash",
+      type: "asset",
       balance: 0,
       hidden: false,
       createdAt: 1,
@@ -179,7 +179,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -229,7 +229,7 @@ describe("transactions.list", () => {
       const toAccountId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -333,7 +333,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -397,7 +397,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -565,7 +565,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -645,7 +645,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -744,7 +744,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -824,7 +824,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -841,7 +841,7 @@ describe("transactions.list", () => {
       const creditId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Credit",
-        type: "credit_card",
+        type: "debt",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -924,7 +924,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -1006,7 +1006,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,
@@ -1215,7 +1215,7 @@ describe("transactions.list", () => {
       const bankId = await ctx.db.insert("accounts", {
         householdId: s.householdId,
         name: "Bank",
-        type: "bank",
+        type: "asset",
         balance: 0,
         hidden: false,
         createdAt: 1,

@@ -42,7 +42,7 @@ describe("transactions.summary", () => {
     const accountId = await ctx.db.insert("accounts", {
       householdId,
       name: "Cash",
-      type: "cash",
+      type: "asset",
       balance: 0,
       hidden: false,
       createdAt: 1,
@@ -51,7 +51,7 @@ describe("transactions.summary", () => {
     const bankId = await ctx.db.insert("accounts", {
       householdId,
       name: "Bank",
-      type: "bank",
+      type: "asset",
       balance: 0,
       hidden: false,
       createdAt: 1,

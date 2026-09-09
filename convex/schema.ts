@@ -46,10 +46,8 @@ export default defineSchema({
     householdId: v.id("households"),
     name: v.string(),
     type: v.union(
-      v.literal("cash"),
-      v.literal("bank"),
-      v.literal("ewallet"),
-      v.literal("credit_card"),
+      v.literal("asset"),
+      v.literal("debt"),
     ),
     balance: v.number(),
     hidden: v.boolean(),

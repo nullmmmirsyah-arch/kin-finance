@@ -1,6 +1,6 @@
 import streamlineData from "@/constants/streamlineIconData.json";
 
-export type AccountType = "cash" | "bank" | "ewallet" | "credit_card";
+export type AccountType = "asset" | "debt";
 export const DEFAULT_CATEGORY_ICON = "other" as const;
 export const ALL_CATEGORY_ICONS = [
   "shopping_bag",
@@ -126,14 +126,12 @@ export const CATEGORY_STREAMLINE_MAP: Record<CategoryIconName, string> = {
 };
 
 export const ACCOUNT_STREAMLINE_MAP: Record<AccountType, string> = {
-  bank: "saving-bank-1",
-  cash: "cash-payment-bill",
-  ewallet: "wireless-payment-credit-card-dollar",
-  credit_card: "credit-card-1",
+  asset: "cash-payment-bill",
+  debt: "credit-card-1",
 };
 
 export function isAccountType(x: string): x is AccountType {
-  return (["bank", "cash", "ewallet", "credit_card"] as string[]).includes(x);
+  return (["asset", "debt"] as string[]).includes(x);
 }
 
 // Lazy streamline data behind seam — no eager 50KB parse cost until first Icon render
@@ -163,7 +161,7 @@ export function getStreamlineIconName(name?: string): string {
 }
 export function getAccountIconName(type?: string): string {
   if (type && isAccountType(type)) return ACCOUNT_STREAMLINE_MAP[type];
-  return ACCOUNT_STREAMLINE_MAP.bank;
+  return ACCOUNT_STREAMLINE_MAP.asset;
 }
 export function resolveIconName(ref?: string | null): string {
   if (!ref) return CATEGORY_STREAMLINE_MAP.other;

@@ -35,7 +35,7 @@ export function AccountPill({ label, account, onPress }: Props) {
         },
       ]}
     >
-      <AccountIcon type={account?.type ?? "cash"} size={20} />
+      <AccountIcon type={account?.type ?? "asset"} size={20} />
       <Text
         numberOfLines={1}
         className="flex-1 text-sm font-medium"

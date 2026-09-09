@@ -78,7 +78,7 @@ describe("accounts.create", () => {
 
     const result = await owner.mutation(api.accounts.create, {
       name: "Cash",
-      type: "cash",
+      type: "asset",
     });
 
     expect(result!.balance).toBe(0);
@@ -94,7 +94,7 @@ describe("accounts.create", () => {
 
     const result = await owner.mutation(api.accounts.create, {
       name: "Savings",
-      type: "bank",
+      type: "asset",
       openingBalance: 500,
     });
 
@@ -119,7 +119,7 @@ describe("accounts.create", () => {
 
     const result = await owner.mutation(api.accounts.create, {
       name: "Credit Card",
-      type: "credit_card",
+      type: "debt",
       openingBalance: -200,
     });
 
@@ -145,7 +145,7 @@ describe("accounts.create", () => {
     await expect(
       owner.mutation(api.accounts.create, {
         name: "Credit Card",
-        type: "credit_card",
+        type: "debt",
         openingBalance: -200,
       }),
     ).rejects.toThrow();
@@ -166,7 +166,7 @@ describe("accounts.create", () => {
     await t.run(async (ctx) => seed(ctx));
 
     await expect(
-      member.mutation(api.accounts.create, { name: "Cash", type: "cash" }),
+      member.mutation(api.accounts.create, { name: "Cash", type: "asset" }),
     ).rejects.toThrow();
   });
 
@@ -179,11 +179,11 @@ describe("accounts.create", () => {
 
     await owner.mutation(api.accounts.create, {
       name: "Cash",
-      type: "cash",
+      type: "asset",
     });
 
     await expect(
-      owner.mutation(api.accounts.create, { name: "Cash", type: "bank" }),
+      owner.mutation(api.accounts.create, { name: "Cash", type: "asset" }),
     ).rejects.toThrow();
   });
 });

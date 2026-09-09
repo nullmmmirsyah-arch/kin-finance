@@ -1054,7 +1054,7 @@ export default function TransactionForm() {
                       className="flex-row items-center gap-3 py-3"
                       style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
                     >
-                      <AccountIcon type={acc?.type ?? "cash"} size={20} />
+                      <AccountIcon type={acc?.type ?? "asset"} size={20} />
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>

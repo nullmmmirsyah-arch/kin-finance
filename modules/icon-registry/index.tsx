@@ -54,8 +54,8 @@ export function getCategoryIconXml(name?: string | null): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-icon="${iconName}">${body}</svg>`;
 }
 export function getAccountIconXml(type?: string | null): string {
-  const iconName = type && isAccountType(type) ? ACCOUNT_STREAMLINE_MAP[type as import("./internal").AccountType] : ACCOUNT_STREAMLINE_MAP.bank;
-  const body = getBody(iconName) ?? getBody(ACCOUNT_STREAMLINE_MAP.bank) ?? "";
+  const iconName = type && isAccountType(type) ? ACCOUNT_STREAMLINE_MAP[type as import("./internal").AccountType] : ACCOUNT_STREAMLINE_MAP.asset;
+  const body = getBody(iconName) ?? getBody(ACCOUNT_STREAMLINE_MAP.asset) ?? "";
   const { width, height } = getIconData();
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-icon="${iconName}">${body}</svg>`;
 }
@@ -65,7 +65,7 @@ export function getStreamlineIconName(name?: string): string {
 }
 export function getAccountIconName(type?: string): string {
   if (type && isAccountType(type)) return ACCOUNT_STREAMLINE_MAP[type as import("./internal").AccountType];
-  return ACCOUNT_STREAMLINE_MAP.bank;
+  return ACCOUNT_STREAMLINE_MAP.asset;
 }
 
 export function listIconRefs(): readonly string[] {
