@@ -106,7 +106,7 @@ export function BudgetCard({
               borderTopRightRadius: 4,
               borderWidth: 1.5,
               borderColor: C.border,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: C.jarGlass,
               overflow: "hidden",
               justifyContent: "flex-end",
               shadowColor: "#000",
@@ -139,7 +139,7 @@ export function BudgetCard({
                 }}
               >
                 <LinearGradient
-                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  colors={overBudget ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{ flex: 1 }}
@@ -276,14 +276,14 @@ export function BudgetCard({
                 justifyContent: "center",
               }}
             >
-              <Text className="text-[8px] font-bold tracking-wide text-text-secondary dark:text-text-secondary-dark">FROSTED</Text>
+              <Text className="text-[11px] font-semibold tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">FROSTED</Text>
             </View>
           ) : (
             <View
               style={{
                 height: 8,
                 borderRadius: 999,
-                backgroundColor: "#FFFFFF",
+                backgroundColor: C.jarGlass,
                 borderWidth: 1,
                 borderColor: C.border,
                 overflow: "hidden",
@@ -292,7 +292,7 @@ export function BudgetCard({
             >
               <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
                 <LinearGradient
-                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  colors={overBudget ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                   start={{ x: 0, y: 0.5 }}
                   end={{ x: 1, y: 0.5 }}
                   style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}

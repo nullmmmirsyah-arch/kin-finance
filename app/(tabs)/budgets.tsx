@@ -6,7 +6,9 @@ import { useMutation, useQuery } from "convex/react";
 import PagerView from "react-native-pager-view";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Fab } from "@/components/Fab";
 import { BudgetCard } from "@/components/BudgetCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -27,6 +29,7 @@ import { MonthPicker } from "@/components/MonthPicker";
 export default function Budgets() {
   const router = useRouter();
   const C = useThemeColors();
+  const G = useThemeGradients();
   const { show } = useSnackbar();
   const removeBudget = useMutation(api.budgets.remove);
   const household = useQuery(api.households.getActive);
@@ -203,8 +206,7 @@ export default function Budgets() {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">Budgets</Text>
-          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
+          <ScreenHeader title="Budgets" kicker="Honey pantry" icon="archive" />
         </View>
         {stale && (
           <View className="pt-2">
@@ -231,26 +233,29 @@ export default function Budgets() {
   if (budgets === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">You are not a member of a household.</Text>
+        <Text className="text-center text-[15px] leading-5 text-text-secondary dark:text-text-secondary-dark">You are not a member of a household.</Text>
       </SafeAreaView>
     );
   }
 
+  const jarKicker =
+    budgets.length > 0
+      ? `Honey pantry • ${budgets.length} ${budgets.length === 1 ? "jar" : "jars"}`
+      : "Honey pantry";
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      {/* Quiet header */}
-      <View className="px-5 pt-5">
-        <View className="flex-row items-center justify-between">
-          <View className="gap-1">
-            <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">Budgets</Text>
-            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-              Honey pantry • {budgets.length > 0 ? `${budgets.length} jars` : "bear family"}
-            </Text>
-          </View>
-          <View style={{ opacity: 0.85 }}>
-            <BearFamilyRow size={20} />
-          </View>
-        </View>
+      <View className="px-5 pt-4">
+        <ScreenHeader
+          title="Budgets"
+          kicker={jarKicker}
+          icon="archive"
+          accessory={
+            <View style={{ opacity: 0.85 }}>
+              <BearFamilyRow size={20} />
+            </View>
+          }
+        />
 
         {/* Period header — shared PeriodHeader */}
         <PeriodHeader
@@ -316,19 +321,22 @@ export default function Budgets() {
                         style={[
                           Shadow.card,
                           {
-                            borderRadius: Radius.md,
-                            backgroundColor: C.surface,
+                            borderRadius: Radius.lg,
                             borderWidth: 1,
                             borderColor: C.border,
                             overflow: "hidden",
                           },
                         ]}
                       >
-                        <View style={{ height: 3, backgroundColor: C.pantryWood, opacity: 0.5 }} />
-                        <View style={{ padding: 16, gap: 12 }}>
+                        <LinearGradient
+                          colors={G.card as unknown as [string, string]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ padding: 20, gap: 12 }}
+                        >
                           <View className="flex-row items-center justify-between">
-                            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
-                              TOTAL • {budgets.length} JARS
+                            <Text className="text-[11px] font-semibold uppercase leading-3 tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">
+                              Total • {budgets.length} {budgets.length === 1 ? "jar" : "jars"}
                             </Text>
                             <Text
                               style={{ color: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : overallProgress > 0.8 ? C.primary : C.textSecondary }}
@@ -341,24 +349,24 @@ export default function Budgets() {
                           <View className="flex-row gap-4">
                             <View className="flex-1 gap-1">
                               <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
-                              <Text className="text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
+                              <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
                               <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
                             </View>
                             <View style={{ width: 1, backgroundColor: C.border, opacity: 0.6 }} />
                             <View className="flex-1 gap-1">
                               <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
                               {summary.hasRedacted ? (
-                                <Text className="text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-secondary dark:text-text-secondary-dark">—</Text>
+                                <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums text-text-secondary dark:text-text-secondary-dark">—</Text>
                               ) : (
                                 <Text
                                   style={{ color: overallProgress > 1 ? C.error : undefined }}
-                                  className={`text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
+                                  className={`text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
                                 >
                                   {formatNumber(summary.spent)}
                                 </Text>
                               )}
                               <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                                {summary.hasRedacted ? "Frosted" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
+                                {summary.hasRedacted ? "— left • some jars private" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
                               </Text>
                             </View>
                           </View>
@@ -404,7 +412,7 @@ export default function Budgets() {
                               </View>
                             </View>
                           )}
-                        </View>
+                        </LinearGradient>
                       </View>
                     </View>
                   ) : null}
@@ -425,11 +433,10 @@ export default function Budgets() {
                           <View style={{ opacity: 0.9 }}>
                             <BearFamilyRow size={24} />
                           </View>
-                          <Text className="text-center text-sm font-normal text-text-secondary dark:text-text-secondary-dark">Pantry is empty</Text>
                           <EmptyState
                             icon="archive"
                             title="No budgets yet"
-                            description="Set a budget for each category to track your spending."
+                            description="Set a monthly budget per category. Members can manage budgets; hidden categories stay frosted without spending detail."
                             actionLabel="Set Budget"
                             onAction={() => router.push({ pathname: "/budget-form", params: { periodStart: periodStart.toString() } })}
                           />

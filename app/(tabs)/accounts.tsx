@@ -44,6 +44,7 @@ import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import * as Haptics from "expo-haptics";
 import { formatNumber } from "@/utils/format";
+import { ScreenHeader } from "@/components/ScreenHeader";
 
 type Filter = "all" | AccountType;
 
@@ -56,12 +57,21 @@ const FILTERS: { id: Filter; label: string; icon: string }[] = [
   })),
 ];
 
-const TYPE_ACCENT: Record<AccountType, { light: string; dark: string }> = {
-  cash: { light: "#065F46", dark: "#34D399" },
-  bank: { light: "#92400E", dark: "#F59E0B" },
-  ewallet: { light: "#1D4ED8", dark: "#60A5FA" },
-  credit_card: { light: "#991B1B", dark: "#F87171" },
-};
+function getAccountAccent(
+  type: AccountType,
+  C: ReturnType<typeof useThemeColors>,
+): string {
+  switch (type) {
+    case "cash":
+      return C.accountCash;
+    case "bank":
+      return C.accountBank;
+    case "ewallet":
+      return C.accountEwallet;
+    case "credit_card":
+      return C.accountCreditCard;
+  }
+}
 
 // ── tiny animated ticker for balances ──────────────────────────────
 function Ticker({ value }: { value: number }) {
@@ -197,10 +207,7 @@ function VaultCard({
 }) {
   const C = useThemeColors();
   const meta = ACCOUNT_TYPES.find((t) => t.id === item.type) ?? ACCOUNT_TYPES[0];
-  const accent = TYPE_ACCENT[item.type] ?? TYPE_ACCENT.bank;
-  // use dark vs light to pick accent
-  const isDark = C.background === "#1C1917";
-  const accentColor = isDark ? accent.dark : accent.light;
+  const accentColor = getAccountAccent(item.type, C);
   const [pressed, setPressed] = useState(false);
   const scale = useSharedValue(1);
 
@@ -500,8 +507,7 @@ function HeroVault({
           <View className="mt-4 flex-row gap-2">
             {typeDots.map(({ type }) => {
               const val = totals.byType[type] ?? 0;
-              const accent = TYPE_ACCENT[type];
-              const col = C.background === "#1C1917" ? accent.dark : accent.light;
+              const col = getAccountAccent(type, C);
               const has = (totals.byType[type] ?? 0) !== 0 || filter === type || filter === "all";
               return (
                 <View
@@ -646,29 +652,7 @@ export default function Accounts() {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <View className="flex-row items-center gap-3">
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 14,
-                backgroundColor: C.surface,
-                borderWidth: 1,
-                borderColor: C.border,
-              }}
-              className="items-center justify-center"
-            >
-              <Feather name="credit-card" size={18} color={C.primary} />
-            </View>
-            <View>
-              <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
-                Accounts
-              </Text>
-              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                Household vault
-              </Text>
-            </View>
-          </View>
+          <ScreenHeader title="Accounts" kicker="Household vault" icon="credit-card" />
         </View>
         {stale && (
           <View className="pt-2">
@@ -710,32 +694,11 @@ export default function Accounts() {
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
-        <View className="flex-row items-center gap-3">
-          <View
-            style={[
-              Shadow.card,
-              {
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                backgroundColor: C.surface,
-                borderWidth: 1,
-                borderColor: C.border,
-              },
-            ]}
-            className="items-center justify-center"
-          >
-            <Feather name="credit-card" size={20} color={C.primary} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
-              Accounts
-            </Text>
-            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
-              HOUSEHOLD VAULT • {accounts.length} {accounts.length === 1 ? "ACCOUNT" : "ACCOUNTS"}
-            </Text>
-          </View>
-        </View>
+        <ScreenHeader
+          title="Accounts"
+          kicker={`Household vault • ${accounts.length} ${accounts.length === 1 ? "account" : "accounts"}`}
+          icon="credit-card"
+        />
       </View>
 
       {stale && (
@@ -802,7 +765,7 @@ export default function Accounts() {
                   {verifyResult.discrepancies.length} out of sync
                 </Text>
                 <Text className="text-xs font-medium leading-4 text-text-secondary dark:text-text-secondary-dark">
-                  Stored balances don&apos;t match transaction history.
+                  These totals look off compared to your transactions. One tap fixes it.
                 </Text>
               </View>
             </View>
@@ -919,30 +882,20 @@ export default function Accounts() {
             ) : null}
           </View>
         }
-        renderItem={({ item, index }) =>
-          isOwner ? (
-            <VaultCard
-              item={item as any}
-              index={index}
-              isOwner={isOwner}
-              onEdit={() =>
-                router.push({
-                  pathname: "/account-form",
-                  params: { id: item._id },
-                })
-              }
-              onDelete={() => handleDelete(item as any)}
-            />
-          ) : (
-            <VaultCard
-              item={item as any}
-              index={index}
-              isOwner={false}
-              onEdit={() => {}}
-              onDelete={() => {}}
-            />
-          )
-        }
+        renderItem={({ item, index }) => (
+          <VaultCard
+            item={item as any}
+            index={index}
+            isOwner={isOwner}
+            onEdit={() =>
+              router.push({
+                pathname: "/account-form",
+                params: { id: item._id },
+              })
+            }
+            onDelete={() => handleDelete(item as any)}
+          />
+        )}
       />
 
       {isOwner ? (
