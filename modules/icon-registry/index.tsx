@@ -11,13 +11,13 @@ import {
   getIconData,
   resolveIconName,
   isValidCategoryIcon,
-  isAccountType,
+  isAccountSubType,
 } from "./internal";
 
 export type IconRef = string | null | undefined;
-export { ALL_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, CATEGORY_STREAMLINE_MAP, ACCOUNT_STREAMLINE_MAP, isValidCategoryIcon, isAccountType };
+export { ALL_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON, CATEGORY_STREAMLINE_MAP, ACCOUNT_STREAMLINE_MAP, isValidCategoryIcon, isAccountSubType };
 export type { CategoryIconName } from "@/constants/categoryIconNames";
-export type { AccountType } from "@/constants/accounts";
+export type { AccountSubType } from "@/constants/accounts";
 
 // ── Deep Icon module: small interface, hides streamline data, fallback, lazy parse ──
 
@@ -41,8 +41,8 @@ export function getIconXml(ref?: IconRef): string {
 export function CategoryIcon({ name, size = 32 }: { name?: string | null; size?: number }) {
   return <Icon ref={name} size={size} />;
 }
-export function AccountIcon({ type, size = 32 }: { type?: string | null; size?: number }) {
-  return <Icon ref={type} size={size} />;
+export function AccountIcon({ subType, size = 32 }: { subType?: string | null; size?: number }) {
+  return <Icon ref={subType} size={size} />;
 }
 export function getCategoryIconXml(name?: string | null): string {
   const iconName = (() => {
@@ -53,9 +53,9 @@ export function getCategoryIconXml(name?: string | null): string {
   const { width, height } = getIconData();
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-icon="${iconName}">${body}</svg>`;
 }
-export function getAccountIconXml(type?: string | null): string {
-  const iconName = type && isAccountType(type) ? ACCOUNT_STREAMLINE_MAP[type as import("./internal").AccountType] : ACCOUNT_STREAMLINE_MAP.asset;
-  const body = getBody(iconName) ?? getBody(ACCOUNT_STREAMLINE_MAP.asset) ?? "";
+export function getAccountIconXml(subType?: string | null): string {
+  const iconName = subType && isAccountSubType(subType) ? ACCOUNT_STREAMLINE_MAP[subType] : ACCOUNT_STREAMLINE_MAP.other;
+  const body = getBody(iconName) ?? getBody(ACCOUNT_STREAMLINE_MAP.other) ?? "";
   const { width, height } = getIconData();
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-icon="${iconName}">${body}</svg>`;
 }
@@ -63,9 +63,9 @@ export function getStreamlineIconName(name?: string): string {
   if (name && (name as string) in CATEGORY_STREAMLINE_MAP) return CATEGORY_STREAMLINE_MAP[name as keyof typeof CATEGORY_STREAMLINE_MAP];
   return CATEGORY_STREAMLINE_MAP.other;
 }
-export function getAccountIconName(type?: string): string {
-  if (type && isAccountType(type)) return ACCOUNT_STREAMLINE_MAP[type as import("./internal").AccountType];
-  return ACCOUNT_STREAMLINE_MAP.asset;
+export function getAccountIconName(subType?: string): string {
+  if (subType && isAccountSubType(subType)) return ACCOUNT_STREAMLINE_MAP[subType];
+  return ACCOUNT_STREAMLINE_MAP.other;
 }
 
 export function listIconRefs(): readonly string[] {
