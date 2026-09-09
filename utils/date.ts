@@ -73,5 +73,6 @@ export {
   getPrevPeriod,
   getNextPeriod,
   formatPeriodLabel,
+  formatPeriodShortLabel,
   buildPeriodWindow,
 } from "./periodTime";
