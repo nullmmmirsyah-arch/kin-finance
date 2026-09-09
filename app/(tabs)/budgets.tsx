@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { Alert, FlatList, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
@@ -20,8 +20,9 @@ import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
 import { BearFamilyRow } from "@/components/BearFaceless";
-import { buildPeriodWindow, getPeriodBounds } from "@/utils/period";
-import Feather from "@expo/vector-icons/Feather";
+import { buildPeriodWindow, formatPeriodShortLabel, getPeriodBounds } from "@/utils/period";
+import { PeriodHeader } from "@/components/PeriodHeader";
+import { MonthPicker } from "@/components/MonthPicker";
 
 export default function Budgets() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function Budgets() {
   const periodType = "monthly" as const;
 
   const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
   const isConnected = useConnectivity();
@@ -194,6 +196,9 @@ export default function Budgets() {
     [removeBudget, show],
   );
 
+  const shortLabel = formatPeriodShortLabel(periodStart, timezone, "monthly");
+  const fullLabel = formatMonthLabel(periodStart, timezone);
+
   if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
@@ -247,80 +252,28 @@ export default function Budgets() {
           </View>
         </View>
 
-        {/* Period switcher with dots — mirrors Home/Reports */}
-        <View className="mt-5 flex-row items-center justify-between gap-3">
-          <Pressable
-            onPress={handlePrevMonth}
-            disabled={isPrevDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              opacity: isPrevDisabled ? 0.4 : 1,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="chevron-left" size={18} color={C.textSecondary} />
-          </Pressable>
+        {/* Period header — shared PeriodHeader */}
+        <PeriodHeader
+          label={shortLabel}
+          a11yLabel={fullLabel}
+          onPrev={handlePrevMonth}
+          onNext={handleNextMonth}
+          isPrevDisabled={isPrevDisabled}
+          isNextDisabled={isNextDisabled}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
 
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: C.background,
-              borderColor: C.border,
-              borderWidth: 1,
-              borderRadius: Radius.md,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">PERIOD</Text>
-            <Text className="text-[15px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
-              {formatMonthLabel(periodStart, timezone)}
-            </Text>
-            <View className="flex-row items-center gap-1.5 pt-1">
-              {pagerPeriods.map((p, idx) => (
-                <View
-                  key={p.periodStart}
-                  style={{
-                    width: idx === selectedIndex ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: idx === selectedIndex ? C.primary : C.border,
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-
-          <Pressable
-            onPress={handleNextMonth}
-            disabled={isNextDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              opacity: isNextDisabled ? 0.4 : 1,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="chevron-right" size={18} color={C.textSecondary} />
-          </Pressable>
-        </View>
+        <MonthPicker
+          visible={pickerOpen}
+          selectedPeriodStart={selectedMonthStart ?? periodStart}
+          tz={timezone}
+          onSelect={(ps) => {
+            setSelectedMonthStart(ps);
+            const idx = pagerPeriods.findIndex((p) => p.periodStart === ps);
+            if (idx >= 0) pagerRef.current?.setPage(idx);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
       </View>
 
       {stale && (

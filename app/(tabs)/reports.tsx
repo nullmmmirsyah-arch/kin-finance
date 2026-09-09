@@ -1,17 +1,17 @@
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
 import PagerView from "react-native-pager-view";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { MonthPicker } from "@/components/MonthPicker";
+import { PeriodHeader } from "@/components/PeriodHeader";
 import { CategoryRankingCard } from "@/components/reports/CategoryRankingCard";
 import { BillRankingCard } from "@/components/reports/BillRankingCard";
 import { DeltaCard } from "@/components/charts/DeltaCard";
 import { Skeleton } from "@/components/Skeleton";
-import { buildPeriodWindow, formatPeriodLabel, getPeriodBounds, getPrevPeriod, getNextPeriod } from "@/utils/period";
+import { buildPeriodWindow, formatPeriodLabel, formatPeriodShortLabel, getPeriodBounds, getPrevPeriod, getNextPeriod } from "@/utils/period";
 import { resolveTimezone } from "@/constants/timezones";
 import { hapticSuccess } from "@/lib/haptics";
 
@@ -95,6 +95,11 @@ export default function Reports() {
     return formatPeriodLabel(selectedPeriodStart, timezone, "monthly");
   }, [selectedPeriodStart, timezone]);
 
+  const shortLabel = useMemo(() => {
+    if (selectedPeriodStart === null) return "";
+    return formatPeriodShortLabel(selectedPeriodStart, timezone, "monthly");
+  }, [selectedPeriodStart, timezone]);
+
   const prevLabel = useMemo(() => {
     if (prevStart === null) return "";
     return formatPeriodLabel(prevStart, timezone, "monthly");
@@ -133,10 +138,6 @@ export default function Reports() {
     const idx = pagerPeriods.findIndex((p) => p.periodStart === next);
     if (idx >= 0) pagerRef.current?.setPage(idx);
   }, [selectedPeriodStart, timezone, pagerPeriods, currentPeriodBounds.start]);
-
-  const [prevPressed, setPrevPressed] = useState(false);
-  const [nextPressed, setNextPressed] = useState(false);
-  const [headerPressed, setHeaderPressed] = useState(false);
 
   const toggleType = useCallback(() => {
     setType((t) => (t === "expenses" ? "income" : "expenses"));
@@ -226,79 +227,16 @@ export default function Reports() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      {/* Header with chevrons + MonthPicker + dots + Filter dummy */}
       <View className="px-5 pb-2 pt-4">
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={handlePrev}
-            onPressIn={() => setPrevPressed(true)}
-            onPressOut={() => setPrevPressed(false)}
-            disabled={isPrevDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Previous period"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: Radius.lg,
-              backgroundColor: prevPressed ? C.surface : C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: isPrevDisabled ? 0.4 : 1,
-            }}
-          >
-            <Feather name="chevron-left" size={22} color={C.textPrimary} />
-          </Pressable>
-
-          <Pressable
-            onPress={() => setPickerOpen(true)}
-            onPressIn={() => setHeaderPressed(true)}
-            onPressOut={() => setHeaderPressed(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Open month picker"
-            style={{ flex: 1, alignItems: "center", gap: 4, opacity: headerPressed ? 0.7 : 1 }}
-          >
-            <View className="flex-row items-center gap-1">
-              <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">{currentLabel} ▼</Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              {pagerPeriods.map((p, idx) => (
-                <View
-                  key={p.periodStart}
-                  style={{
-                    width: idx === selectedIndex ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: idx === selectedIndex ? C.primary : C.border,
-                  }}
-                />
-              ))}
-            </View>
-          </Pressable>
-
-          <Pressable
-            onPress={handleNext}
-            onPressIn={() => setNextPressed(true)}
-            onPressOut={() => setNextPressed(false)}
-            disabled={isNextDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Next period"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: Radius.lg,
-              backgroundColor: nextPressed ? C.surface : C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: isNextDisabled ? 0.4 : 1,
-            }}
-          >
-            <Feather name="chevron-right" size={22} color={C.textPrimary} />
-          </Pressable>
-        </View>
+        <PeriodHeader
+          label={shortLabel}
+          a11yLabel={currentLabel}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          isPrevDisabled={isPrevDisabled}
+          isNextDisabled={isNextDisabled}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
       </View>
 
       <MonthPicker

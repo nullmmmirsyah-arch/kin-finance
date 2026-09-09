@@ -33,6 +33,7 @@ import { formatDateHeaderTz } from "@/utils/date";
 import {
   getPeriodBounds,
   formatPeriodLabel,
+  formatPeriodShortLabel,
   buildPeriodWindow,
   getPrevPeriod,
   getNextPeriod,
@@ -42,6 +43,7 @@ import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
 import { MonthPicker } from "@/components/MonthPicker";
+import { PeriodHeader } from "@/components/PeriodHeader";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
 import { Id } from "@/convex/_generated/dataModel";
 import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
@@ -510,6 +512,11 @@ export default function Home() {
     return formatPeriodLabel(selectedPeriodStart, timezone, periodType);
   }, [selectedPeriodStart, timezone, periodType]);
 
+  const shortLabel = useMemo(() => {
+    if (selectedPeriodStart === null) return "";
+    return formatPeriodShortLabel(selectedPeriodStart, timezone, periodType);
+  }, [selectedPeriodStart, timezone, periodType]);
+
   useEffect(() => {
     if (isConnected === false) {
       setStale(true);
@@ -583,10 +590,6 @@ export default function Home() {
     return next > curStart;
   }, [selectedPeriodStart, timezone, periodType]);
 
-  const [prevPressed, setPrevPressed] = useState(false);
-  const [nextPressed, setNextPressed] = useState(false);
-  const [headerPressed, setHeaderPressed] = useState(false);
-
   if (syncError) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
@@ -644,84 +647,15 @@ export default function Home() {
           </Text>
         </View>
 
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={handlePrev}
-            onPressIn={() => setPrevPressed(true)}
-            onPressOut={() => setPrevPressed(false)}
-            disabled={isPrevDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Previous period"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: Radius.lg,
-              backgroundColor: prevPressed ? C.surface : C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: isPrevDisabled ? 0.4 : 1,
-            }}
-          >
-            <Feather name="chevron-left" size={22} color={C.textPrimary} />
-          </Pressable>
-
-          <Pressable
-            onPress={() => setPickerOpen(true)}
-            onPressIn={() => setHeaderPressed(true)}
-            onPressOut={() => setHeaderPressed(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Open month picker"
-            style={{
-              flex: 1,
-              alignItems: "center",
-              gap: 4,
-              opacity: headerPressed ? 0.7 : 1,
-            }}
-          >
-            <View className="flex-row items-center gap-1">
-              <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
-                {selectedPeriodStart !== null ? currentLabel : ""} {selectedPeriodStart !== null ? "▼" : ""}
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              {pagerPeriods.map((p, idx) => (
-                <View
-                  key={p.periodStart}
-                  style={{
-                    width: idx === selectedIndex ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: idx === selectedIndex ? C.primary : C.border,
-                  }}
-                />
-              ))}
-            </View>
-          </Pressable>
-
-          <Pressable
-            onPress={handleNext}
-            onPressIn={() => setNextPressed(true)}
-            onPressOut={() => setNextPressed(false)}
-            disabled={isNextDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Next period"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: Radius.lg,
-              backgroundColor: nextPressed ? C.surface : C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: isNextDisabled ? 0.4 : 1,
-            }}
-          >
-            <Feather name="chevron-right" size={22} color={C.textPrimary} />
-          </Pressable>
-        </View>
+        <PeriodHeader
+          label={shortLabel}
+          a11yLabel={currentLabel}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          isPrevDisabled={isPrevDisabled}
+          isNextDisabled={isNextDisabled}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
       </View>
 
       <PagerView
