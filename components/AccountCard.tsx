@@ -1,13 +1,12 @@
 import Feather from "@expo/vector-icons/Feather";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
-import { SUB_TYPE_LABELS, AccountSubType, AccountType } from "@/constants/accounts";
+import { SUB_TYPE_LABELS, AccountSubType } from "@/constants/accounts";
 import { AccountIcon } from "@/components/AccountIcon";
 import { formatNumber } from "@/utils/format";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
   name: string;
-  type: AccountType;
   subType: AccountSubType;
   balance: number;
   hidden?: boolean;
@@ -15,7 +14,7 @@ type Props = {
   onDelete?: () => void;
 };
 
-export function AccountCard({ name, type, subType, balance, hidden, onEdit, onDelete }: Props) {
+export function AccountCard({ name, subType, balance, hidden, onEdit, onDelete }: Props) {
   const C = useThemeColors();
 
   return (
