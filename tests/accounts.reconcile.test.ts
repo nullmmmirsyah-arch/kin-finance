@@ -186,7 +186,8 @@ describe("accounts.verify + reconcile (P0-1)", () => {
     expect(v2!.discrepancies.find((d: any) => d.accountId === bankId)!.expected).toBe(400);
   });
 
-  it("reconcile respects opening balance transaction (atomic)", async () => {    await seed();
+  it("reconcile respects opening balance transaction (atomic)", async () => {
+    await seed();
     const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
     const acc = await owner.mutation(api.accounts.create, {
       name: "WithOpening",
@@ -203,6 +204,7 @@ describe("accounts.verify + reconcile (P0-1)", () => {
       t === "cash" || t === "bank" || t === "ewallet" ? "asset" : "debt";
     expect(map("cash")).toBe("asset");
     expect(map("bank")).toBe("asset");
+    expect(map("ewallet")).toBe("asset");
     expect(map("credit_card")).toBe("debt");
   });
 });

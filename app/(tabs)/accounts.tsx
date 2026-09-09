@@ -853,7 +853,7 @@ export default function Accounts() {
             </View>
             {isOwner ? (
               <View className="mt-3 flex-row gap-2">
-                {ACCOUNT_TYPES.slice(0, 4).map((t) => (
+                {ACCOUNT_TYPES.map((t) => (
                   <View
                     key={t.id}
                     style={{
