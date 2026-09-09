@@ -45,25 +45,60 @@ export async function findUser(ctx: AnyCtx): Promise<Doc<"users"> | null> {
     .unique();
 }
 
-export async function findUserAndMembership(ctx: AnyCtx) {
+async function findUserRow(ctx: AnyCtx): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (identity === null) return null;
-  const user = await ctx.db
+  return await ctx.db
     .query("users")
     .withIndex("by_tokenIdentifier", (q) =>
       q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
     .unique();
-  if (user === null) return null;
-  const membership = await ctx.db
+}
+
+async function membershipsOf(ctx: AnyCtx, userId: Id<"users">) {
+  return await ctx.db
     .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .first();
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .collect();
+}
+
+async function resolveActive(
+  ctx: AnyCtx,
+  user: Doc<"users">,
+  memberships: Doc<"householdMemberships">[],
+): Promise<Doc<"householdMemberships"> | null> {
+  if (memberships.length === 0) return null;
+  const activeId = (user as { activeHouseholdId?: Id<"households"> }).activeHouseholdId;
+  if (activeId !== undefined) {
+    const hit = memberships.find((m) => m.householdId === activeId);
+    if (hit !== undefined) return hit;
+  }
+  const withDates = await Promise.all(
+    memberships.map(async (m) => ({
+      m,
+      createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
+    })),
+  );
+  withDates.sort((a, b) => a.createdAt - b.createdAt);
+  return withDates[0].m;
+}
+
+export async function findUserAndMembership(ctx: AnyCtx, householdId?: Id<"households">) {
+  const user = await findUserRow(ctx);
+  if (user === null) return null;
+  const memberships = await membershipsOf(ctx, user._id);
+  if (householdId !== undefined) {
+    const membership = memberships.find((m) => m.householdId === householdId) ?? null;
+    if (membership === null) return null;
+    return { user, membership };
+  }
+  const membership = await resolveActive(ctx, user, memberships);
   if (membership === null) return null;
   return { user, membership };
 }
 
-export async function getUserAndMembership(ctx: MutationCtx) {
+export async function getUserAndMembership(ctx: MutationCtx, householdId?: Id<"households">) {
   const identity = await ctx.auth.getUserIdentity();
   if (identity === null) {
     throw new ConvexError("You are not signed in.");
@@ -77,10 +112,15 @@ export async function getUserAndMembership(ctx: MutationCtx) {
   if (user === null) {
     throw new ConvexError("User not found.");
   }
-  const membership = await ctx.db
-    .query("householdMemberships")
-    .withIndex("by_userId", (q) => q.eq("userId", user._id))
-    .unique();
+  const memberships = await membershipsOf(ctx, user._id);
+  if (householdId !== undefined) {
+    const membership = memberships.find((m) => m.householdId === householdId);
+    if (membership === undefined) {
+      throw new ConvexError("You are not a member of this household.");
+    }
+    return { user, membership };
+  }
+  const membership = await resolveActive(ctx, user, memberships);
   if (membership === null) {
     throw new ConvexError("You are not a member of a household.");
   }

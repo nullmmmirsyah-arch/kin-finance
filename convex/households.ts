@@ -8,6 +8,7 @@ import {
 } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { findUserAndMembership, getUserAndMembership, requireOwner } from "./helpers";
+import type { Doc } from "./_generated/dataModel";
 import { getYearMonth, zonedMonthStart } from "../utils/date";
 import { recomputeAllForHousehold } from "./periodBalances";
 
@@ -512,5 +513,44 @@ export const transferOwnership = mutation({
     await ctx.db.patch(membership._id, { role: "member" });
     await ctx.db.patch(target._id, { role: "owner" });
     return { oldOwnerId: membership.userId, newOwnerId: target.userId };
+  },
+});
+
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const result = await findUserAndMembership(ctx);
+    if (result === null) return [];
+    const { user } = result;
+    const memberships = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    const out: { household: Doc<"households">; role: "owner" | "member"; isActive: boolean }[] = [];
+    for (const m of memberships) {
+      const h = await ctx.db.get(m.householdId);
+      if (h === null) continue;
+      out.push({ household: h, role: m.role, isActive: false });
+    }
+    out.sort((a, b) => a.household.createdAt - b.household.createdAt);
+    const activeId = (user as { activeHouseholdId?: Doc<"households">["_id"] }).activeHouseholdId;
+    const effective = activeId !== undefined && out.some((o) => o.household._id === activeId)
+      ? activeId
+      : out[0]?.household._id;
+    for (const o of out) o.isActive = o.household._id === effective;
+    return out;
+  },
+});
+
+export const switchActive = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const { user } = await getUserAndMembership(ctx, args.householdId);
+    const household = await ctx.db.get(args.householdId);
+    if (household === null) {
+      throw new ConvexError("Household not found.");
+    }
+    await ctx.db.patch(user._id, { activeHouseholdId: args.householdId });
+    return household;
   },
 });
