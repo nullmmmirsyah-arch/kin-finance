@@ -25,7 +25,7 @@ export function Chip({ label, active, onPress }: Props) {
       style={pressed ? { opacity: 0.85 } : undefined}
     >
       <Text
-        className={`text-sm font-medium ${
+        className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
           active
             ? "text-background dark:text-background-dark"
             : "text-text-secondary dark:text-text-secondary-dark"

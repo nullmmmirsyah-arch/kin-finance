@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-04 (Household delete/leave/transfer — Account fixed icons Streamline 4 via Iconify CC BY 4.0 + Category 56 vectors — Architecture deepening Period/Time · Transactions query · Icon registry, no UX break)
+> Last updated: 2026-09-08 (Transaction Form Redesign — UI refresh: `KeyboardAwareScrollView` space-between, CategoryGrid label outside box, Keypad paired operators, bottom card note+amount+chips, pill overlap, keyboard avoidance; prev 2026-09-08 Add Transaction Sheet spec + 2026-09-07 Impeccable typeset audit 1A–7A — heading 700 bold, button 16 keep with docs exception, token explicit, tracking 1.0/0.08em, label 600, subheading 500, full docs sync; tailwind scale baked)
 > Source of truth: `convex/schema.ts`, `convex/*.ts`, `app/**/*.tsx`, `CONTEXT.md`
 
 ---
@@ -277,10 +277,7 @@ Core records of financial activity: income, expense, or transfer.
 - `createdBy` / `updatedBy` recorded on every transaction.
 - Members cannot create on hidden accounts/categories or reassign to them, but
   can edit existing transactions referencing hidden accounts.
-- **Form UX:** contextual subtitle/type icon, chip type selector, amount with
-  integer-only thousand-separator formatting (`number-pad` + `formatAmountInput` strips decimals/non-digits with inline amber warning `wasDecimalTruncated` → "Decimals are ignored — whole numbers only" in `components/Input.tsx:29` when a decimal is typed, instead of silent truncation), contextual sign-convention hint, "Repeat last"
-  shortcut (persisted via SecureStore `lib/last-transaction.ts`, survives unmount/restart; contextual copy shows `type + amount`; tap reuses type/amount/account/category), duplicate detection (same amount+account+category/type within 24h triggers confirmation Alert with `hapticWarning`), date hint, note character counter, discard guard on both header
-  back button and Android hardware back button. See §4.4 for details.
+- **Sheet UX (as of 2026-09-08 — add transaction sheet):** header X + tabs Expenses/Income/Transfer (underline `C.primary`), grid kategori scroll 4 kolom filtered by type (hidden-aware, add category CTA → `/category-form`, back auto-select), Transfer dual card + swap, pill akun tappable default lastTransaction (fallback first visible), amount bare whole number with no currency symbol (`formatAmountInput` live thousand, `formatNumber` eval result, amber Decimals truncated warning via `wasDecimalTruncated`), keypad custom 4×4 penuh (`+ - × ÷` live eval left-to-right via `utils/keypadEval`, kolom operator dipisah visual, tanpa tombol Today/✓ — Save bar satu-satunya aksi simpan; date pill opens the calendar modal household-timezone-aware via `resolveTimezone`/`getDayBounds`/`formatDateShortTz`), Note 200 + auto-suggest same category (5 chips via `hooks/useNoteSuggestions`), duplicate 24h Alert, discard guard (`useDiscardGuard` header X + hardware back; auto account defaults never dirty), Repeat last pill. See §4.4 for details.
 - **Day-grouped net totals:** the Transactions list shows a net total per day
   header (income − expense; transfers excluded because they move money between
   owned accounts and do not change household net worth), colored by sign.
@@ -396,8 +393,8 @@ Materialized per-period snapshot powering Home/Analytics O(1) reads, extensible 
 | Token | Value |
 |-------|-------|
 | Colors | stone/amber warm palette — primary `#92400E`, background `#FFFBF5`, surface `#FEF3C7`, success `#065F46`, error `#991B1B`, chartAmber `#D97706`/`#F59E0B` dark, chartEmerald `#059669`/`#34D399` dark; full dark-mode variants in `constants/theme.ts` (`C.chartAmber`/`C.chartEmerald` via `useThemeColors()`, no hardcoded hex in `app/**/*.tsx`) |
-| Typography | H1 28 bold, H2 20 semibold, Body 16, Caption 14, Small 12 |
-| Spacing | XS 4 / SM 8 / MD 16 / LG 24 / XL 32 |
+| Typography | Display 28 bold −0.02em/1.0 tabular, Heading 18 bold −0.02em/1.33 (700, leading-6), Subheading 15 medium −0.01em/1.33 (500), Body 16 medium/600 tabular −0.01/−0.015em/1.25 (leading-5), Label 14 semibold 0.02em/1.4 — button/FAB exception 16 semibold −0.01em/1.25 (bigger-feel), Detail 13 0.04em/1.33 tracking-wide, Caption 12, Micro 11 0.08em/1.0 (PERIOD BALANCE), Nav 11 — single sans family, weight steps 400→500→600→700, per `constants/theme.ts:FontSize` + `tailwind.config.js:fontSize` (display/heading/subheading/body/label/detail/caption/micro/nav) + `DESIGN.md` Hierarchy (audit 1A–7A) |
+| Spacing | XS 4 / SM 8 / MD 12 / Gutter 20 (px-5) / LG 24 / XL 32 — grid 4dp, row height 48–60 (icon 48 py-4), intra-section 2 + inter-section 12 (SectionList), major sections 24–32 (mt-7/8), card pad 16–20 (Transaction 20, Gradient 20, tabBar 68h 8dp inset, FAB 60h pill) — Money Manager bigger-feel via 20px gutters + 60px rows |
 | Radius | SM 12 / MD 16 / LG 24 |
 | Shadow | Card `0 2 8 rgba(0,0,0,0.04)`, Elevated `0 4 16 rgba(0,0,0,0.08)` |
 | Components | Button (48px, full width, solid), Input (48px outlined), Card (gradient, 16px radius), Header, Skeleton (pulse loading placeholder) |
@@ -453,14 +450,40 @@ balance equality, shared timestamp, no orphan on missing category).
 ### 4.4 Create Transaction
 
 ```text
-Transactions tab → "+" → type toggle (Income/Expense/Transfer)
-  → amount input with thousand-separator formatting
-  → account, category (income/expense), date, note
-  → or transfer: from/to account
-  → Save → transactions.create → balances auto-updated → list
+Home → "+" → sheet (Expenses/Income/Transfer tabs)
+  → pick category from scroll grid (or transfer: Payment/Receive cards + swap)
+  → amount via custom keypad (+ - × ÷ live eval)
+  → account pill, date pill, note with auto-suggest
+  → Save → transactions.create → balances auto-updated → back
 ```
 
-**Form UX (as of 2026-08-17):**
+**Sheet UX (as of 2026-09-08 — supersedes the three-section form below,
+rev. user-test fixes):**
+see §3.6 "Sheet UX". In brief: header X + tabs (`Expenses | Income |
+Transfer`, active underline `C.primary`) + household-name pill; 4-column
+category grid with fixed-size cells (never stretches; single category stays
+a small left-aligned box) filtered by type (hidden-aware; owner-only `Add`
+tile with dashed border links to category creation, reactive return note);
+transfer dual card with swap;
+tappable account pill defaulting to lastTransaction account else first
+visible account (user-touched flag drives the discard guard, auto-defaults
+never count as interaction and are never reapplied); bare whole-number amount
+with no currency symbol, live thousand separators, custom 4×4 keypad
+(`1-9`, `0`, `.`, `+ - × ÷` left-to-right integer eval via
+`utils/keypadEval.ts`, `⌫`; operator column visually separated; no Today
+key — date pill beside the account covers it; no ✓ — Save bar is the
+single submit action; operator presses on empty/trailing-operator input are
+ignored); date pill opening a calendar modal (`maximumDate` today,
+household-timezone-aware via `resolveTimezone`/`getDayBounds`/
+`formatDateShortTz`); note (max 200, counter with amber/red feedback at
+150/180) lifted above the device keyboard via `KeyboardAwareScrollView`
+(custom keypad hidden while typing; picking a category or submitting
+dismisses the keyboard) with same-category auto-suggest chips (5 max via
+`hooks/useNoteSuggestions.ts`); duplicate 24h confirmation Alert;
+discard guard on X + hardware back via shared `useDiscardGuard`.
+
+**Form UX (as of 2026-08-17 — superseded by the Sheet UX above; retained
+for the account, category, and budget forms which still use it):**
 
 - Header shows contextual subtitle ("Track an expense" / "Record incoming
   money" / "Move money between accounts") and a dynamic type icon.
@@ -489,19 +512,21 @@ Transactions tab → "+" → type toggle (Income/Expense/Transfer)
 - **Inline validation:** field-specific error states (`amountError`,
   `accountError`, `categoryError`, `dateError`) display directly beneath
   each field on blur or submit attempt. Type change clears all error states.
-- **Three-section layout:** Type + Amount (bordered container),
+- **Three-section layout (account/category/budget forms only):** Type + Amount (bordered container),
   Account + Category or From/To Account (bordered container with
   `bg-surface`), Date + Note (bordered container). Consistent bordered
   treatment without gradient card — clean visual rhythm with background
   color differentiation for account/category emphasis.
-- **Keyboard behavior:** tapping any non-text-input field (Account/Category/
+- **Keyboard behavior (account/category/budget forms):** tapping any non-text-input field (Account/Category/
   From-To selector, Date, type chip, "Repeat last") dismisses the keyboard
   before the field action runs; tapping a text input (Amount, Note) keeps the
   keyboard open so focus transfers. The form scrolls via `KeyboardAwareScrollView`
    so the focused input stays visible above the keyboard on both platforms.
+  The transaction sheet instead uses a custom keypad (no system keyboard
+  except while the note field is focused).
 - **Loading state:** while form data loads (the account list on create, the
   transaction on edit), the screen renders the header plus Skeleton
-  placeholders mirroring the three-section layout instead of plain text.
+  placeholders mirroring the form layout instead of plain text.
 
 ### 4.5 Owner Invites Member
 
@@ -1002,6 +1027,9 @@ sections above; fixes are logged here only.
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-09-09 | UX | **Budgets/Accounts critique fixes (Budgets 22/40, Accounts 26/40)**: new shared `components/ScreenHeader.tsx` (44px `Shadow.card` icon tile + 18px title + 11px caps micro kicker + optional accessory, canonical Accounts style) adopted by `app/(tabs)/budgets.tsx` + `app/(tabs)/accounts.tsx` in loading and loaded states; Budgets summary promoted to gradient hero (`useThemeGradients`, `Radius.lg`, 20px pad, 28px display totals) with honest redacted remainder ("— left • some jars private", spent "—" when hidden-category spend is redacted); theme hardcodes removed (`TYPE_ACCENT` → `C.account*` via `getAccountAccent`, jar glass + over-budget stops → new `jarGlass`/`overBudgetDeep` tokens, `FROSTED` 8px → 11px micro floor); `PeriodHeader` disabled arrows `opacity 0.35` (was vanish), 48px targets, Feather `chevron-down` picker affordance (was `▼` glyph); `MonthPicker` teaser Week/Year tabs removed, single Done close; Budgets empty state single-voice with Member hidden-category guidance; reconcile banner plain-language ("These totals look off compared to your transactions. One tap fixes it."); `VaultCard` Owner/Member duplicate branch unified. Verified `tsc` + `lint` clean. Updates DESIGN.md (ScreenHeader, PeriodHeader, hero reserve, tokens) + §8. |
+| 2026-09-08 | Feature | **Transaction Form Redesign (UI refresh)**: rewrite `app/transaction-form.tsx` layout — `KeyboardAwareScrollView` content `space-between` (top block kategori, bottom block akun+card menempel keypad, gap Image 1 hilang), `CategoryGrid` label di luar ikon box (`text-xs`, 1 baris ellipsis), `Keypad` paired operators (`[+|×]` `[-|÷]`, `0` lebar ganda, tanpa Today/✓), bottom card gabung note+amount (`noteFocused && chips horizontal` via `recentNoteSuggestions(notes)` saat draft kosong), account pill overlap via `marginBottom: -14` + `z-10`, keyboard device avoidance via `KeyboardAwareScrollView` (tanpa `KeyboardAvoidingView`). No logic changes (validasi, duplicate, discard, repeat-last, TransferDual, sheets, pickers). Updates §3.6/§8. |
+| 2026-09-07 | Typeset | **Impeccable typeset — Home bigger-feel via Money Manager scale + bake tokens** — `constants/theme.ts:FontSize` extended `display 28 −0.02/1.0 tabular, heading 18 bold −0.02/1.33, subheading 15 medium −0.01, body 16 medium/600 −0.01/−0.015 tabular/1.25, label 14, detail 13 tracking-wide, caption 12, micro 11 0.08em, nav 11` + `DESIGN.md` frontmatter/hierarchy/layout (gutter 20 px-5, hero pad 20, row 48–60, intra 2 + inter 12, major 24–32, tabBar 68h 8dp, FAB 60h pill) + PRD §3.9 baked. Home: `TransactionCard 40→48 icon, px-4→5 py-3→4 rounded 16→20, 15→16 medium/semibold tabular`, `SectionList pt-4→6 px-2→3 gap 12/2`, `Accounts carousel 160→172 lg pad 18 icon 40→44`, `GradientCard pad 16→20 lg`, `Period Balance 30→28 −0.02 header 17→18`, `Search 14→15 Filter 14→13 TAB 68h icon 22→24`, Budgets header 15→18 + pill 14→16/13 + indicator 10→14 tabular. Accounts/Budgets/CategoryCard/Reports/CategoryRanking/BillRanking/DeltaCard aligned to same 18/16 scale; `Settings`/`Household`/`Categories` headers 28 bold −0.02. Verified `tsc` + `lint` + `coderabbit` clean. Updates §2.1/§3.8-3.11/§3.9/§6/DESIGN.md/§8 |
 | 2026-09-04 | Refactor | **Architecture deepening Period/Time · Transactions query · Icon registry — no UX break** — **1 Period/Time** `utils/periodTime.ts:1` deep `period()`+`window()` (+ `currentPeriod`/`adjacentPeriod`/`sixMonthWindow` shims) collapses `utils/date.ts:62` ↔ `utils/period.ts:9` ↔ `convex/transactions.ts:543` zoned copies + `utils/analytics.ts:3` `buildSixMonthWindow` vs `buildPeriodWindow:122` duplicate + `constants/validation.ts:109` vs `utils/period.ts:139` `validatePeriodType` dup; In-process single `seam` (no `adapter`, Convex imports `utils/`), DST double-iteration `locality` in one `wallToUtc`, `leverage` one `interface` for 5 call sites. **2 Transactions query** `convex/transactionHelpers.ts:1`+`transactionQueries.ts:1`+`transactionAnalytics.ts:1` deep (facade `convex/transactions.ts:1` preserves `api.transactions.*`) — `ledger`/`cashflow` facade over internal `query(spec)` hides `pinnedRangeQuery:270`, cursor `date+_id`, `SCAN_BUDGET` unification, 6 hidden caches `list:345`/`summary:455`/`cashflow:654` → one, `hydrate:74`/`matchesSearch:53`, `recent:745` 60 LOC fork + `hasMore 889 vs 420` fix; Local-substitutable (`convex-test` `adapter`, `now:()=>Date` only slice of ports & adapters), full split 1105 LOC → ~370 facade + 3 deep modules. **3 Icon registry** `modules/icon-registry:1` deep `Icon`+`listIconRefs`+`IconPicker` hides `CATEGORY_STREAMLINE_MAP`+`ACCOUNT_STREAMLINE_MAP`, dead `CATEGORY_ICON_MAP:12` 56 PNG requires deleted, `streamlineIconData.json:1` 50KB lazy, duplicate `getStreamlineIconName:66`, shadow `CATEGORY_ICONS:8`, `SelectField.tsx:65` `isAccountType` leak; In-process single `seam`. Zero UX break (same 5 tabs, 30/page ledger, 12-period `PagerView`, `Category • Account` no time, 14d search); gains correctness/performance (period bucket DST, hidden visibility, `hasMore` truthful, bundle −56 requires). `CONTEXT.md:1` added (Household/Period/PeriodBalance/Icon seams). Verified `npx convex codegen && npx tsc --noEmit && npm test` 154/154 + `npm run lint` (replace-don't-layer). Updates §5.2/§5.8/§8 + `CONTEXT.md`. |
 | 2026-09-04 | Feature | **Household delete/leave/transfer** — `convex/households.ts` adds `deleteHousehold` (owner cascade `transactions→budgets→periodBalances→accounts→categories→invitations→householdMemberships→households`), `leaveHousehold` (member remove own membership only, owner blocked), `transferOwnership` (owner swaps `owner↔member` roles, validates target member) + `cascadeDelete` helper; UI Danger Zone in `app/(tabs)/settings.tsx` + `app/members.tsx` (`Shadow.card` `border #FCA5A5` `alert-triangle` `C.error`, role-aware `Delete Household` vs `Leave Household` `variant danger` + transfer picker Alert list, double confirm for delete, `hapticSuccess`/`hapticError` + `Snackbar` + `router.replace("/onboarding")`); `tests/households.deleteLeaveTransfer.test.ts` 8 cases. Updates §2.1/§2.3/§3.2/§8 |
 | 2026-09-04 | Feature | **Account fixed icons Streamline** — `constants/accountIcons.ts` (`ACCOUNT_STREAMLINE_MAP` bank saving-bank-1, cash cash-payment-bill, ewallet wireless-payment-credit-card-dollar, credit_card credit-card-1, `getAccountIconName` fallback saving-bank-1, `isAccountType`) + `constants/streamlineIconData.json` 2 bodies extended + `components/AccountIcon.tsx` (`SvgXml` offline, `getAccountIconXml`) + migrasi `AccountCard` 44/32, Home 40/28, `SelectField` 24, `account-form` 20 from Feather tinted circles to vector neutral `C.surface`; derive at render (no DB field) — same as Task 1-4 — Updates §2.1/§3.4/§3.9/§7/§8 |

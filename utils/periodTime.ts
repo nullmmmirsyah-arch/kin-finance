@@ -151,6 +151,14 @@ export function getNextPeriod(start: number, tz: string, type: PeriodType): numb
 export function formatPeriodLabel(start: number, tz: string, type: PeriodType): string {
   return formatPeriodLabelInternal(start, tz, type);
 }
+export function formatPeriodShortLabel(start: number, tz: string, type: PeriodType): string {
+  assertValidTz(tz);
+  assertValidType(type);
+  if (type === "monthly") {
+    return new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short" }).format(new Date(start));
+  }
+  return formatPeriodLabelInternal(start, tz, type);
+}
 export function buildPeriodWindow(
   now: number,
   tz: string,

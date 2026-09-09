@@ -84,23 +84,6 @@ export function MonthPicker({
           style={Shadow.card}
           className="rounded-2xl bg-background p-5 dark:bg-background-dark"
         >
-          {/* Tabs: Week | Month | Year */}
-          <View className="flex-row justify-center gap-6">
-            <Text className="text-sm text-text-secondary opacity-40">Week</Text>
-            <Text
-              className="rounded-full px-3 py-1 text-sm font-semibold text-text-primary"
-              style={{ backgroundColor: `${C.primary}22` }}
-            >
-              Month
-            </Text>
-            <Text className="text-sm text-text-secondary opacity-40">Year</Text>
-          </View>
-          <View className="flex-row justify-center gap-2">
-            <Text className="text-xs text-text-secondary opacity-60">
-              Coming soon
-            </Text>
-          </View>
-
           {/* Year nav */}
           <View className="mt-4 flex-row items-center justify-center gap-4">
             <Pressable
@@ -161,19 +144,18 @@ export function MonthPicker({
             })}
           </View>
 
-          {/* Bottom X / check */}
-          <View className="mt-4 flex-row justify-between">
+          {/* Bottom close — single affordance */}
+          <View className="mt-4 flex-row justify-center">
             <Pressable
               onPress={onClose}
-              className="h-12 w-12 items-center justify-center"
-            >
-              <Feather name="x" size={20} color={C.textPrimary} />
-            </Pressable>
-            <Pressable
-              onPress={onClose}
-              className="h-12 w-12 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Close month picker"
+              className="h-12 min-w-12 flex-row items-center justify-center gap-2 px-6"
             >
               <Feather name="check" size={20} color={C.primary} />
+              <Text className="text-[16px] font-semibold text-primary dark:text-primary-dark">
+                Done
+              </Text>
             </Pressable>
           </View>
         </Pressable>

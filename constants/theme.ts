@@ -23,6 +23,8 @@ export const Colors = {
   pantryWood: "#92400E",
   pantryWoodDark: "#78350F",
   pantryWoodDeep: "#5C2E0E",
+  jarGlass: "#FFFFFF",
+  overBudgetDeep: "#7F1D1D",
 } as const;
 
 export const DarkColors = {
@@ -48,6 +50,8 @@ export const DarkColors = {
   pantryWood: "#92400E",
   pantryWoodDark: "#78350F",
   pantryWoodDeep: "#5C2E0E",
+  jarGlass: "#292524",
+  overBudgetDeep: "#F87171",
 } as const;
 
 export function useThemeColors() {
@@ -94,7 +98,11 @@ export const Radius = {
 export const FontSize = {
   display: 28,
   heading: 18,
+  subheading: 15,
   body: 16,
   label: 14,
+  detail: 13,
   caption: 12,
+  micro: 11,
+  nav: 11,
 } as const;

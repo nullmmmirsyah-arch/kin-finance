@@ -10,6 +10,7 @@ export {
   getPrevPeriod,
   getNextPeriod,
   formatPeriodLabel,
+  formatPeriodShortLabel,
   buildPeriodWindow,
   validatePeriodType,
   validateBalanceMode,

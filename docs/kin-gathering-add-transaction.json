@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "app": "kin-finance",
+    "feature": "add-transaction",
+    "reference": "4 images Expenses/Note/Date/Transfer",
+    "date": "2026-09-07T11:56:52.682Z"
+  },
+  "answers": [
+    {
+      "q": "Q1 — Tata letak entry",
+      "choice": "A — Ganti total (Recommended)",
+      "detail": "Hapus transaction-form lama, ganti dengan sheet ala referensi (modal full-screen, grid kategori, keypad terintegrasi). Paling mirip referensi.",
+      "note": "wajib baik ui nya untuk light mode dan dark mode"
+    },
+    {
+      "q": "Q2 — Grid kategori",
+      "choice": "B — Grid scroll",
+      "detail": "Satu grid scroll vertikal menampilkan semua kategori (bisa 30+), tanpa pagination.",
+      "note": "scroll namun ya tetap otomatis terfilter expense atau income. lalu untuk kategori hidden stay hidden sesuai role. ada tombol juga untuk add category untuk langsung add lalu ketika back langsung ada category baru tersebut dan bisa langsung dipilih"
+    },
+    {
+      "q": "Q3 — Transfer",
+      "choice": "A — Kartu dual + swap (Recommended)",
+      "detail": "Ikuti referensi: dua kartu besar dengan ikon akun, tombol swap di tengah, + untuk pilih akun.",
+      "note": ""
+    },
+    {
+      "q": "Q4 — Keypad kalkulator",
+      "choice": "A — Keypad custom + evaluasi (Recommended)",
+      "detail": "Buat keypad custom, dukung ekspresi (mis. 12000+5000), hitung saat ✓. Today membuka date picker.",
+      "note": "thousand seperator pastikan live"
+    },
+    {
+      "q": "Q5 — Amount & mata uang",
+      "choice": "A — Tetap bare number, label IDR opsional (Recommended)",
+      "detail": "Pertahankan current: formatNumber tanpa simbol; tambah label kecil 'IDR' sebagai hint saja, tidak disimpan.",
+      "note": "sesuai prd tidak perlu opsional untuk saat ini"
+    },
+    {
+      "q": "Q6 — Akun (BCA pill)",
+      "choice": "A — Pill tappable → sheet akun (Recommended)",
+      "detail": "Tampilkan akun terpilih sebagai pill (seperti BCA), tap buka sheet daftar akun. Transfer tampil dua pill.",
+      "note": "lalu ingat last Transaction atas user tersebut maka defaultnya akan akun tersebut yang terpilih diawal"
+    },
+    {
+      "q": "Q7 — Note & Tags",
+      "choice": "C — Tetap single note",
+      "detail": "Tidak ada tags, hanya Note seperti sekarang. Chips diabaikan.",
+      "note": "tambahkan fitur auto suggest dari note sebelumnya, yang categorynya sama"
+    },
+    {
+      "q": "Q8 — Tanggal & waktu",
+      "choice": "B — Tanggal saja",
+      "detail": "Pertahankan tanggal saja, tanpa jam. Today = hari ini 00:00.",
+      "note": "timezone handling pastikan tetap sesuai dengan household"
+    },
+    {
+      "q": "Q9 — Fee (Transfer)",
+      "choice": "C — Tidak perlu fee",
+      "detail": "Abaikan pill Fee, transfer hanya amount.",
+      "note": ""
+    },
+    {
+      "q": "Q10 — Foto / attachment",
+      "choice": "A — Tunda (Recommended)",
+      "detail": "V1 tanpa foto, ikon kamera disembunyikan. Fokus grid+keypad dulu.",
+      "note": ""
+    },
+    {
+      "q": "Q11 — Header 'General' & close",
+      "choice": "A — Ikuti referensi (Recommended)",
+      "detail": "Header: X (close) kiri, General (household/book) kanan, tabs tengah dengan underline kuning.",
+      "note": "underline tidak perlu sama warna dan stylenya, keep tema Kin saat ini"
+    },
+    {
+      "q": "Q12 — Validasi & UX lanjutan",
+      "choice": "A — Pertahankan semua + sesuaikan UI (Recommended)",
+      "detail": "Duplicate alert, hidden rules, whole-number warning, Repeat last, discard guard tetap jalan di UI baru.",
+      "note": ""
+    }
+  ]
+}

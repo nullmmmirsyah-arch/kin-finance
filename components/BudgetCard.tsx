@@ -106,7 +106,7 @@ export function BudgetCard({
               borderTopRightRadius: 4,
               borderWidth: 1.5,
               borderColor: C.border,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: C.jarGlass,
               overflow: "hidden",
               justifyContent: "flex-end",
               shadowColor: "#000",
@@ -139,7 +139,7 @@ export function BudgetCard({
                 }}
               >
                 <LinearGradient
-                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  colors={overBudget ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{ flex: 1 }}
@@ -198,7 +198,7 @@ export function BudgetCard({
           </View>
           <Text
             style={{ color: overBudget ? C.error : honeyLevel < 0.3 ? C.primary : C.textSecondary }}
-            className="text-[11px] font-bold tracking-wide"
+            className="text-[11px] font-bold tracking-[0.08em] leading-3"
           >
             {spent === undefined ? "—" : overBudget ? "Empty" : `${pctLeft}% left`}
           </Text>
@@ -228,13 +228,13 @@ export function BudgetCard({
                 <View className="flex-row items-center gap-1.5">
                   <Text
                     numberOfLines={1}
-                    className="flex-1 text-[15px] font-semibold text-text-primary dark:text-text-primary-dark"
+                    className="flex-1 text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark"
                   >
                     {categoryName}
                   </Text>
                   {categoryHidden ? <Feather name="eye-off" size={12} color={C.textSecondary} /> : null}
                 </View>
-                <Text className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                   {spent === undefined
                     ? "Private • frosted"
                     : overBudget
@@ -245,7 +245,7 @@ export function BudgetCard({
             </View>
             <Text
               style={{ color: statusColor }}
-              className="text-[11px] font-semibold tracking-widest"
+              className="text-[11px] font-semibold tracking-[0.08em] leading-3"
             >
               {statusText.toUpperCase()}
             </Text>
@@ -253,11 +253,11 @@ export function BudgetCard({
 
           <View className="flex-row items-baseline gap-1.5">
             <Text
-              className={`text-sm font-medium ${overBudget ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
+              className={`text-[16px] font-semibold leading-5 tracking-[-0.015em] tabular-nums ${overBudget ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
             >
               {spent === undefined ? "—" : formatNumber(spent)}
             </Text>
-            <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">
+            <Text className="text-[14px] leading-5 text-text-secondary dark:text-text-secondary-dark">
               / {formatNumber(budgetAmount)}
             </Text>
           </View>
@@ -276,14 +276,14 @@ export function BudgetCard({
                 justifyContent: "center",
               }}
             >
-              <Text className="text-[8px] font-bold tracking-wide text-text-secondary dark:text-text-secondary-dark">FROSTED</Text>
+              <Text className="text-[11px] font-semibold tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">FROSTED</Text>
             </View>
           ) : (
             <View
               style={{
                 height: 8,
                 borderRadius: 999,
-                backgroundColor: "#FFFFFF",
+                backgroundColor: C.jarGlass,
                 borderWidth: 1,
                 borderColor: C.border,
                 overflow: "hidden",
@@ -292,7 +292,7 @@ export function BudgetCard({
             >
               <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
                 <LinearGradient
-                  colors={overBudget ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                  colors={overBudget ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                   start={{ x: 0, y: 0.5 }}
                   end={{ x: 1, y: 0.5 }}
                   style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
@@ -310,7 +310,7 @@ export function BudgetCard({
               className="min-h-12 flex-row items-center gap-1 pr-2"
             >
               <Feather name="edit-2" size={13} color={C.primary} />
-              <Text className="text-xs font-medium text-primary dark:text-primary-dark">Edit</Text>
+              <Text className="text-[13px] font-medium tracking-wide text-primary dark:text-primary-dark">Edit</Text>
             </Pressable>
             <Pressable
               onPress={onDelete}
@@ -319,12 +319,12 @@ export function BudgetCard({
               className="min-h-12 flex-row items-center gap-1"
             >
               <Feather name="trash-2" size={13} color={C.textSecondary} />
-              <Text className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
+              <Text className="text-[13px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 Delete
               </Text>
             </Pressable>
             {spent !== undefined && !overBudget && (
-              <Text className="ml-auto text-xs text-text-secondary dark:text-text-secondary-dark">
+              <Text className="ml-auto text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                 {pctLeft}% honey left
               </Text>
             )}

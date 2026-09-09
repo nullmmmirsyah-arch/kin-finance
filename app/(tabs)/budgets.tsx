@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { Alert, FlatList, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import PagerView from "react-native-pager-view";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Radius, Shadow, useThemeColors } from "@/constants/theme";
+import { Radius, Shadow, useThemeColors, useThemeGradients } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Fab } from "@/components/Fab";
 import { BudgetCard } from "@/components/BudgetCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -20,12 +22,14 @@ import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
 import { BearFamilyRow } from "@/components/BearFaceless";
-import { buildPeriodWindow, getPeriodBounds } from "@/utils/period";
-import Feather from "@expo/vector-icons/Feather";
+import { buildPeriodWindow, formatPeriodShortLabel, getPeriodBounds } from "@/utils/period";
+import { PeriodHeader } from "@/components/PeriodHeader";
+import { MonthPicker } from "@/components/MonthPicker";
 
 export default function Budgets() {
   const router = useRouter();
   const C = useThemeColors();
+  const G = useThemeGradients();
   const { show } = useSnackbar();
   const removeBudget = useMutation(api.budgets.remove);
   const household = useQuery(api.households.getActive);
@@ -34,6 +38,7 @@ export default function Budgets() {
   const periodType = "monthly" as const;
 
   const [selectedMonthStart, setSelectedMonthStart] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
   const isConnected = useConnectivity();
@@ -194,12 +199,14 @@ export default function Budgets() {
     [removeBudget, show],
   );
 
+  const shortLabel = formatPeriodShortLabel(periodStart, timezone, "monthly");
+  const fullLabel = formatMonthLabel(periodStart, timezone);
+
   if (result === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
         <View className="px-5 pt-4">
-          <Text className="text-[28px] font-semibold tracking-tight text-text-primary dark:text-text-primary-dark">Budgets</Text>
-          <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">Bear family honey pantry</Text>
+          <ScreenHeader title="Budgets" kicker="Honey pantry" icon="archive" />
         </View>
         {stale && (
           <View className="pt-2">
@@ -226,101 +233,52 @@ export default function Budgets() {
   if (budgets === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
-        <Text className="text-center text-sm text-text-secondary dark:text-text-secondary-dark">You are not a member of a household.</Text>
+        <Text className="text-center text-[15px] leading-5 text-text-secondary dark:text-text-secondary-dark">You are not a member of a household.</Text>
       </SafeAreaView>
     );
   }
 
+  const jarKicker =
+    budgets.length > 0
+      ? `Honey pantry • ${budgets.length} ${budgets.length === 1 ? "jar" : "jars"}`
+      : "Honey pantry";
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
-      {/* Quiet header */}
-      <View className="px-5 pt-5">
-        <View className="flex-row items-center justify-between">
-          <View className="gap-1">
-            <Text className="text-[26px] font-semibold tracking-tight text-text-primary dark:text-text-primary-dark">Budgets</Text>
-            <Text className="text-sm font-normal text-text-secondary dark:text-text-secondary-dark">
-              Honey pantry • {budgets.length > 0 ? `${budgets.length} jars` : "bear family"}
-            </Text>
-          </View>
-          <View style={{ opacity: 0.85 }}>
-            <BearFamilyRow size={20} />
-          </View>
-        </View>
-
-        {/* Period switcher with dots — mirrors Home/Reports */}
-        <View className="mt-5 flex-row items-center justify-between gap-3">
-          <Pressable
-            onPress={handlePrevMonth}
-            disabled={isPrevDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              opacity: isPrevDisabled ? 0.4 : 1,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="chevron-left" size={18} color={C.textSecondary} />
-          </Pressable>
-
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: C.background,
-              borderColor: C.border,
-              borderWidth: 1,
-              borderRadius: Radius.md,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Text className="text-[10px] font-semibold tracking-wide text-text-secondary dark:text-text-secondary-dark">PERIOD</Text>
-            <Text className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-              {formatMonthLabel(periodStart, timezone)}
-            </Text>
-            <View className="flex-row items-center gap-1.5 pt-1">
-              {pagerPeriods.map((p, idx) => (
-                <View
-                  key={p.periodStart}
-                  style={{
-                    width: idx === selectedIndex ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: idx === selectedIndex ? C.primary : C.border,
-                  }}
-                />
-              ))}
+      <View className="px-5 pt-4">
+        <ScreenHeader
+          title="Budgets"
+          kicker={jarKicker}
+          icon="archive"
+          accessory={
+            <View style={{ opacity: 0.85 }}>
+              <BearFamilyRow size={20} />
             </View>
-          </View>
+          }
+        />
 
-          <Pressable
-            onPress={handleNextMonth}
-            disabled={isNextDisabled}
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-              opacity: isNextDisabled ? 0.4 : 1,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="chevron-right" size={18} color={C.textSecondary} />
-          </Pressable>
-        </View>
+        {/* Period header — shared PeriodHeader */}
+        <PeriodHeader
+          label={shortLabel}
+          a11yLabel={fullLabel}
+          onPrev={handlePrevMonth}
+          onNext={handleNextMonth}
+          isPrevDisabled={isPrevDisabled}
+          isNextDisabled={isNextDisabled}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
+
+        <MonthPicker
+          visible={pickerOpen}
+          selectedPeriodStart={selectedMonthStart ?? periodStart}
+          tz={timezone}
+          onSelect={(ps) => {
+            setSelectedMonthStart(ps);
+            const idx = pagerPeriods.findIndex((p) => p.periodStart === ps);
+            if (idx >= 0) pagerRef.current?.setPage(idx);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
       </View>
 
       {stale && (
@@ -363,23 +321,26 @@ export default function Budgets() {
                         style={[
                           Shadow.card,
                           {
-                            borderRadius: Radius.md,
-                            backgroundColor: C.surface,
+                            borderRadius: Radius.lg,
                             borderWidth: 1,
                             borderColor: C.border,
                             overflow: "hidden",
                           },
                         ]}
                       >
-                        <View style={{ height: 3, backgroundColor: C.pantryWood, opacity: 0.5 }} />
-                        <View style={{ padding: 16, gap: 12 }}>
+                        <LinearGradient
+                          colors={G.card as unknown as [string, string]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ padding: 20, gap: 12 }}
+                        >
                           <View className="flex-row items-center justify-between">
-                            <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                              TOTAL • {budgets.length} JARS
+                            <Text className="text-[11px] font-semibold uppercase leading-3 tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">
+                              Total • {budgets.length} {budgets.length === 1 ? "jar" : "jars"}
                             </Text>
                             <Text
                               style={{ color: summary.hasRedacted ? C.textSecondary : overallProgress > 1 ? C.error : overallProgress > 0.8 ? C.primary : C.textSecondary }}
-                              className="text-[11px] font-semibold tracking-wide"
+                              className="text-[11px] font-semibold tracking-[0.08em] leading-3"
                             >
                               {summary.hasRedacted ? "SOME PRIVATE" : overallProgress > 1 ? "OVER" : overallProgress > 0.8 ? "ALMOST EMPTY" : "ON TRACK"}
                             </Text>
@@ -387,25 +348,25 @@ export default function Budgets() {
 
                           <View className="flex-row gap-4">
                             <View className="flex-1 gap-1">
-                              <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
-                              <Text className="text-base font-semibold text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
-                              <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
+                              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">BUDGETED</Text>
+                              <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums text-text-primary dark:text-text-primary-dark">{formatNumber(summary.budgeted)}</Text>
+                              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">Jar capacity</Text>
                             </View>
                             <View style={{ width: 1, backgroundColor: C.border, opacity: 0.6 }} />
                             <View className="flex-1 gap-1">
-                              <Text className="text-[11px] font-medium tracking-wide text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
+                              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">SPENT</Text>
                               {summary.hasRedacted ? (
-                                <Text className="text-base font-semibold text-text-secondary dark:text-text-secondary-dark">—</Text>
+                                <Text className="text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums text-text-secondary dark:text-text-secondary-dark">—</Text>
                               ) : (
                                 <Text
                                   style={{ color: overallProgress > 1 ? C.error : undefined }}
-                                  className={`text-base font-semibold ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
+                                  className={`text-[28px] font-bold leading-7 tracking-[-0.02em] tabular-nums ${overallProgress > 1 ? "text-error dark:text-error-dark" : "text-text-primary dark:text-text-primary-dark"}`}
                                 >
                                   {formatNumber(summary.spent)}
                                 </Text>
                               )}
-                              <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
-                                {summary.hasRedacted ? "Frosted" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
+                              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
+                                {summary.hasRedacted ? "— left • some jars private" : remainingOverall >= 0 ? `${formatNumber(remainingOverall)} left` : `${formatNumber(Math.abs(remainingOverall))} over`}
                               </Text>
                             </View>
                           </View>
@@ -444,14 +405,14 @@ export default function Budgets() {
                                 />
                               </View>
                               <View className="flex-row justify-between">
-                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">
+                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
                                   {overallProgress > 1 ? "Empty • overflow" : `${Math.round(overallHoneyLevel * 100)}% honey left`}
                                 </Text>
-                                <Text className="text-xs font-normal text-text-secondary dark:text-text-secondary-dark">{budgets.length} categories</Text>
+                                <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">{budgets.length} categories</Text>
                               </View>
                             </View>
                           )}
-                        </View>
+                        </LinearGradient>
                       </View>
                     </View>
                   ) : null}
@@ -472,11 +433,10 @@ export default function Budgets() {
                           <View style={{ opacity: 0.9 }}>
                             <BearFamilyRow size={24} />
                           </View>
-                          <Text className="text-center text-sm font-normal text-text-secondary dark:text-text-secondary-dark">Pantry is empty</Text>
                           <EmptyState
                             icon="archive"
                             title="No budgets yet"
-                            description="Set a budget for each category to track your spending."
+                            description="Set a monthly budget per category. Members can manage budgets; hidden categories stay frosted without spending detail."
                             actionLabel="Set Budget"
                             onAction={() => router.push({ pathname: "/budget-form", params: { periodStart: periodStart.toString() } })}
                           />
