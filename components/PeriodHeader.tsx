@@ -20,15 +20,15 @@ export function PeriodHeader({ label, a11yLabel, onPrev, onNext, isPrevDisabled,
   const [nextPressed, setNextPressed] = useState(false);
   const [headerPressed, setHeaderPressed] = useState(false);
   const arrow = (disabled: boolean, pressed: boolean) => ({
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: Radius.md,
     backgroundColor: pressed ? C.surface : C.background,
     borderWidth: 1,
     borderColor: C.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    opacity: disabled ? 0 : 1,
+    opacity: disabled ? 0.35 : 1,
   });
   return (
     <View className="flex-row items-center justify-between">
@@ -52,10 +52,12 @@ export function PeriodHeader({ label, a11yLabel, onPrev, onNext, isPrevDisabled,
         accessibilityRole="button"
         accessibilityLabel={pickerA11yLabel}
         style={{ flex: 1, alignItems: "center", opacity: headerPressed ? 0.7 : 1 }}
+        className="min-h-12 flex-row items-center justify-center gap-1 px-4"
       >
         <Text accessibilityLabel={a11yLabel} className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
-          {label} ▼
+          {label}
         </Text>
+        <Feather name="chevron-down" size={16} color={C.textSecondary} />
       </Pressable>
       <Pressable
         onPress={onNext}
