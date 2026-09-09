@@ -203,6 +203,7 @@ export default function AccountForm() {
                   label={t.label}
                   active={type === t.id}
                   onPress={() => {
+                    if (t.id === type) return;
                     setType(t.id);
                     setSubType(subTypesFor(t.id)[0]);
                   }}
