@@ -32,7 +32,7 @@ export default function AccountForm() {
   const C = useThemeColors();
 
   const [name, setName] = useState("");
-  const [type, setType] = useState<AccountType>("cash");
+  const [type, setType] = useState<AccountType>("asset");
   const [openingBalance, setOpeningBalance] = useState("");
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export default function AccountForm() {
     if (!isEdit) {
       return (
         name.trim() !== "" ||
-        type !== "cash" ||
+        type !== "asset" ||
         openingBalance !== "" ||
         hidden !== false
       );

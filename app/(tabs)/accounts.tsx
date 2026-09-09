@@ -62,13 +62,9 @@ function getAccountAccent(
   C: ReturnType<typeof useThemeColors>,
 ): string {
   switch (type) {
-    case "cash":
+    case "asset":
       return C.accountCash;
-    case "bank":
-      return C.accountBank;
-    case "ewallet":
-      return C.accountEwallet;
-    case "credit_card":
+    case "debt":
       return C.accountCreditCard;
   }
 }
@@ -419,10 +415,8 @@ function HeroVault({
   if (!totals) return null;
 
   const typeDots: { type: AccountType; label: string }[] = [
-    { type: "cash", label: "Cash" },
-    { type: "bank", label: "Bank" },
-    { type: "ewallet", label: "E-Wallet" },
-    { type: "credit_card", label: "Credit" },
+    { type: "asset", label: "Wallet" },
+    { type: "debt", label: "Debt" },
   ];
 
   return (
@@ -526,7 +520,7 @@ function HeroVault({
                   <View className="flex-row items-center gap-1.5">
                     <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: col }} />
                     <Text className="text-[11px] font-bold tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">
-                      {type === "credit_card" ? "CREDIT" : type.toUpperCase()}
+                      {type.toUpperCase()}
                     </Text>
                   </View>
                   <Text
@@ -850,7 +844,7 @@ export default function Accounts() {
                 title="Vault is empty"
                 description={
                   isOwner
-                    ? "Add your first account — a little home for your money. Cash, bank, e-wallet or credit."
+                    ? "Add your first account — a little home for your money. Wallet or debt."
                     : "Only the Owner can add accounts. Ask your household Owner to open the vault."
                 }
                 actionLabel={isOwner ? "Add Account" : undefined}
