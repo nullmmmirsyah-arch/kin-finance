@@ -4,8 +4,8 @@ import { useThemeColors } from "@/constants/theme";
 import { AccountPill } from "./AccountPill";
 
 type Props = {
-  fromAcc: { name: string; type: string } | null;
-  toAcc: { name: string; type: string } | null;
+  fromAcc: { name: string; type: string; subType: string } | null;
+  toAcc: { name: string; type: string; subType: string } | null;
   onSelectFrom: () => void;
   onSelectTo: () => void;
   onSwap: () => void;
