@@ -107,14 +107,14 @@ components:
 
 Kin Finance is a family ledger rendered as a warm editorial sanctuary. Paper-soft stone and amber surfaces, grounded ink text, and a single toasted-amber accent create calm authority — the feeling of opening a well-kept household book together at the kitchen table, not a cold corporate dashboard.
 
-Density is comfortable and breathable: generous 16–24px rhythm, 48px touch targets, and card stacks that group by day with air between them. Material honesty matters — subtle tonal layering (background → surface) does the work of depth, shadows stay whisper-soft, and gradients (paper to wheat) mark only the hero household card. Motion is restrained: splash fade, gentle HMR-safe state opacity shifts.
+Density is comfortable and breathable: generous 16–24px rhythm, 48px touch targets, and card stacks that group by day with air between them. Material honesty matters — subtle tonal layering (background → surface) does the work of depth, shadows stay whisper-soft, and gradients (paper to wheat) mark only hero cards (household/balance, budgets summary). Motion is restrained: splash fade, gentle HMR-safe state opacity shifts.
 
 **Key Characteristics:**
 - Paper-warm minimalism — stone/amber only, no corporate blues
 - Tonal layering over heavy shadow — depth through surface shifts
 - Editorial hierarchy — display 28px / heading 18px / body 16px with generous line-height
 - 48px-first controls — every interactive element meets the minimum
-- Gradient reserve — `Gradients.card` only on the household hero, nowhere else
+- Gradient reserve — `Gradients.card` only on hero cards (household/balance, budgets summary), nowhere else
 
 ## Colors
 
@@ -136,6 +136,8 @@ A tight, warm-analogous palette centered on toasted amber (#92400E) set against 
 - **Ledger Red** (#991B1B light / #F87171 dark): Error, danger, delta negative, credit card account.
 - **E-Wallet Blue** (#1D4ED8 light / #60A5FA dark): E-wallet account (functional, not brand).
 - **Chart Amber/Emerald** (#D97706 / #059669 light, #F59E0B / #34D399 dark): Donut and bar accents.
+- **Jar Glass** (#FFFFFF light / #292524 dark): Honey-jar vessel fill — theme-resolved so jars read in dark mode.
+- **Over-Budget Deep** (#7F1D1D light / #F87171 dark): Gradient stop for over-budget honey — never hardcoded at call sites.
 
 ### Named Rules
 **The One Warm Voice Rule.** The primary amber appears on at most 15% of any screen — one CTA, one progress bar, one selected chip. Its rarity is its authority. Never flood a screen with amber solids.
@@ -149,7 +151,7 @@ A tight, warm-analogous palette centered on toasted amber (#92400E) set against 
 **Character:** Confident but soft — semibold display for household and section titles, regular body for ledger rows, medium labels for chips and buttons. Uppercase is never used for body; only for compact badges.
 
 ### Hierarchy
-- **Display** (700, 28px, 1.0, −0.02em): Household name, period balance hero, onboarding headlines. Tabular-nums for amounts.
+- **Display** (700, 28px, 1.0, −0.02em): Household name, period balance hero, budgets summary totals, onboarding headlines. Tabular-nums for amounts.
 - **Heading** (700, 18px, 1.33, −0.02em): Section titles (Transactions, Budgets, My Accounts, Reports headings), screen titles. Leading-6.
 - **Subheading** (500, 15px, 1.33, −0.01em): Date group headers (Today Sep 6 Sun), period label (September 2026), secondary card titles. Weight steps from heading via 700→500.
 - **Body** (500/600, 16px, 1.25, −0.01 to −0.015em): Ledger rows — title 500, amount 600 tabular-nums. Max ~60ch on phone. This is the Money Manager match point (16px is the dominant size).
@@ -218,10 +220,12 @@ Buttons are h-12 (48px) with md radius. Inputs match the same radius and border 
 ### Navigation
 - **Tabs:** Expo Router bottom tabs, stone ink inactive, amber active, 48px hit area, Feather icons, labels 12px medium.
 - **Top bar:** Screen title heading (18px semibold), back affordance honors system Back gesture.
-- **Sheets/Modals:** Elevated shadow, 24px top radius, drag handle, tonal surface.
+- **ScreenHeader:** Shared tab header (`components/ScreenHeader.tsx`) — 44px `Shadow.card` icon tile + 18px title + 11px ALL-CAPS micro kicker + optional accessory (e.g. bear row). Canonical for Accounts and Budgets, in loading and loaded states alike.
+- **PeriodHeader:** Shared period stepper — 48px arrow targets (disabled reads at 0.35 opacity, never vanishes), 48px center picker target with Feather `chevron-down` affordance.
+- **Sheets/Modals:** Elevated shadow, 24px top radius, drag handle, tonal surface. `MonthPicker` shows the month grid + year nav only (no teaser tabs) with a single Done close.
 
 ### Gradient Hero Card (Signature)
-Household/Balance hero: `expo-linear-gradient` using `Gradients.card` (light #FFFBF5→#FEF3C7, dark #292524→#3A3224) via `cssInterop(LinearGradient, { className: "style" })` + `dark:` variants. Rounded lg, Shadow.card, internal 20px padding, display + body type stack.
+Household/Balance hero: `expo-linear-gradient` using `Gradients.card` (light #FFFBF5→#FEF3C7, dark #292524→#3A3224) via `cssInterop(LinearGradient, { className: "style" })` + `dark:` variants. Rounded lg, Shadow.card, internal 20px padding, display + body type stack. Budgets summary reuses the same hero (lg radius, 20px padding, 28px display totals); when hidden-category spend is redacted, the spent slot renders "—" and the remainder line reads "— left • some jars private", so Members never see an overstated remainder.
 
 ## Do's and Don'ts
 
@@ -229,7 +233,7 @@ Household/Balance hero: `expo-linear-gradient` using `Gradients.card` (light #FF
 - **Do** keep amber ≤15% of the viewport — one primary CTA, one progress, selected state only.
 - **Do** use `useThemeColors()` / `useThemeGradients()` and `dark:` class variants for every color decision — never raw `Colors` hex at call sites.
 - **Do** use NativeWind `className` and 48px min targets on every interactive element.
-- **Do** apply `Gradient.card` only to the household/balance hero; other cards stay flat surface.
+- **Do** apply `Gradient.card` only to hero cards (household/balance, budgets summary); other cards stay flat surface.
 - **Do** format amounts with thousand separators only, no currency symbol, via `Input amount`.
 - **Do** honor safe-area and IME insets edge-to-edge.
 
