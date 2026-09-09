@@ -499,7 +499,7 @@ function HeroVault({
 
           {/* cute type ledger — precise tiny bars */}
           <View className="mt-4 flex-row gap-2">
-            {typeDots.map(({ type }) => {
+            {typeDots.map(({ type, label }) => {
               const val = totals.byType[type] ?? 0;
               const col = getAccountAccent(type, C);
               const has = (totals.byType[type] ?? 0) !== 0 || filter === type || filter === "all";
@@ -520,7 +520,7 @@ function HeroVault({
                   <View className="flex-row items-center gap-1.5">
                     <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: col }} />
                     <Text className="text-[11px] font-bold tracking-[0.08em] text-text-secondary dark:text-text-secondary-dark">
-                      {type.toUpperCase()}
+                      {label.toUpperCase()}
                     </Text>
                   </View>
                   <Text
