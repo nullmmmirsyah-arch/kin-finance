@@ -78,7 +78,7 @@ describe("accounts.create", () => {
 
     const result = await owner.mutation(api.accounts.create, {
       name: "Cash",
-      type: "cash",
+      type: "asset",
     });
 
     expect(result!.balance).toBe(0);

@@ -7,10 +7,8 @@ import { RESERVED_CATEGORY_NAME } from "../constants/categories";
 import { recomputeAllForHousehold } from "./periodBalances";
 
 const accountType = v.union(
-  v.literal("cash"),
-  v.literal("bank"),
-  v.literal("ewallet"),
-  v.literal("credit_card"),
+  v.literal("asset"),
+  v.literal("debt"),
 );
 
 export const list = query({
@@ -143,7 +141,7 @@ export const update = mutation({
 
     const patch: {
       name?: string;
-      type?: "cash" | "bank" | "ewallet" | "credit_card";
+      type?: "asset" | "debt";
       hidden?: boolean;
       updatedAt: number;
     } = { updatedAt: Date.now() };
