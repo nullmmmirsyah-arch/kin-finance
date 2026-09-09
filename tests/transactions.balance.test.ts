@@ -32,7 +32,7 @@ describe("transaction balance auto-update", () => {
     const cashId = await ctx.db.insert("accounts", {
       householdId,
       name: "Cash",
-      type: "cash",
+      type: "asset",
       balance: 100,
       hidden: false,
       createdAt: 1,
@@ -41,7 +41,7 @@ describe("transaction balance auto-update", () => {
     const bankId = await ctx.db.insert("accounts", {
       householdId,
       name: "Bank",
-      type: "bank",
+      type: "asset",
       balance: 500,
       hidden: false,
       createdAt: 1,

@@ -34,7 +34,7 @@ describe("budgets.list", () => {
     const accountId = await ctx.db.insert("accounts", {
       householdId,
       name: "Cash",
-      type: "cash",
+      type: "asset",
       balance: 0,
       hidden: false,
       createdAt: 1,
