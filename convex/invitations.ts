@@ -127,14 +127,10 @@ export const redeem = mutation({
       throw new ConvexError("User not found.");
     }
 
-    const existingMembership = await ctx.db
+    const myMemberships = await ctx.db
       .query("householdMemberships")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (existingMembership !== null) {
-      throw new ConvexError("You are already a member of a household.");
-    }
+      .collect();
 
     const secret = process.env.INVITE_SECRET;
     if (!secret) {
@@ -198,6 +194,10 @@ export const redeem = mutation({
       throw new ConvexError("This invite code has already been used.");
     }
 
+    if (myMemberships.some((m) => m.householdId === invitation.householdId)) {
+      throw new ConvexError("You are already a member of this household.");
+    }
+
     await ctx.db.insert("householdMemberships", {
       householdId: invitation.householdId,
       userId: user._id,
@@ -208,6 +208,11 @@ export const redeem = mutation({
       useCount: invitation.useCount + 1,
       updatedAt: now,
     });
+
+    if (myMemberships.length === 0) {
+      await ctx.db.patch(user._id, { activeHouseholdId: invitation.householdId });
+    }
+    return { householdId: invitation.householdId };
   },
 });
 

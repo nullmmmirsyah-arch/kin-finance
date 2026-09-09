@@ -41,14 +41,11 @@ export const create = mutation({
       throw new ConvexError("User not found.");
     }
 
-    const existingMembership = await ctx.db
+    const priorMemberships = await ctx.db
       .query("householdMemberships")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-
-    if (existingMembership) {
-      throw new ConvexError("You already have a household.");
-    }
+      .collect();
+    const isFirstHousehold = priorMemberships.length === 0;
 
     const now = Date.now();
     const householdId = await ctx.db.insert("households", {
@@ -63,6 +60,10 @@ export const create = mutation({
       userId: user._id,
       role: "owner",
     });
+
+    if (isFirstHousehold) {
+      await ctx.db.patch(user._id, { activeHouseholdId: householdId });
+    }
 
     const reservedCategories = [
       { name: RESERVED_CATEGORY_NAME, type: "income" as const },
@@ -230,7 +231,7 @@ export const updateBalanceMode = mutation({
     balanceMode: v.union(v.literal("fresh"), v.literal("carryOver")),
   },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { membership } = await getUserAndMembership(ctx, args.householdId);
     requireOwner(membership);
     if (membership.householdId !== args.householdId) {
       throw new ConvexError("You are not the owner of this household.");
@@ -259,7 +260,7 @@ export const updatePeriodType = mutation({
     periodType: v.union(v.literal("monthly"), v.literal("weekly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { membership } = await getUserAndMembership(ctx, args.householdId);
     requireOwner(membership);
     if (membership.householdId !== args.householdId) {
       throw new ConvexError("You are not the owner of this household.");
@@ -454,7 +455,7 @@ async function cascadeDelete(ctx: any, householdId: any) {
 export const deleteHousehold = mutation({
   args: { householdId: v.id("households") },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { user, membership } = await getUserAndMembership(ctx, args.householdId);
     requireOwner(membership);
     if (membership.householdId !== args.householdId) {
       throw new ConvexError("You are not the owner of this household.");
@@ -464,6 +465,22 @@ export const deleteHousehold = mutation({
       throw new ConvexError("Household not found.");
     }
     await cascadeDelete(ctx, args.householdId);
+    const remaining = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    if (remaining.length === 0) {
+      await ctx.db.patch(user._id, { activeHouseholdId: undefined });
+    } else {
+      const withDates = await Promise.all(
+        remaining.map(async (m) => ({
+          id: m.householdId,
+          createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
+        })),
+      );
+      withDates.sort((a, b) => a.createdAt - b.createdAt);
+      await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+    }
     return null;
   },
 });
@@ -471,7 +488,7 @@ export const deleteHousehold = mutation({
 export const leaveHousehold = mutation({
   args: { householdId: v.id("households") },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { user, membership } = await getUserAndMembership(ctx, args.householdId);
     if (membership.householdId !== args.householdId) {
       throw new ConvexError("You are not a member of this household.");
     }
@@ -481,6 +498,22 @@ export const leaveHousehold = mutation({
       );
     }
     await ctx.db.delete(membership._id);
+    const remaining = await ctx.db
+      .query("householdMemberships")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    if (remaining.length === 0) {
+      await ctx.db.patch(user._id, { activeHouseholdId: undefined });
+    } else {
+      const withDates = await Promise.all(
+        remaining.map(async (m) => ({
+          id: m.householdId,
+          createdAt: (await ctx.db.get(m.householdId))?.createdAt ?? Number.MAX_SAFE_INTEGER,
+        })),
+      );
+      withDates.sort((a, b) => a.createdAt - b.createdAt);
+      await ctx.db.patch(user._id, { activeHouseholdId: withDates[0].id });
+    }
     return null;
   },
 });
@@ -491,7 +524,7 @@ export const transferOwnership = mutation({
     newOwnerUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const { membership } = await getUserAndMembership(ctx, args.householdId);
     requireOwner(membership);
     if (membership.householdId !== args.householdId) {
       throw new ConvexError("You are not the owner of this household.");
