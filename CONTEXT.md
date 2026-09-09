@@ -10,7 +10,7 @@ Seams are named after domain concepts here. Use these terms exactly in architect
 
 - **PeriodBalance** — derived analytic per PeriodStart (income/expense/opening/closing). Recomputed from Transactions. See `convex/schema.ts:22`, `convex/periodBalances.ts:187`.
 
-- **Account** — a money container within a Household (cash/bank/ewallet/credit_card). Has balance, hidden flag. See `convex/schema.ts:45`.
+- **Account** — a money container within a Household (type asset/debt + required sub-type cash/bank/ewallet/credit_card/other, pair-validated). Has balance, hidden flag. See `convex/schema.ts:45`.
 
 - **Category** — income/expense classification within a Household, has optional Icon. See `convex/schema.ts:60`.
 
