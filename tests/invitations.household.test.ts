@@ -33,7 +33,7 @@ describe("invitations targeted household", () => {
     const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
     const { h2 } = await t.run(async (ctx) => await seed(ctx));
     await a.mutation(api.invitations.create, { householdId: h2 });
-    const rows = await t.run(async (ctx) =>
+    const rows = await t.run(async (ctx: any) =>
       ctx.db.query("invitations").withIndex("by_householdId", (q: any) => q.eq("householdId", h2)).collect(),
     );
     expect(rows).toHaveLength(1);
@@ -54,7 +54,7 @@ describe("invitations targeted household", () => {
     const { h2 } = await t.run(async (ctx) => await seed(ctx));
     const { code } = await a.mutation(api.invitations.create, { householdId: h2 });
     expect(typeof code).toEqual("string");
-    const inv = await t.run(async (ctx) =>
+    const inv = await t.run(async (ctx: any) =>
       ctx.db.query("invitations").withIndex("by_householdId", (q: any) => q.eq("householdId", h2)).first(),
     );
     await a.mutation(api.invitations.revoke, { invitationId: inv._id });
