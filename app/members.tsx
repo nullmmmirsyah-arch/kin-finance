@@ -162,7 +162,7 @@ export default function Members() {
                       await deleteHousehold({ householdId: household._id });
                       void hapticSuccess();
                       show("Household deleted");
-                      router.replace("/onboarding");
+                      router.replace("/home");
                     } catch (e: any) {
                       void hapticError();
                       show(getConvexErrorMessage(e, "Failed to delete household."));
@@ -206,7 +206,7 @@ export default function Members() {
                       await deleteHousehold({ householdId: household._id });
                       void hapticSuccess();
                       show("Household deleted");
-                      router.replace("/onboarding");
+                      router.replace("/home");
                     } catch (e: any) {
                       void hapticError();
                       show(getConvexErrorMessage(e, "Failed to delete household."));
@@ -232,7 +232,7 @@ export default function Members() {
               await leaveHousehold({ householdId: household._id });
               void hapticSuccess();
               show("Left household");
-              router.replace("/onboarding");
+              router.replace("/home");
             } catch (e: any) {
               void hapticError();
               show(getConvexErrorMessage(e, "Failed to leave household."));
