@@ -221,11 +221,8 @@ export const redeem = mutation({
 export const listActive = query({
   args: { householdId: v.id("households") },
   handler: async (ctx, args) => {
-    const result = await findUserAndMembership(ctx);
-    if (
-      result === null ||
-      result.membership.householdId !== args.householdId
-    ) {
+    const result = await findUserAndMembership(ctx, args.householdId);
+    if (result === null) {
       return [];
     }
     if (result.membership.role !== "owner") {

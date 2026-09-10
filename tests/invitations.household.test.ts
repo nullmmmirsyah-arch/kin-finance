@@ -76,4 +76,18 @@ describe("invitations targeted household", () => {
     expect(forH1[0].householdId).toEqual(h1);
     expect(forH2).toHaveLength(0);
   });
+
+  it("listActive resolves the requested household, not the active one", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    const b = t.withIdentity({ tokenIdentifier: B_TOKEN, subject: "b" });
+    const { h1, h2 } = await t.run(async (ctx) => await seed(ctx));
+    await a.mutation(api.invitations.create, { householdId: h2 });
+    const forH2 = await a.query(api.invitations.listActive, { householdId: h2 });
+    expect(forH2).toHaveLength(1);
+    expect(forH2[0].householdId).toEqual(h2);
+    const forH1 = await a.query(api.invitations.listActive, { householdId: h1 });
+    expect(forH1).toHaveLength(0);
+    const stranger = await b.query(api.invitations.listActive, { householdId: h2 });
+    expect(stranger).toHaveLength(0);
+  });
 });
