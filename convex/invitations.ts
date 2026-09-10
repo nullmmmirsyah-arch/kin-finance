@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getUserAndMembership, findUserAndMembership, requireOwner, getScopedDoc } from "./helpers";
+import { getUserAndMembership, findUserAndMembership, requireOwner } from "./helpers";
 import { INVITE_CHARSET, INVITE_CODE_LENGTH } from "../constants/validation";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -27,9 +27,9 @@ async function hmacHash(data: string, secret: string): Promise<string> {
 }
 
 export const create = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const { user, membership } = await getUserAndMembership(ctx);
+  args: { householdId: v.optional(v.id("households")) },
+  handler: async (ctx, args) => {
+    const { user, membership } = await getUserAndMembership(ctx, args.householdId);
     requireOwner(membership);
 
     const secret = process.env.INVITE_SECRET;
@@ -96,10 +96,12 @@ export const create = mutation({
 export const revoke = mutation({
   args: { invitationId: v.id("invitations") },
   handler: async (ctx, args) => {
-    const { membership } = await getUserAndMembership(ctx);
+    const invitation = await ctx.db.get(args.invitationId);
+    if (invitation === null) {
+      throw new ConvexError("Invitation not found.");
+    }
+    const { membership } = await getUserAndMembership(ctx, invitation.householdId);
     requireOwner(membership);
-
-    const invitation = await getScopedDoc(ctx, args.invitationId, membership.householdId, "Invitation");
 
     await ctx.db.patch(args.invitationId, {
       revoked: true,
