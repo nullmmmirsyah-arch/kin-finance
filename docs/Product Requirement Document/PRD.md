@@ -237,7 +237,7 @@ without a recorded timezone also keep their stored boundaries).
   cryptographically random, 8 alphanumeric chars; only an HMAC-SHA-256 digest
   keyed by the server secret is stored (plaintext never persisted).
 - Codes expire after 7 days, are single-use, can be revoked, and generating a
-  new code atomically invalidates all previous active ones **within the same mutation** (`convex/invitations.ts:40` — `invitations.create` collects `by_householdId` and patches `revoked=true` for every active invite before inserting the new one, so `listActive` never returns >1 row; verified by `tests/invitations.autoRevoke.test.ts:1`). `invitations.create({ householdId? })` targets any owned household (defaults to active); `revoke` derives the household from the invitation doc so non-active invites are revocable (verified by `tests/invitations.household.test.ts`).
+  new code atomically invalidates all previous active ones **within the same mutation** (`convex/invitations.ts:44` — `invitations.create` collects `by_householdId` and patches `revoked=true` for every active invite before inserting the new one, so `listActive` never returns >1 row; verified by `tests/invitations.autoRevoke.test.ts:1`). `invitations.create({ householdId? })` targets any owned household (defaults to active); `revoke` derives the household from the invitation doc so non-active invites are revocable (verified by `tests/invitations.household.test.ts`).
 - Member joins via Onboarding → "Join with Invite Code" → `invitations.redeem`
   (atomic: no existing membership → validate hash/expiry/revoked/useCount →
   insert membership + increment useCount).

@@ -61,4 +61,19 @@ describe("invitations targeted household", () => {
     const after = await t.run(async (ctx) => ctx.db.get(inv._id));
     expect(after.revoked).toEqual(true);
   });
+
+  it("create without householdId defaults to the active household", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    const { h1, h2 } = await t.run(async (ctx) => await seed(ctx));
+    await a.mutation(api.invitations.create, {});
+    const forH1 = await t.run(async (ctx: any) =>
+      ctx.db.query("invitations").withIndex("by_householdId", (q: any) => q.eq("householdId", h1)).collect(),
+    );
+    const forH2 = await t.run(async (ctx: any) =>
+      ctx.db.query("invitations").withIndex("by_householdId", (q: any) => q.eq("householdId", h2)).collect(),
+    );
+    expect(forH1).toHaveLength(1);
+    expect(forH1[0].householdId).toEqual(h1);
+    expect(forH2).toHaveLength(0);
+  });
 });
