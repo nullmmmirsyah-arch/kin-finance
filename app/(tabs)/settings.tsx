@@ -230,7 +230,10 @@ export default function Settings() {
                     </View>
                   ) : (
                     <Pressable
-                      onPress={() => void handleInlineSwitch(h._id)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        void handleInlineSwitch(h._id);
+                      }}
                       disabled={switchingId !== null}
                       accessibilityRole="button"
                       accessibilityLabel={`Set ${h.name} as active household`}
