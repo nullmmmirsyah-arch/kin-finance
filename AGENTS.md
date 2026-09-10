@@ -29,7 +29,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 - Path alias: `@/*` → repo root.
 - `app/` is expo-router. Auth gating uses `<Stack.Protected guard={...}>` in `app/_layout.tsx`, where Clerk + Convex providers live. Tabs live in `app/(tabs)/`; forms are top-level routes (`account-form`, `category-form`, `transaction-form`).
 - `convex/schema.ts` is the executable source of truth — check `schema.ts` before assuming a table/function exists.
-- Backend invariants (see `docs/Product Requirement Document/PRD.md`): amounts are signed (+income, −expense, +transfer magnitude); owner vs member permission matrix; hidden account/category visibility rules. Every `convex/*.ts` handler requires sign-in via `ctx.auth.getUserIdentity()` and throws `ConvexError`.
+- Backend invariants (see `docs/ARCHITECTURE.md` Account Balance Auto-Update & Error Handling Convention): amounts are signed (+income, −expense, +transfer magnitude); owner vs member permission matrix (see `docs/PRD.md`); hidden account/category visibility rules (see `docs/PRD.md`). Every `convex/*.ts` handler requires sign-in via `ctx.auth.getUserIdentity()` and throws `ConvexError`.
 - NativeWind wiring: `babel.config.js`, `metro.config.js`, `global.css`, `tailwind.config.js`; `cssInterop(LinearGradient, { className: "style" })` is required in `app/_layout.tsx`.
 
 # Workflow & CI/CD
@@ -41,6 +41,13 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 
 # Documentation
 
-- PRD / Product Specification: `docs/Product Requirement Document/PRD.md` (see §5.8 CI/CD)
-- Colors, typography, spacing: `constants/theme.ts`
-- Feature plans & specs: `docs/superpowers/plans/`, `docs/superpowers/specs/` (they record the verification workflow above)
+**Three-document structure (read in order):**
+
+1. **Product (what & why):** `docs/PRD.md` — requirements, features, user flows, permission matrix, validation rules
+2. **Architecture (how):** `docs/ARCHITECTURE.md` — tech stack, system design, database schema, CI/CD, component responsibilities
+3. **Design (tokens):** `docs/DESIGN.md` — colors, typography, spacing, components, styling rules
+
+**Other docs:**
+- Feature plans: `docs/superpowers/plans/`
+- Feature specs: `docs/superpowers/specs/` — audit trail per feature (decision reasoning, implementation notes)
+- Domain language: `CONTEXT.md` — Household, Period, Account, Category, Transaction, Budget, Icon seams

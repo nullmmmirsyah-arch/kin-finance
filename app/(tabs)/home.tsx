@@ -118,7 +118,7 @@ const BudgetPill = memo(function BudgetPill({
             borderTopRightRadius: 3,
             borderWidth: 1.5,
             borderColor: C.border,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: C.jarGlass,
             overflow: "hidden",
             justifyContent: "flex-end",
           }}
@@ -131,7 +131,7 @@ const BudgetPill = memo(function BudgetPill({
               bottom: 5,
               width: 5,
               borderRadius: 999,
-              backgroundColor: "white",
+              backgroundColor: C.jarGlass,
               opacity: 0.55,
             }}
           />
@@ -142,7 +142,7 @@ const BudgetPill = memo(function BudgetPill({
           ) : (
             <View style={{ height: `${honeyLevel * 100}%`, minHeight: honeyLevel > 0 ? 10 : 0, overflow: "hidden", borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
               <LinearGradient
-                colors={over ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                colors={over ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ flex: 1 }}
@@ -185,10 +185,10 @@ const BudgetPill = memo(function BudgetPill({
           {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted • hidden"}
         </Text>
         {pill.progress !== undefined ? (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
+          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.jarGlass, borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
             <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
               <LinearGradient
-                colors={over ? [C.error, "#7F1D1D"] : [C.primaryLight, C.primary]}
+                colors={over ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
