@@ -6,10 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/Button";
-import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
 import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
@@ -25,11 +25,6 @@ const THEME_OPTIONS: {
   { id: "dark", label: "Dark", icon: "moon" },
 ];
 
-const BALANCE_MODE_OPTIONS: { id: "fresh" | "carryOver"; label: string }[] = [
-  { id: "fresh", label: "Fresh" },
-  { id: "carryOver", label: "Carry Over" },
-];
-
 export default function Settings() {
   const { preference, setPreference } = useTheme();
   const router = useRouter();
@@ -37,118 +32,30 @@ export default function Settings() {
 
   const household = useQuery(api.households.getActive);
   const mine = useQuery(api.households.listMine);
-  const members = useQuery(
-    api.households.listMembers,
-    household?._id ? { householdId: household._id } : "skip",
-  );
-  const me = useQuery(api.users.getMe);
-  const updateBalanceMode = useMutation(api.households.updateBalanceMode);
-  const deleteHousehold = useMutation(api.households.deleteHousehold);
-  const leaveHousehold = useMutation(api.households.leaveHousehold);
-
-  const memberCount = members?.members.length ?? 1;
+  const switchActive = useMutation(api.households.switchActive);
+  const [switchingId, setSwitchingId] = useState<Id<"households"> | null>(null);
 
   const { signOut } = useAuth();
   const { show } = useSnackbar();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
-  const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
 
-  const isOwner = (() => {
-    if (me === undefined || members === undefined) return undefined;
-    if (me === null || members === null) return false;
-    const found = members.members.find((m) => m.userId === me._id);
-    return found?.role === "owner";
-  })();
-
-  const balanceMode = ((household as unknown as { balanceMode?: "fresh" | "carryOver" })?.balanceMode ?? "fresh") as
-    | "fresh"
-    | "carryOver";
-  const balanceModeLabel = balanceMode === "fresh" ? "Fresh" : "Carry Over";
-
-  const handleBalanceModeChange = useCallback(
-    async (mode: "fresh" | "carryOver") => {
-      if (!household?._id || mode === balanceMode || isUpdatingBalanceMode) return;
-      setIsUpdatingBalanceMode(true);
+  const handleInlineSwitch = useCallback(
+    async (id: Id<"households">) => {
+      if (switchingId !== null) return;
+      setSwitchingId(id);
       try {
-        await updateBalanceMode({ householdId: household._id, balanceMode: mode });
+        await switchActive({ householdId: id });
         void hapticSuccess();
-        show(`Balance mode: ${mode === "fresh" ? "Fresh" : "Carry Over"}`);
+        show("Household switched");
       } catch (e: unknown) {
-        show(getConvexErrorMessage(e, "Failed to update balance mode."));
+        void hapticError();
+        show(getConvexErrorMessage(e, "Failed to switch household."));
       } finally {
-        setIsUpdatingBalanceMode(false);
+        setSwitchingId(null);
       }
     },
-    [household?._id, balanceMode, isUpdatingBalanceMode, updateBalanceMode, show],
+    [switchingId, switchActive, show],
   );
-
-  const handleDeleteOrLeave = useCallback(() => {
-    if (!household?._id || isDeletingHousehold) return;
-    if (isOwner) {
-      Alert.alert(
-        "Delete Household?",
-        "This will permanently delete all household data for everyone. This cannot be undone.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Transfer Ownership",
-            onPress: () => router.push("/members"),
-          },
-          {
-            text: "Delete All",
-            style: "destructive",
-            onPress: () => {
-              Alert.alert("Confirm Delete", "Are you absolutely sure? All accounts, categories, transactions, budgets and invites will be deleted.", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: async () => {
-                    setIsDeletingHousehold(true);
-                    try {
-                      await deleteHousehold({ householdId: household._id });
-                      void hapticSuccess();
-                      show("Household deleted");
-                      router.replace("/home");
-                    } catch (e: unknown) {
-                      void hapticError();
-                      show(getConvexErrorMessage(e, "Failed to delete household."));
-                    } finally {
-                      setIsDeletingHousehold(false);
-                    }
-                  },
-                },
-              ]);
-            },
-          },
-        ],
-      );
-    } else {
-      Alert.alert("Leave Household?", "You will lose access to all household data. Your transactions will remain in the household.", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Leave",
-          style: "destructive",
-          onPress: async () => {
-            setIsDeletingHousehold(true);
-            try {
-              await leaveHousehold({ householdId: household._id });
-              void hapticSuccess();
-              show("Left household");
-              router.replace("/home");
-            } catch (e: unknown) {
-              void hapticError();
-              show(getConvexErrorMessage(e, "Failed to leave household."));
-            } finally {
-              setIsDeletingHousehold(false);
-            }
-          },
-        },
-      ]);
-    }
-  }, [household?._id, isOwner, isDeletingHousehold, deleteHousehold, leaveHousehold, router, show]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -196,150 +103,6 @@ export default function Settings() {
         <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
           Settings
         </Text>
-      </View>
-
-      <View className="mt-6 px-5">
-        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
-          Household
-        </Text>
-
-        <Pressable
-          onPress={() => router.push("/members")}
-          accessibilityLabel={`${household?.name}, ${memberCount} member${memberCount === 1 ? "" : "s"}`}
-          style={[
-            Shadow.card,
-            {
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.border,
-            },
-          ]}
-          className="flex-row items-center justify-between px-4 py-4"
-        >
-          <View className="flex-row items-center gap-3">
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: Radius.sm,
-                backgroundColor: C.surface,
-              }}
-              className="items-center justify-center"
-            >
-              <Feather name="users" size={20} color={C.primary} />
-            </View>
-            <View>
-              <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5 text-text-primary dark:text-text-primary-dark">
-                {household?.name ?? "Household"}
-              </Text>
-              <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                {memberCount === 1
-                  ? "1 member"
-                  : `${memberCount} members`}
-              </Text>
-            </View>
-          </View>
-          <Feather name="chevron-right" size={20} color={C.textSecondary} />
-        </Pressable>
-
-        <View className="mt-3">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">
-              BALANCE MODE
-            </Text>
-            {isOwner === false ? (
-              <View className="flex-row items-center gap-1">
-                <Feather name="info" size={12} color={C.textSecondary} />
-                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">OWNER ONLY</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {isOwner === undefined ? (
-            <View className="mt-2 items-center justify-center py-3">
-              <ActivityIndicator size="small" color={C.primary} />
-            </View>
-          ) : isOwner ? (
-            <View className="mt-2 flex-row overflow-hidden rounded-[12px] border border-border dark:border-border-dark">
-              {BALANCE_MODE_OPTIONS.map((option) => {
-                const selected = balanceMode === option.id;
-                return (
-                  <Pressable
-                    key={option.id}
-                    onPress={() => void handleBalanceModeChange(option.id)}
-                    disabled={isUpdatingBalanceMode}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`Balance mode ${option.label}`}
-                    style={{
-                      backgroundColor: selected ? C.primary : C.background,
-                      opacity: isUpdatingBalanceMode && !selected ? 0.6 : 1,
-                    }}
-                    className="flex-1 items-center justify-center py-3"
-                  >
-                    <Text
-                      className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
-                        selected
-                          ? "text-background dark:text-background-dark"
-                          : "text-text-secondary dark:text-text-secondary-dark"
-                      }`}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : (
-            <View
-              style={{
-                borderRadius: Radius.md,
-                backgroundColor: C.background,
-                borderWidth: 1,
-                borderColor: C.border,
-              }}
-              className="mt-2 flex-row items-center justify-between px-4 py-3"
-            >
-              <View className="flex-row items-center gap-2">
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: Radius.sm,
-                    backgroundColor: C.surface,
-                  }}
-                  className="items-center justify-center"
-                >
-                  <Feather name="info" size={16} color={C.primary} />
-                </View>
-                <View>
-                  <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
-                    {balanceModeLabel}
-                  </Text>
-                  <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-                    Balance per period
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={{ backgroundColor: C.surface, borderRadius: 999 }}
-                className="px-2.5 py-1"
-              >
-                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none" style={{ color: C.textSecondary }}>
-                  READ ONLY
-                </Text>
-              </View>
-            </View>
-          )}
-
-          <View className="mt-1.5 flex-row items-center gap-1">
-            <Feather name="info" size={12} color={C.textSecondary} />
-            <Text className="flex-1 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-              {balanceMode === "fresh" ? "Each period starts fresh" : "Closing balance carries to next period"}
-            </Text>
-          </View>
-        </View>
       </View>
 
       <View className="mt-6 px-5">
@@ -445,10 +208,10 @@ export default function Settings() {
             mine.map(({ household: h, role, isActive }) => (
               <Pressable
                 key={h._id}
-                onPress={() => setSwitcherOpen(true)}
+                onPress={() => router.push(`/members?householdId=${h._id}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`${h.name}${isActive ? ", active household" : ""}`}
-                className="flex-row items-center justify-between"
+                className="flex-row items-center gap-3"
               >
                 <View className="flex-1">
                   <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5 text-text-primary dark:text-text-primary-dark">
@@ -458,19 +221,34 @@ export default function Settings() {
                     {role === "owner" ? "Owner" : "Member"}
                   </Text>
                 </View>
-                {isActive ? (
-                  <View
-                    style={{ backgroundColor: `${C.primary}14`, borderRadius: 999 }}
-                    className="px-2.5 py-1"
-                  >
-                    <Text
-                      className="text-[11px] font-semibold tracking-[0.08em] leading-none"
-                      style={{ color: C.primary }}
+                <View className="flex-row items-center gap-2">
+                  {isActive ? (
+                    <View style={{ backgroundColor: `${C.primary}14`, borderRadius: 999 }} className="px-2.5 py-1">
+                      <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none" style={{ color: C.primary }}>
+                        Active
+                      </Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => void handleInlineSwitch(h._id)}
+                      disabled={switchingId !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Set ${h.name} as active household`}
+                      style={{ opacity: switchingId !== null ? 0.5 : 1 }}
+                      className="flex-row items-center gap-1 rounded-full border border-border px-3 py-2 dark:border-border-dark"
                     >
-                      Active
-                    </Text>
-                  </View>
-                ) : null}
+                      {switchingId === h._id ? (
+                        <ActivityIndicator size="small" color={C.primary} />
+                      ) : (
+                        <Feather name="check" size={14} color={C.primary} />
+                      )}
+                      <Text className="text-[12px] font-semibold tracking-[0.02em] text-primary dark:text-primary-dark">
+                        Set active
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Feather name="chevron-right" size={20} color={C.textSecondary} />
+                </View>
               </Pressable>
             ))
           )}
@@ -491,48 +269,6 @@ export default function Settings() {
 
       <View className="mt-6 px-5">
         <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
-          Danger Zone
-        </Text>
-        <View
-          style={[
-            Shadow.card,
-            {
-              borderRadius: Radius.md,
-              backgroundColor: C.background,
-              borderWidth: 1,
-              borderColor: C.error,
-            },
-          ]}
-          className="gap-3 px-4 py-4"
-        >
-          <View className="flex-row items-center gap-2">
-            <Feather name="alert-triangle" size={18} color={C.error} />
-            <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5" style={{ color: C.error }}>
-              {isOwner ? "Delete Household" : "Leave Household"}
-            </Text>
-          </View>
-          <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-            {isOwner
-              ? "Permanently delete all household data for everyone. This cannot be undone."
-              : "You will lose access to all household data. Your transactions will remain in the household."}
-          </Text>
-          <Button
-            title={isOwner ? "Delete Household" : "Leave Household"}
-            variant="danger"
-            onPress={handleDeleteOrLeave}
-            loading={isDeletingHousehold}
-            disabled={isDeletingHousehold || isOwner === undefined}
-          />
-          {isOwner ? (
-            <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-              To keep the household, transfer ownership in Members first.
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View className="mt-6 px-5">
-        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Account
         </Text>
 
@@ -545,7 +281,6 @@ export default function Settings() {
         />
       </View>
       </ScrollView>
-      <HouseholdSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </SafeAreaView>
   );
 }
