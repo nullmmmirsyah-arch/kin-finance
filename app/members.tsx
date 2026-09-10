@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
@@ -36,7 +36,14 @@ export default function Members() {
   const { show } = useSnackbar();
   const [screen, setScreen] = useState<Screen>("list");
 
-  const household = useQuery(api.households.getActive);
+  const { householdId: householdIdParam } = useLocalSearchParams<{ householdId?: string }>();
+  const mine = useQuery(api.households.listMine);
+  const activeEntry = mine?.find((m) => m.isActive);
+  const targetEntry =
+    (typeof householdIdParam === "string"
+      ? mine?.find((m) => m.household._id === householdIdParam)
+      : undefined) ?? activeEntry;
+  const household = mine === undefined ? undefined : (targetEntry?.household ?? null);
   const me = useQuery(api.users.getMe);
   const members = useQuery(
     api.households.listMembers,
@@ -54,6 +61,10 @@ export default function Members() {
   );
   const updateHousehold = useMutation(api.households.update);
   const updateTimezone = useMutation(api.households.updateTimezone);
+  const switchActive = useMutation(api.households.switchActive);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const updateBalanceMode = useMutation(api.households.updateBalanceMode);
+  const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
 
   const handleTimezoneSelect = useCallback(
     async (id: string) => {
@@ -72,6 +83,43 @@ export default function Members() {
       }
     },
     [household, updateTimezone, show],
+  );
+
+  const handleSetActive = useCallback(async () => {
+    if (!household?._id || targetEntry?.isActive || isSwitching) return;
+    setIsSwitching(true);
+    try {
+      await switchActive({ householdId: household._id });
+      void hapticSuccess();
+      show(`Switched to ${household.name}`);
+    } catch (e: unknown) {
+      void hapticError();
+      show(getConvexErrorMessage(e, "Failed to switch household."));
+    } finally {
+      setIsSwitching(false);
+    }
+  }, [household, targetEntry?.isActive, isSwitching, switchActive, show]);
+
+  const balanceMode = ((household as unknown as { balanceMode?: "fresh" | "carryOver" })?.balanceMode ?? "fresh") as "fresh" | "carryOver";
+  const BALANCE_MODE_OPTIONS: { id: "fresh" | "carryOver"; label: string }[] = [
+    { id: "fresh", label: "Fresh" },
+    { id: "carryOver", label: "Carry Over" },
+  ];
+  const handleBalanceModeChange = useCallback(
+    async (mode: "fresh" | "carryOver") => {
+      if (!household?._id || mode === balanceMode || isUpdatingBalanceMode) return;
+      setIsUpdatingBalanceMode(true);
+      try {
+        await updateBalanceMode({ householdId: household._id, balanceMode: mode });
+        void hapticSuccess();
+        show(`Balance mode: ${mode === "fresh" ? "Fresh" : "Carry Over"}`);
+      } catch (e: unknown) {
+        show(getConvexErrorMessage(e, "Failed to update balance mode."));
+      } finally {
+        setIsUpdatingBalanceMode(false);
+      }
+    },
+    [household?._id, balanceMode, isUpdatingBalanceMode, updateBalanceMode, show],
   );
 
   useEffect(() => {
@@ -246,10 +294,10 @@ export default function Members() {
   }, [household, members, isOwner, isDeletingHousehold, deleteHousehold, leaveHousehold, handleTransferOwnership, router, show]);
 
   const handleGenerateCode = useCallback(async () => {
-    if (isGenerating) return;
+    if (isGenerating || !household?._id) return;
     setIsGenerating(true);
     try {
-      const result = await createInvite();
+      const result = await createInvite({ householdId: household._id });
       setInviteCode(result.code);
       setScreen("invite");
     } catch (e: any) {
@@ -257,7 +305,7 @@ export default function Members() {
     } finally {
       setIsGenerating(false);
     }
-  }, [createInvite, isGenerating, show]);
+  }, [createInvite, isGenerating, household, show]);
 
   const handleRevoke = useCallback(
     (invitationId: Id<"invitations">) => {
@@ -499,6 +547,16 @@ export default function Members() {
               ) : null}
             </View>
           )}
+          {targetEntry && !targetEntry.isActive ? (
+            <Button
+              title="Set as Active"
+              variant="secondary"
+              onPress={handleSetActive}
+              loading={isSwitching}
+              disabled={isSwitching}
+              icon={<Feather name="check" size={18} color={C.primary} />}
+            />
+          ) : null}
         </View>
 
         <View className="mt-3">
@@ -538,6 +596,72 @@ export default function Members() {
             Calendar months and budget periods use the household timezone so every
             member sees the same dates. Match device follows the device timezone.
           </Text>
+        </View>
+
+        <View className="mt-3">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">
+              BALANCE MODE
+            </Text>
+            {isOwner === false ? (
+              <View className="flex-row items-center gap-1">
+                <Feather name="info" size={12} color={C.textSecondary} />
+                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none text-text-secondary dark:text-text-secondary-dark">OWNER ONLY</Text>
+              </View>
+            ) : null}
+          </View>
+          {isOwner ? (
+            <View className="mt-2 flex-row overflow-hidden rounded-[12px] border border-border dark:border-border-dark">
+              {BALANCE_MODE_OPTIONS.map((option) => {
+                const selected = balanceMode === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => void handleBalanceModeChange(option.id)}
+                    disabled={isUpdatingBalanceMode}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Balance mode ${option.label}`}
+                    style={{
+                      backgroundColor: selected ? C.primary : C.background,
+                      opacity: isUpdatingBalanceMode && !selected ? 0.6 : 1,
+                    }}
+                    className="flex-1 items-center justify-center py-3"
+                  >
+                    <Text
+                      className={`text-[14px] font-semibold tracking-[0.02em] leading-5 ${
+                        selected
+                          ? "text-background dark:text-background-dark"
+                          : "text-text-secondary dark:text-text-secondary-dark"
+                      }`}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <View
+              style={{ borderRadius: Radius.md, backgroundColor: C.background, borderWidth: 1, borderColor: C.border }}
+              className="mt-2 flex-row items-center justify-between px-4 py-3"
+            >
+              <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
+                {balanceMode === "fresh" ? "Fresh" : "Carry Over"}
+              </Text>
+              <View style={{ backgroundColor: C.surface, borderRadius: 999 }} className="px-2.5 py-1">
+                <Text className="text-[11px] font-semibold tracking-[0.08em] leading-none" style={{ color: C.textSecondary }}>
+                  READ ONLY
+                </Text>
+              </View>
+            </View>
+          )}
+          <View className="mt-1.5 flex-row items-center gap-1">
+            <Feather name="info" size={12} color={C.textSecondary} />
+            <Text className="flex-1 text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
+              {balanceMode === "fresh" ? "Each period starts fresh" : "Closing balance carries to next period"}
+            </Text>
+          </View>
         </View>
 
         <View className="mt-4">
