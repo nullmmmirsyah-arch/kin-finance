@@ -9,6 +9,8 @@ import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
 import { ThemePreference, useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/Button";
+import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
+import { Skeleton } from "@/components/Skeleton";
 import { useSnackbar } from "@/components/Snackbar";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -34,6 +36,7 @@ export default function Settings() {
   const C = useThemeColors();
 
   const household = useQuery(api.households.getActive);
+  const mine = useQuery(api.households.listMine);
   const members = useQuery(
     api.households.listMembers,
     household?._id ? { householdId: household._id } : "skip",
@@ -48,6 +51,7 @@ export default function Settings() {
   const { signOut } = useAuth();
   const { show } = useSnackbar();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [isUpdatingBalanceMode, setIsUpdatingBalanceMode] = useState(false);
   const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
 
@@ -413,6 +417,75 @@ export default function Settings() {
 
       <View className="mt-6 px-5">
         <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
+          Households
+        </Text>
+        <View
+          style={[
+            Shadow.card,
+            {
+              borderRadius: Radius.md,
+              backgroundColor: C.background,
+              borderWidth: 1,
+              borderColor: C.border,
+            },
+          ]}
+          className="gap-3 px-4 py-4"
+        >
+          {mine === undefined ? (
+            <>
+              <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
+              <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
+            </>
+          ) : (
+            mine.map(({ household: h, role, isActive }) => (
+              <Pressable
+                key={h._id}
+                onPress={() => setSwitcherOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`${h.name}${isActive ? ", active household" : ""}`}
+                className="flex-row items-center justify-between"
+              >
+                <View className="flex-1">
+                  <Text className="text-[16px] font-semibold tracking-[-0.01em] leading-5 text-text-primary dark:text-text-primary-dark">
+                    {h.name}
+                  </Text>
+                  <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
+                    {role === "owner" ? "Owner" : "Member"}
+                  </Text>
+                </View>
+                {isActive ? (
+                  <View
+                    style={{ backgroundColor: `${C.primary}14`, borderRadius: 999 }}
+                    className="px-2.5 py-1"
+                  >
+                    <Text
+                      className="text-[11px] font-semibold tracking-[0.08em] leading-none"
+                      style={{ color: C.primary }}
+                    >
+                      Aktif
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ))
+          )}
+          <Button
+            title="New Household"
+            variant="secondary"
+            onPress={() => router.push("/onboarding?mode=create&add=1")}
+            icon={<Feather name="plus" size={18} color={C.primary} />}
+          />
+          <Button
+            title="Join with Code"
+            variant="secondary"
+            onPress={() => router.push("/onboarding?mode=join&add=1")}
+            icon={<Feather name="user-plus" size={18} color={C.primary} />}
+          />
+        </View>
+      </View>
+
+      <View className="mt-6 px-5">
+        <Text className="mb-2 text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-secondary dark:text-text-secondary-dark">
           Danger Zone
         </Text>
         <View
@@ -466,6 +539,7 @@ export default function Settings() {
           disabled={isSigningOut}
         />
       </View>
+      <HouseholdSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </SafeAreaView>
   );
 }
