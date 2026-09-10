@@ -64,6 +64,44 @@ describe("multi-household foundation", () => {
     expect(mine.map((m) => m.role)).toEqual(["owner", "member"]);
     expect(mine.map((m) => m.isActive)).toEqual([true, false]);
   });
+
+  it("getActive falls back to oldest remaining when activeHouseholdId is orphaned", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    const ids = await t.run(async (ctx) => {
+      const orphan = await ctx.db.insert("households", { name: "Orphan", createdAt: 10, updatedAt: 10 });
+      const older = await ctx.db.insert("households", { name: "Older", createdAt: 1, updatedAt: 1 });
+      const newer = await ctx.db.insert("households", { name: "Newer", createdAt: 2, updatedAt: 2 });
+      const aId = await ctx.db.insert("users", { tokenIdentifier: A_TOKEN, clerkUserId: "c-a" });
+      const orphanMem = await ctx.db.insert("householdMemberships", { householdId: orphan, userId: aId, role: "member" });
+      await ctx.db.insert("householdMemberships", { householdId: older, userId: aId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: newer, userId: aId, role: "member" });
+      await ctx.db.patch(aId, { activeHouseholdId: orphan });
+      // Simulate removeMember-victim / other-device delete: membership gone, pointer stale.
+      await ctx.db.delete(orphanMem);
+      return { older, newer };
+    });
+    const active = await a.query(api.households.getActive, {});
+    expect(active?._id).toEqual(ids.older);
+  });
+
+  it("listMine marks oldest remaining active when activeHouseholdId is orphaned", async () => {
+    const a = t.withIdentity({ tokenIdentifier: A_TOKEN, subject: "a" });
+    await t.run(async (ctx) => {
+      const orphan = await ctx.db.insert("households", { name: "Orphan", createdAt: 10, updatedAt: 10 });
+      const older = await ctx.db.insert("households", { name: "Older", createdAt: 1, updatedAt: 1 });
+      const newer = await ctx.db.insert("households", { name: "Newer", createdAt: 2, updatedAt: 2 });
+      const aId = await ctx.db.insert("users", { tokenIdentifier: A_TOKEN, clerkUserId: "c-a" });
+      const orphanMem = await ctx.db.insert("householdMemberships", { householdId: orphan, userId: aId, role: "member" });
+      await ctx.db.insert("householdMemberships", { householdId: older, userId: aId, role: "owner" });
+      await ctx.db.insert("householdMemberships", { householdId: newer, userId: aId, role: "member" });
+      await ctx.db.patch(aId, { activeHouseholdId: orphan });
+      // Simulate removeMember-victim / other-device delete: membership gone, pointer stale.
+      await ctx.db.delete(orphanMem);
+    });
+    const mine = await a.query(api.households.listMine, {});
+    expect(mine.map((m) => m.household.name)).toEqual(["Older", "Newer"]);
+    expect(mine.map((m) => m.isActive)).toEqual([true, false]);
+  });
 });
 
 describe("multi-household create/join/leave", () => {

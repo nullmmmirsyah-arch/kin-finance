@@ -462,7 +462,7 @@ export default function Settings() {
                       className="text-[11px] font-semibold tracking-[0.08em] leading-none"
                       style={{ color: C.primary }}
                     >
-                      Aktif
+                      Active
                     </Text>
                   </View>
                 ) : null}
