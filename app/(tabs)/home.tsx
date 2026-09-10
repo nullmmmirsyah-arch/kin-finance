@@ -43,6 +43,7 @@ import { getConvexErrorMessage } from "@/lib/errors";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { hapticSuccess } from "@/lib/haptics";
 import { MonthPicker } from "@/components/MonthPicker";
+import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
 import { PeriodHeader } from "@/components/PeriodHeader";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
 import { Id } from "@/convex/_generated/dataModel";
@@ -210,6 +211,7 @@ export default function Home() {
   const store = useMutation(api.users.store);
   const me = useQuery(api.users.getMe);
   const household = useQuery(api.households.getActive);
+  const mine = useQuery(api.households.listMine);
   const accountData = useQuery(api.accounts.list);
 
   const [synced, setSynced] = useState(false);
@@ -320,6 +322,7 @@ export default function Home() {
   const [categoryIds, setCategoryIds] = useState<Id<"categories">[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const commitSearch = useCallback(() => {
     Keyboard.dismiss();
@@ -641,11 +644,25 @@ export default function Home() {
           </Text>
         </View>
 
-        <View className="mb-3 items-center gap-1">
-          <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
-            {household.name} Household
-          </Text>
-        </View>
+        {mine !== undefined && mine.length > 1 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Switch household, current ${household.name}`}
+            onPress={() => setSwitcherOpen(true)}
+            className="mb-3 flex-row items-center justify-center gap-1"
+          >
+            <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
+              {household.name} Household
+            </Text>
+            <Feather name="chevron-down" size={18} color={C.textSecondary} />
+          </Pressable>
+        ) : (
+          <View className="mb-3 items-center gap-1">
+            <Text className="text-[18px] font-bold tracking-[-0.02em] leading-6 text-text-primary dark:text-text-primary-dark">
+              {household.name} Household
+            </Text>
+          </View>
+        )}
 
         <PeriodHeader
           label={shortLabel}
@@ -1229,6 +1246,7 @@ export default function Home() {
         onClose={() => setFilterOpen(false)}
       />
 
+      <HouseholdSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
 
       <Fab
         label="Add Transaction"
