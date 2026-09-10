@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { validateInviteCode, INVITE_CODE_LENGTH } from "@/constants/validation";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -41,6 +42,7 @@ export default function Onboarding() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const C = useThemeColors();
   const gradients = useThemeGradients();
 
@@ -48,9 +50,21 @@ export default function Onboarding() {
   const trimmedCode = code.trim().toUpperCase();
   const canSubmit =
     !isLoading &&
+    !completed &&
     (mode === "create"
       ? trimmedName.length >= 3
       : validateInviteCode(trimmedCode) === null);
+
+  const attemptSwitch = async (id: Id<"households">): Promise<boolean> => {
+    try {
+      await switchActive({ householdId: id });
+      void hapticSuccess();
+      return true;
+    } catch {
+      void hapticError();
+      return false;
+    }
+  };
 
   const handleCreate = async () => {
     setError(null);
@@ -65,6 +79,7 @@ export default function Onboarding() {
         setError("Failed to create household. Please try again.");
         return;
       }
+      setCompleted(true);
       if (!isAdd) {
         router.replace("/home");
         return;
@@ -75,18 +90,27 @@ export default function Onboarding() {
         {
           text: "Switch",
           onPress: async () => {
-            try {
-              await switchActive({ householdId: newId });
-              void hapticSuccess();
-            } catch (e: unknown) {
-              void hapticError();
-              setError(getConvexErrorMessage(e, "Added, but failed to switch."));
+            if (await attemptSwitch(newId)) {
+              router.replace("/home");
               return;
             }
-            router.replace("/home");
+            Alert.alert(
+              "Couldn't switch",
+              "The household was added but we couldn't switch to it.",
+              [
+                { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+                {
+                  text: "Retry",
+                  onPress: async () => {
+                    await attemptSwitch(newId);
+                    router.replace("/home");
+                  },
+                },
+              ],
+            );
           },
         },
-      ]);
+      ], { cancelable: false });
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to create household. Please try again."));
     } finally {
@@ -109,6 +133,7 @@ export default function Onboarding() {
         setError("Failed to join household. Please try again.");
         return;
       }
+      setCompleted(true);
       if (!isAdd) {
         router.replace("/home");
         return;
@@ -119,18 +144,27 @@ export default function Onboarding() {
         {
           text: "Switch",
           onPress: async () => {
-            try {
-              await switchActive({ householdId: newId });
-              void hapticSuccess();
-            } catch (e: unknown) {
-              void hapticError();
-              setError(getConvexErrorMessage(e, "Added, but failed to switch."));
+            if (await attemptSwitch(newId)) {
+              router.replace("/home");
               return;
             }
-            router.replace("/home");
+            Alert.alert(
+              "Couldn't switch",
+              "The household was added but we couldn't switch to it.",
+              [
+                { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+                {
+                  text: "Retry",
+                  onPress: async () => {
+                    await attemptSwitch(newId);
+                    router.replace("/home");
+                  },
+                },
+              ],
+            );
           },
         },
-      ]);
+      ], { cancelable: false });
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to join household. Please try again."));
     } finally {

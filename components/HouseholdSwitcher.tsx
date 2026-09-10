@@ -8,7 +8,7 @@ import { useSnackbar } from "@/components/Snackbar";
 import Feather from "@expo/vector-icons/Feather";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
 
 export function HouseholdSwitcher({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const C = useThemeColors();
@@ -57,7 +57,11 @@ export function HouseholdSwitcher({ visible, onClose }: { visible: boolean; onCl
             </Pressable>
           </View>
 
-          <View className="mt-4 gap-2">
+          <ScrollView
+            style={{ maxHeight: 320, marginTop: 16 }}
+            contentContainerStyle={{ gap: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
             {mine === undefined ? (
               <>
                 <Skeleton style={{ height: 56, borderRadius: Radius.md }} />
@@ -103,7 +107,7 @@ export function HouseholdSwitcher({ visible, onClose }: { visible: boolean; onCl
                 );
               })
             )}
-          </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>

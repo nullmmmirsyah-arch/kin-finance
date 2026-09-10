@@ -3,7 +3,7 @@ import { useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { Radius, Shadow, useThemeColors } from "@/constants/theme";
@@ -111,7 +111,7 @@ export default function Settings() {
                       await deleteHousehold({ householdId: household._id });
                       void hapticSuccess();
                       show("Household deleted");
-                      router.replace("/onboarding");
+                      router.replace("/home");
                     } catch (e: unknown) {
                       void hapticError();
                       show(getConvexErrorMessage(e, "Failed to delete household."));
@@ -137,7 +137,7 @@ export default function Settings() {
               await leaveHousehold({ householdId: household._id });
               void hapticSuccess();
               show("Left household");
-              router.replace("/onboarding");
+              router.replace("/home");
             } catch (e: unknown) {
               void hapticError();
               show(getConvexErrorMessage(e, "Failed to leave household."));
@@ -187,6 +187,11 @@ export default function Settings() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
       <View className="px-5 pt-4">
         <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">
           Settings
@@ -539,6 +544,7 @@ export default function Settings() {
           disabled={isSigningOut}
         />
       </View>
+      </ScrollView>
       <HouseholdSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </SafeAreaView>
   );
