@@ -1,10 +1,12 @@
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { getConvexErrorMessage } from "@/lib/errors";
 import { validateInviteCode, INVITE_CODE_LENGTH } from "@/constants/validation";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import {
+  Alert,
   Pressable,
   Text,
   View,
@@ -18,6 +20,7 @@ import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useAuth } from "@clerk/expo";
 import { getCalendars } from "expo-localization";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 
 type Mode = "create" | "join";
 
@@ -28,14 +31,18 @@ const MODES: { id: Mode; label: string }[] = [
 
 export default function Onboarding() {
   const router = useRouter();
+  const { mode: modeParam, add } = useLocalSearchParams<{ mode?: Mode; add?: string }>();
   const { signOut } = useAuth();
   const createHousehold = useMutation(api.households.create);
   const redeemInvite = useMutation(api.invitations.redeem);
-  const [mode, setMode] = useState<Mode>("create");
+  const switchActive = useMutation(api.households.switchActive);
+  const [mode, setMode] = useState<Mode>(modeParam === "join" ? "join" : "create");
+  const isAdd = add === "1";
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const C = useThemeColors();
   const gradients = useThemeGradients();
 
@@ -43,19 +50,67 @@ export default function Onboarding() {
   const trimmedCode = code.trim().toUpperCase();
   const canSubmit =
     !isLoading &&
+    !completed &&
     (mode === "create"
       ? trimmedName.length >= 3
       : validateInviteCode(trimmedCode) === null);
+
+  const attemptSwitch = async (id: Id<"households">): Promise<boolean> => {
+    try {
+      await switchActive({ householdId: id });
+      void hapticSuccess();
+      return true;
+    } catch {
+      void hapticError();
+      return false;
+    }
+  };
 
   const handleCreate = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      await createHousehold({
+      const created = await createHousehold({
         name: trimmedName,
         timezone: getCalendars()[0]?.timeZone ?? "UTC",
       });
-      router.replace("/home");
+      const newId = created?._id;
+      if (newId == null) {
+        setError("Failed to create household. Please try again.");
+        return;
+      }
+      setCompleted(true);
+      if (!isAdd) {
+        router.replace("/home");
+        return;
+      }
+      const message = `Switch to ${trimmedName} now?`;
+      Alert.alert("Household added", message, [
+        { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+        {
+          text: "Switch",
+          onPress: async () => {
+            if (await attemptSwitch(newId)) {
+              router.replace("/home");
+              return;
+            }
+            Alert.alert(
+              "Couldn't switch",
+              "The household was added but we couldn't switch to it.",
+              [
+                { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+                {
+                  text: "Retry",
+                  onPress: async () => {
+                    await attemptSwitch(newId);
+                    router.replace("/home");
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ], { cancelable: false });
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to create household. Please try again."));
     } finally {
@@ -72,8 +127,44 @@ export default function Onboarding() {
     }
     setIsLoading(true);
     try {
-      await redeemInvite({ code: trimmedCode });
-      router.replace("/home");
+      const joined = await redeemInvite({ code: trimmedCode });
+      const newId = joined.householdId;
+      if (newId == null) {
+        setError("Failed to join household. Please try again.");
+        return;
+      }
+      setCompleted(true);
+      if (!isAdd) {
+        router.replace("/home");
+        return;
+      }
+      const message = "Switch to the new household now?";
+      Alert.alert("Household added", message, [
+        { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+        {
+          text: "Switch",
+          onPress: async () => {
+            if (await attemptSwitch(newId)) {
+              router.replace("/home");
+              return;
+            }
+            Alert.alert(
+              "Couldn't switch",
+              "The household was added but we couldn't switch to it.",
+              [
+                { text: "Stay here", style: "cancel", onPress: () => router.replace("/home") },
+                {
+                  text: "Retry",
+                  onPress: async () => {
+                    await attemptSwitch(newId);
+                    router.replace("/home");
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ], { cancelable: false });
     } catch (e: any) {
       setError(getConvexErrorMessage(e, "Failed to join household. Please try again."));
     } finally {
@@ -120,7 +211,9 @@ export default function Onboarding() {
               </Text>
               <Text className="text-center text-base text-text-secondary dark:text-text-secondary-dark">
                 {mode === "create"
-                  ? "Create your Household to start managing your family's finances."
+                  ? isAdd
+                    ? "Add another household — your current one stays untouched."
+                    : "Create your Household to start managing your family's finances."
                   : "Join an existing Household using an invite code."}
               </Text>
             </View>
@@ -200,6 +293,7 @@ export default function Onboarding() {
               )}
             </View>
 
+            {isAdd ? null : (
             <Pressable
               onPress={() => void signOut()}
               accessibilityRole="button"
@@ -209,6 +303,7 @@ export default function Onboarding() {
                 Back to login
               </Text>
             </Pressable>
+            )}
           </View>
         </KeyboardAwareScrollView>
       </SafeAreaView>

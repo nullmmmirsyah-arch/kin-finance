@@ -8,6 +8,7 @@ export default defineSchema({
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    activeHouseholdId: v.optional(v.id("households")),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
   households: defineTable({
