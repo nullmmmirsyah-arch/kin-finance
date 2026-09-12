@@ -2,7 +2,7 @@ import { useUser } from "@clerk/expo";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -26,7 +26,6 @@ import { Button } from "@/components/Button";
 import { Fab } from "@/components/Fab";
 import { Skeleton } from "@/components/Skeleton";
 import { ConnectivityBanner } from "@/components/ConnectivityBanner";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSnackbar } from "@/components/Snackbar";
 import { formatNumber, sumNetExcludingTransfers } from "@/utils/format";
 import { formatDateHeaderTz } from "@/utils/date";
@@ -46,164 +45,13 @@ import { MonthPicker } from "@/components/MonthPicker";
 import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
 import { PeriodHeader } from "@/components/PeriodHeader";
 import { FilterSheet, TypeFilter } from "@/components/FilterSheet";
+import { BudgetTotalCard } from "@/components/BudgetTotalCard";
+import { BudgetBreakdownSheet } from "@/components/BudgetBreakdownSheet";
+import { summarizeBudgets } from "@/utils/budgets";
 import { Id } from "@/convex/_generated/dataModel";
 import { filterBadgeCount, getSelectionState, normalizeSelection } from "@/utils/filters";
 
 const PAGE_SIZE = 30;
-
-const BudgetPill = memo(function BudgetPill({
-  pill,
-  onPress,
-}: {
-  pill: { id: string; name: string; budgeted: number; spent?: number; progress?: number };
-  onPress: () => void;
-}) {
-  const [pressed, setPressed] = useState(false);
-  const C = useThemeColors();
-  const progress = pill.progress ?? 0;
-  const isPrivate = pill.spent === undefined;
-  const over = pill.spent !== undefined && pill.progress !== undefined && pill.progress > 1;
-  const honeyLevel = isPrivate ? 0 : Math.max(1 - Math.min(progress, 1), 0);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      accessibilityRole="button"
-      accessibilityLabel={`${pill.name}: ${pill.spent !== undefined ? `${formatNumber(pill.spent)} of ${formatNumber(pill.budgeted)}` : "details unavailable"}`}
-      style={[
-        Shadow.card,
-        {
-          backgroundColor: pressed ? C.surface : C.background,
-          borderRadius: Radius.md,
-          borderWidth: 1,
-          borderColor: C.border,
-        },
-      ]}
-      className="flex-row items-center gap-3 px-4 py-3"
-    >
-      {/* Cute mini jar — matches Budgets card */}
-      <View style={{ width: 42, alignItems: "center", gap: 2 }}>
-        <View
-          style={{
-            width: 38,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: C.surface,
-            borderWidth: 1,
-            borderColor: C.border,
-            marginBottom: -4,
-            zIndex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <View
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              backgroundColor: over ? C.error : C.primary,
-              opacity: honeyLevel > 0 ? 0.85 : 0.2,
-            }}
-          />
-        </View>
-        <View
-          style={{
-            width: 40,
-            height: 50,
-            borderRadius: 10,
-            borderTopLeftRadius: 3,
-            borderTopRightRadius: 3,
-            borderWidth: 1.5,
-            borderColor: C.border,
-            backgroundColor: C.jarGlass,
-            overflow: "hidden",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{
-              position: "absolute",
-              left: 5,
-              top: 5,
-              bottom: 5,
-              width: 5,
-              borderRadius: 999,
-              backgroundColor: C.jarGlass,
-              opacity: 0.55,
-            }}
-          />
-          {isPrivate ? (
-            <View style={{ flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-              <Feather name="eye-off" size={12} color={C.textSecondary} />
-            </View>
-          ) : (
-            <View style={{ height: `${honeyLevel * 100}%`, minHeight: honeyLevel > 0 ? 10 : 0, overflow: "hidden", borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-              <LinearGradient
-                colors={over ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1 }}
-              >
-                <View style={{ height: 6, marginTop: -1, backgroundColor: "rgba(255,255,255,0.28)", borderBottomLeftRadius: 999, borderBottomRightRadius: 999, transform: [{ scaleX: 1.1 }] }} />
-              </LinearGradient>
-            </View>
-          )}
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: over ? C.error : honeyLevel < 0.3 ? C.primary : C.textSecondary }}>
-          {isPrivate ? "—" : over ? "EMPTY" : `${Math.round(honeyLevel * 100)}%`}
-        </Text>
-      </View>
-
-      <View className="flex-1 gap-1">
-        <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className="flex-1 text-[16px] font-medium leading-5 tracking-[-0.01em] text-text-primary dark:text-text-primary-dark">
-            {pill.name}
-          </Text>
-          <View className="flex-row items-center gap-1.5">
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 999,
-                backgroundColor: isPrivate ? C.textSecondary : over ? C.error : progress > 0.8 ? C.primary : C.success,
-                opacity: 0.8,
-              }}
-            />
-            <Text
-              numberOfLines={1}
-              className="text-[14px] font-semibold leading-5 tracking-[-0.015em] tabular-nums text-text-secondary dark:text-text-secondary-dark"
-              style={{ color: over ? C.error : undefined }}
-            >
-              {isPrivate ? "PRIVATE" : over ? "OVER" : progress > 0.8 ? "ALMOST EMPTY" : `${Math.round(honeyLevel * 100)}% LEFT`}
-            </Text>
-          </View>
-        </View>
-        <Text className="text-[13px] leading-4 tracking-wide text-text-secondary dark:text-text-secondary-dark">
-          {pill.spent !== undefined ? `${formatNumber(pill.spent)} / ${formatNumber(pill.budgeted)}` : "Frosted • hidden"}
-        </Text>
-        {pill.progress !== undefined ? (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.jarGlass, borderWidth: 1, borderColor: C.border, overflow: "hidden", padding: 2 }}>
-            <View style={{ flex: 1, borderRadius: 999, backgroundColor: C.surface, overflow: "hidden" }}>
-              <LinearGradient
-                colors={over ? [C.error, C.overBudgetDeep] : [C.primaryLight, C.primary]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={{ width: `${honeyLevel * 100}%`, flex: 1, borderRadius: 999 }}
-              />
-            </View>
-          </View>
-        ) : (
-          <View style={{ height: 8, borderRadius: 999, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderStyle: "dashed", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 8, fontWeight: "700", letterSpacing: 0.6, color: C.textSecondary }}>FROSTED</Text>
-          </View>
-        )}
-      </View>
-    </Pressable>
-  );
-});
 
 export default function Home() {
   const { user } = useUser();
@@ -323,6 +171,7 @@ export default function Home() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const commitSearch = useCallback(() => {
     Keyboard.dismiss();
@@ -467,20 +316,21 @@ export default function Home() {
     setActiveCursor(nextCursor);
   }, [hasMore, nextCursor, pagedTransactions]);
 
-  const budgetPills = useMemo(() => {
+  const budgetSummary = useMemo(() => {
     const budgets = monthBudgets?.budgets;
-    if (!budgets || budgets.length === 0) return [];
-    return budgets.slice(0, 3).map((b) => ({
-      id: b._id,
-      name: b.category?.name ?? "Budget",
-      budgeted: b.amount,
-      spent: b.spent,
-      progress: b.progress,
-    }));
+    if (!budgets || budgets.length === 0) return null;
+    return summarizeBudgets(budgets);
   }, [monthBudgets]);
 
-  const handleBudgetPillPress = useCallback(() => {
+  const openSheet = useCallback(() => {
+    setSheetOpen(true);
+    void hapticSuccess();
+  }, []);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const viewAllBudgets = useCallback(() => {
+    setSheetOpen(false);
     router.push("/budgets");
+    void hapticSuccess();
   }, [router]);
 
   const sections = useMemo(() => {
@@ -912,7 +762,7 @@ export default function Home() {
                                 <Text className="text-[18px] font-bold leading-6 tracking-[-0.02em] text-text-primary dark:text-text-primary-dark">Budgets</Text>
                               </View>
                             </View>
-                            {budgetPills.length > 0 && (
+                            {(monthBudgets?.budgets?.length ?? 0) > 0 && (
                               <Pressable
                                 onPress={() => router.push("/budgets")}
                                 accessibilityRole="button"
@@ -923,11 +773,9 @@ export default function Home() {
                               </Pressable>
                             )}
                           </View>
-                          {budgetPills.length > 0 ? (
-                            <View className="mt-3.5 gap-3.5">
-                              {budgetPills.map((pill) => (
-                                <BudgetPill key={pill.id} pill={pill} onPress={handleBudgetPillPress} />
-                              ))}
+                          {budgetSummary && monthBudgets?.budgets && monthBudgets.budgets.length > 0 ? (
+                            <View className="mt-3.5">
+                              <BudgetTotalCard summary={budgetSummary} jarCount={monthBudgets.budgets.length} onPress={openSheet} />
                             </View>
                           ) : (
                             <View style={{ backgroundColor: C.background, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
@@ -1245,6 +1093,16 @@ export default function Home() {
         }}
         onClose={() => setFilterOpen(false)}
       />
+
+      {monthBudgets?.budgets != null && (
+        <BudgetBreakdownSheet
+          visible={sheetOpen}
+          budgets={monthBudgets.budgets}
+          periodLabel={shortLabel}
+          onClose={closeSheet}
+          onViewAll={viewAllBudgets}
+        />
+      )}
 
       <HouseholdSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
 
