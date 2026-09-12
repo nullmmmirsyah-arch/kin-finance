@@ -326,7 +326,10 @@ export default function Home() {
     setSheetOpen(true);
     void hapticSuccess();
   }, []);
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const closeSheet = useCallback(() => {
+    setSheetOpen(false);
+    void hapticSuccess();
+  }, []);
   const viewAllBudgets = useCallback(() => {
     setSheetOpen(false);
     router.push("/budgets");

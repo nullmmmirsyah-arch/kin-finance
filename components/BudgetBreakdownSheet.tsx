@@ -62,9 +62,12 @@ export function BudgetBreakdownSheet({ visible, budgets, periodLabel, onClose, o
                       )}
                     </View>
                     <View className="flex-1 gap-0.5">
-                      <Text numberOfLines={1} className="text-[15px] font-medium text-text-primary dark:text-text-primary-dark">
-                        {b.category?.name ?? "Budget"}
-                      </Text>
+                      <View className="flex-row items-center gap-1.5">
+                        <Text numberOfLines={1} className="flex-1 text-[15px] font-medium text-text-primary dark:text-text-primary-dark">
+                          {b.category?.name ?? "Budget"}
+                        </Text>
+                        {b.category?.hidden ? <Feather name="eye-off" size={12} color={C.textSecondary} /> : null}
+                      </View>
                       <Text className="text-[13px] text-text-secondary dark:text-text-secondary-dark">
                         {spent === undefined ? "Private • frosted" : over ? `${formatNumber(Math.abs(remaining))} over • ${formatNumber(spent)} / ${formatNumber(b.amount)}` : `${formatNumber(remaining)} left • ${formatNumber(spent)} / ${formatNumber(b.amount)}`}
                       </Text>
