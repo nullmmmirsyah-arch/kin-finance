@@ -1,7 +1,7 @@
 # Kin Finance — Product Specification
 
 > Status: Living document
-> Last updated: 2026-09-10
+> Last updated: 2026-09-13
 > Architecture: `docs/ARCHITECTURE.md` | Design: `docs/DESIGN.md` | Source of truth: `convex/schema.ts`
 
 ---
@@ -72,7 +72,7 @@ One shared Household is the root of all financial data, with role-based visibili
 | Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page; cursor-paginated. Home ledger is period-bound 30/page with Search+Filter. Search global cross-period with Date first chip, default last 14 days. `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category. Supports server-side substring search by note, amount string, account name and category name (≥2 chars) — committed only after user taps Search button or submits via keyboard (no auto debounce). Amount input is whole-number only. |
 | Search | Global cross-period search with Date first chip, default last 14 days (inclusive `today - 13d`), 30/page FlatList cross-period, Future dates greyed & disabled. FilterSheet for bill type/category/account; summary Records N with income/expense totals. |
 | Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
-| Home | Dashboard (swipeable period — PagerView 12 periods, MonthPicker Jan-Dec future disabled): household card, Period Balance (Income/Expense/Balance per period via periodBalances), Budgets (3 pills per selectedPeriodStart), Full SectionList 30/page daily groups + Today card + My Accounts + Search+Filter period-bound. TransactionCard rows show Category • Account (transfer: Account → ToAccount) with no time. |
+| Home | Dashboard (swipeable period — PagerView 12 periods, MonthPicker Jan-Dec future disabled): household card, Period Balance (Income/Expense/Balance per period via periodBalances), Budgets (single total jar card per selectedPeriodStart — total budgeted + remaining + % honey; tap opens a bottom-sheet breakdown in Budgets-tab order), Full SectionList 30/page daily groups + Today card + My Accounts + Search+Filter period-bound. TransactionCard rows show Category • Account (transfer: Account → ToAccount) with no time. |
 | Analytics | Spending by Category (selected period) + Delta closing vs prev closing on Home below Budgets. PeriodBalances snapshot O(1) read. |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
 
@@ -210,7 +210,7 @@ Monthly spending limits per expense category. Identified by `(householdId, categ
 - Household card (name + " Household", no member count).
 - **Period navigation:** swipeable 12 past+now, MonthPicker Jan-Dec future disabled.
 - **Period Balance:** Income/Expense/Balance per period via periodBalances.
-- **Budgets:** up to 3 budget pills per selectedPeriodStart.
+- **Budgets:** single total jar card per selectedPeriodStart (total budgeted, remaining, % honey; jar-with-honey style kept). Tapping the card opens a bottom-sheet breakdown of all budgets in Budgets-tab order (scrollable; row tap closes; "View all budgets" navigates to the Budgets tab). Private rows stay frosted for Members on hidden categories.
 - **Search+Filter period-bound:** rounded search bar + Search pill + Filter pill.
 - **Full SectionList 30/page daily groups:** period-bound, grouped by day with day net total, Today card, My Accounts horizontal cards.
 - Empty states include action CTAs.
