@@ -33,7 +33,7 @@ Args:
 Behavior:
 
 - Auth via `findUserAndMembership(ctx)` (sama seperti `list`); return `null` jika tidak login. Tidak ada role check — owner & member sama (konsisten dengan PRD budgets; member memang boleh lihat agregat `spent` kategori hidden).
-- Validasi: kategori harus ada di household (via `getScopedDoc`, pesan "Category" sama seperti `create`); `periodStart` harus awal bulan yang valid (asumsi dari client via `getMonthBounds`); `timezone` harus valid (fallback UTC jika invalid — ikut `resolveTimezone`).
+- Validasi: kategori harus ada di household (via `getScopedDoc`, pesan "Category" sama seperti `create`); `periodStart` harus awal bulan yang valid (asumsi dari client via `getMonthBounds`); `timezone` harus valid (invalid timezone throws `ConvexError` (fail-fast); client selalu kirim `resolveTimezone(household?.timezone)`).
 - Hitung 3 bulan kalender sebelum `periodStart`, tz-aware via `utils/periodTime` (boleh diimport di Convex — pure, tanpa expo-localization):
   - `m1 = getPrevPeriod(periodStart, tz, "monthly")`
   - `m2 = getPrevPeriod(m1, tz, "monthly")`
@@ -102,7 +102,7 @@ Edit: tidak ada query suggestion, form tidak berubah
 - Bulan form adalah future month (planning ahead) → saran tetap relatif ke `periodStart` form, bukan `Date.now()`.
 - Hidden category + member → saran tetap tampil (agregat saja, konsisten dengan visibility exception budgets; tidak ada breakdown transaksi).
 - Desimal: nilai dari server integer; `formatAmountInput` jaga thousand-separator; validasi `validateBudgetAmount` tetap jalan saat submit.
-- Timezone invalid → server fallback UTC; client kirim `resolveTimezone(household?.timezone)`.
+- Timezone invalid → invalid timezone throws `ConvexError` (fail-fast); client selalu kirim `resolveTimezone(household?.timezone)`.
 
 ---
 
