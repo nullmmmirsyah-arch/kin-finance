@@ -172,13 +172,15 @@ export default function TransactionForm() {
 
   const accountOptions = useMemo(() => {
     const accounts = accountResult?.accounts ?? [];
-    const options = accounts.map((a) => ({ id: a._id, label: a.name }));
+    const archived = accountResult?.archived ?? [];
+    const archivedIds = new Set<string>(archived.map((a) => a._id));
+    const options = accounts.map((a) => ({ id: a._id, label: a.name, archived: false }));
     const addIfMissing = (
       id: Id<"accounts"> | undefined,
       name: string | undefined,
     ) => {
       if (id && name && !options.some((o) => o.id === id)) {
-        options.push({ id, label: name });
+        options.push({ id, label: name, archived: archivedIds.has(id as string) });
       }
     };
     if (isEdit && editingTx) {
@@ -1058,6 +1060,11 @@ export default function TransactionForm() {
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>
+                      {item.archived ? (
+                        <Text className="text-xs" style={{ color: C.textSecondary }}>
+                          Archived
+                        </Text>
+                      ) : null}
                       {isSelected ? <Feather name="check" size={16} color={C.primary} /> : null}
                     </Pressable>
                   );
