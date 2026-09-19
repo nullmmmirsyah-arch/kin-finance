@@ -18,7 +18,7 @@ import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
-import { formatAmountInput } from "@/utils/format";
+import { formatAmountInput, formatNumber } from "@/utils/format";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { hapticSuccess, hapticError, hapticWarning } from "@/lib/haptics";
 import { formatMonthLabel, getMonthBounds } from "@/utils/date";
@@ -69,6 +69,17 @@ export default function BudgetForm() {
   const monthTs = existingBudget?.periodStart ?? periodStart;
   const monthLabel = formatMonthLabel(monthTs, timezone);
 
+  const suggestion = useQuery(
+    api.budgets.suggestion,
+    !isEdit && selectedCategoryId
+      ? {
+          categoryId: selectedCategoryId as Id<"categories">,
+          periodStart,
+          timezone,
+        }
+      : "skip",
+  );
+
   const options = useMemo(
     () => (categoryOptions ?? []).map((c) => ({ id: c._id, label: c.name, icon: c.icon })),
     [categoryOptions],
@@ -94,6 +105,12 @@ export default function BudgetForm() {
     household !== null &&
     (!isEdit || existingBudget !== undefined) &&
     (isEdit || (amountValid && selectedCategoryId !== null));
+
+  const fillFromSuggestion = (value: number) => {
+    setError(null);
+    setAmount(formatAmountInput(String(value)));
+    void hapticSuccess();
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -235,6 +252,57 @@ export default function BudgetForm() {
               error={categoryError}
             />
           )}
+
+          {!isEdit && selectedCategoryId !== null ? (
+            suggestion === undefined ? (
+              <Text className="text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
+                Memuat saran…
+              </Text>
+            ) : suggestion !== null && suggestion.hasHistory ? (
+              <View className="gap-2">
+                <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
+                  Saran cepat
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {suggestion.prevBudget !== null ? (
+                    <Pressable
+                      onPress={() => fillFromSuggestion(suggestion.prevBudget!)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Gunakan budget bulan lalu ${formatNumber(suggestion.prevBudget)}`}
+                      style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
+                      className="px-3 py-2"
+                    >
+                      <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
+                        Budget {suggestion.prevLabel}: {formatNumber(suggestion.prevBudget)}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={() => fillFromSuggestion(suggestion.prevSpent)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Gunakan spent bulan lalu ${formatNumber(suggestion.prevSpent)}`}
+                    style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
+                    className="px-3 py-2"
+                  >
+                    <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
+                      Spent {suggestion.prevLabel}: {formatNumber(suggestion.prevSpent)}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => fillFromSuggestion(suggestion.avgSpent)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Gunakan rata-rata 3 bulan ${formatNumber(suggestion.avgSpent)}`}
+                    style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
+                    className="px-3 py-2"
+                  >
+                    <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
+                      Rata-rata 3 bln: {formatNumber(suggestion.avgSpent)}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null
+          ) : null}
 
           <Input
             label="Amount"
