@@ -609,6 +609,8 @@ export default function Accounts() {
   }, [result, isConnected, refreshKey]);
 
   const accounts = result?.accounts ?? null;
+  const archivedAccounts = result?.archived ?? [];
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const isOwner = result?.isOwner ?? false;
 
   const visibleAccounts = useMemo(() => {
@@ -912,6 +914,44 @@ export default function Accounts() {
           />
         )}
       />
+
+      {archivedAccounts.length > 0 ? (
+        <View className="px-5 pb-4">
+          <Pressable
+            onPress={() => setArchivedOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={archivedOpen ? "Collapse archived accounts" : "Expand archived accounts"}
+            className="flex-row items-center gap-2 py-3"
+          >
+            <Feather name="archive" size={16} color={C.textSecondary} />
+            <Text className="flex-1 text-sm font-semibold text-text-secondary dark:text-text-secondary-dark">
+              Archived ({archivedAccounts.length})
+            </Text>
+            <Feather
+              name={archivedOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={C.textSecondary}
+            />
+          </Pressable>
+          {archivedOpen
+            ? archivedAccounts.map((item, index) => (
+                <VaultCard
+                  key={item._id}
+                  item={item as any}
+                  index={index}
+                  isOwner={isOwner}
+                  onEdit={() =>
+                    router.push({
+                      pathname: "/account-form",
+                      params: { id: item._id },
+                    })
+                  }
+                  onDelete={() => handleDelete(item as any)}
+                />
+              ))
+            : null}
+        </View>
+      ) : null}
 
       {isOwner ? (
         <Fab label="Add Account" onPress={() => router.push("/account-form")} accessibilityLabel="Add account" />
