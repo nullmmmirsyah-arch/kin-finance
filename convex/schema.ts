@@ -59,6 +59,7 @@ export default defineSchema({
     ),
     balance: v.number(),
     hidden: v.boolean(),
+    isArchived: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_householdId", ["householdId"]),

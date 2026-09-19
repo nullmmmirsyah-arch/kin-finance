@@ -34,8 +34,11 @@ export const list = query({
       )
       .collect();
 
-    const accounts = isOwner ? all : all.filter((account) => !account.hidden);
-    return { accounts, isOwner };
+    const active = all.filter((a) => !(a.isArchived ?? false));
+    const archivedAll = all.filter((a) => a.isArchived ?? false);
+    const accounts = isOwner ? active : active.filter((account) => !account.hidden);
+    const archived = isOwner ? archivedAll : archivedAll.filter((account) => !account.hidden);
+    return { accounts, archived, isOwner };
   },
 });
 
@@ -199,6 +202,38 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.accountId, patch);
+    return await ctx.db.get(args.accountId);
+  },
+});
+
+export const archive = mutation({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
+
+    await ctx.db.patch(args.accountId, {
+      isArchived: true,
+      updatedAt: Date.now(),
+    });
+    return await ctx.db.get(args.accountId);
+  },
+});
+
+export const unarchive = mutation({
+  args: { accountId: v.id("accounts") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
+
+    await ctx.db.patch(args.accountId, {
+      isArchived: false,
+      updatedAt: Date.now(),
+    });
     return await ctx.db.get(args.accountId);
   },
 });
