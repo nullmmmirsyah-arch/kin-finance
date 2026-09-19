@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
@@ -28,6 +28,8 @@ export default function AccountForm() {
   const result = useQuery(api.accounts.list);
   const createAccount = useMutation(api.accounts.create);
   const updateAccount = useMutation(api.accounts.update);
+  const archiveAccount = useMutation(api.accounts.archive);
+  const unarchiveAccount = useMutation(api.accounts.unarchive);
   const { show } = useSnackbar();
   const C = useThemeColors();
 
@@ -64,6 +66,9 @@ export default function AccountForm() {
     subTypeOptions.includes(subType) &&
     !isLoading &&
     (!isEdit || editingAccount !== undefined);
+
+  const isArchived = editingAccount?.isArchived ?? false;
+  const canArchive = isEdit && result !== undefined && result.isOwner === true;
 
   const isDirty = useMemo(() => {
     if (!isEdit) {
@@ -143,6 +148,40 @@ export default function AccountForm() {
     }
   };
 
+  const handleArchiveToggle = async () => {
+    if (accountId === undefined) return;
+    const action = isArchived ? unarchiveAccount : archiveAccount;
+    const verb = isArchived ? "Unarchive" : "Archive";
+    Alert.alert(
+      `${verb} Account`,
+      isArchived
+        ? `Unarchive "${name.trim()}"? It will return to the main list and pickers.`
+        : `Archive "${name.trim()}"? New transactions cannot use it. History is kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: verb,
+          style: isArchived ? "default" : "destructive",
+          onPress: () => {
+            setIsLoading(true);
+            action({ accountId: accountId as Id<"accounts"> })
+              .then(() => {
+                show(isArchived ? "Account unarchived" : "Account archived");
+                void hapticSuccess();
+                markIntentional();
+                router.back();
+              })
+              .catch((e: unknown) => {
+                void hapticError();
+                show(getConvexErrorMessage(e, `Failed to ${verb.toLowerCase()} account.`));
+              })
+              .finally(() => setIsLoading(false));
+          },
+        },
+      ],
+    );
+  };
+
   if (isEdit && result !== undefined && editingAccount === undefined) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background dark:bg-background-dark">
@@ -183,6 +222,17 @@ export default function AccountForm() {
           keyboardShouldPersistTaps="handled"
           bottomOffset={16}
         >
+          {isEdit && isArchived ? (
+            <View
+              style={{ borderColor: C.border }}
+              className="flex-row items-center gap-2 rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
+            >
+              <Feather name="archive" size={16} color={C.textSecondary} />
+              <Text className="flex-1 text-sm text-text-secondary dark:text-text-secondary-dark">
+                This account is archived — new transactions cannot use it.
+              </Text>
+            </View>
+          ) : null}
           <Input
             label="Account name"
             placeholder="e.g. Cash, BCA Savings"
@@ -270,6 +320,15 @@ export default function AccountForm() {
             loading={isLoading}
             disabled={!canSubmit}
           />
+          {canArchive ? (
+            <Button
+              title={isArchived ? "Unarchive Account" : "Archive Account"}
+              variant={isArchived ? "secondary" : "danger"}
+              onPress={handleArchiveToggle}
+              loading={isLoading}
+              disabled={isLoading}
+            />
+          ) : null}
         </KeyboardAwareScrollView>
       </View>
     </SafeAreaView>
