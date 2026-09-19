@@ -45,7 +45,10 @@ export default function AccountForm() {
 
   const editingAccount = useMemo(() => {
     if (!isEdit || result?.accounts === null) return undefined;
-    return result?.accounts?.find((a) => a._id === accountId);
+    return (
+      result?.accounts?.find((a) => a._id === accountId) ??
+      result?.archived?.find((a) => a._id === accountId)
+    );
   }, [isEdit, accountId, result]);
 
   const seeded = useRef(false);
