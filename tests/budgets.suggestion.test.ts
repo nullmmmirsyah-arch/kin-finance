@@ -78,8 +78,26 @@ describe("budgets.suggestion", () => {
     });
     expect(res!.prevBudget).toBe(900);
     expect(res!.prevSpent).toBe(300);
-    expect(res!.avgSpent).toBe(Math.round((300 + 600 + 0) / 3));
+    expect(res!.avgSpent).toBe(Math.round((300 + 600) / 2));
     expect(res!.prevLabel).toBe(formatMonthLabel(m1.start, TZ));
+    expect(res!.hasHistory).toBe(true);
+  });
+
+  it("divides average by months with data only", async () => {
+    const owner = t.withIdentity({ tokenIdentifier: OWNER_TOKEN, subject: "owner" });
+    const { s, periodStart } = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const now = Date.UTC(2026, 8, 15);
+      const cur = getMonthBounds(now, TZ);
+      const m1 = getMonthBounds(cur.start - 1, TZ);
+      await insertTx(ctx, s, m1.start + 1_000, -300);
+      return { s, periodStart: cur.start };
+    });
+    const res = await owner.query(api.budgets.suggestion, {
+      categoryId: s.catId, periodStart, timezone: TZ,
+    });
+    expect(res!.prevSpent).toBe(300);
+    expect(res!.avgSpent).toBe(300);
     expect(res!.hasHistory).toBe(true);
   });
 

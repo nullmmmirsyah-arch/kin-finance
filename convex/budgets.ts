@@ -274,7 +274,8 @@ export const suggestion = query({
     }
 
     const prevBudget = prevBudgetDoc ? prevBudgetDoc.amount : null;
-    const avgSpent = Math.round((s1 + s2 + s3) / 3);
+    const spentMonths = (s1 > 0 ? 1 : 0) + (s2 > 0 ? 1 : 0) + (s3 > 0 ? 1 : 0);
+    const avgSpent = spentMonths > 0 ? Math.round((s1 + s2 + s3) / spentMonths) : 0;
     return {
       prevPeriodStart: m1.start,
       prevLabel: formatMonthLabel(m1.start, args.timezone),
