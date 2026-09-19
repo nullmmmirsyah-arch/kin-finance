@@ -12,7 +12,7 @@ Saat create budget (`app/budget-form.tsx`, mode create), setelah user memilih ka
 
 1. **Budget bulan lalu** — `budgets.amount` kategori itu pada bulan kalender sebelum `periodStart` form (null jika tidak ada).
 2. **Spent bulan lalu** — total expense aktual kategori itu pada bulan lalu.
-3. **Rata-rata spent 3 bulan** — rata-rata expense aktual 3 bulan kalender sebelum `periodStart` (bulan tanpa transaksi dihitung 0).
+3. **Rata-rata spent 3 bulan** — rata-rata expense aktual 3 bulan kalender sebelum `periodStart`, dengan penyebut adaptif: hanya bulan yang ada expense (> 0) yang dihitung; tanpa data sama sekali → 0.
 
 Tap salah satu → `Amount` terisi otomatis (tetap bisa diedit manual).
 
@@ -41,7 +41,7 @@ Behavior:
   - bounds tiap bulan via `getPeriodBounds` / `getMonthBounds`.
 - `prevBudget`: `query budgets withIndex by_category_period (categoryId, m1)` → `amount ?? null`.
 - `prevSpent`: sum `transactions` expense kategori itu dengan `date in [m1start, m1end)`, `Math.abs(amount)`. Index: `by_household_category_date (householdId, categoryId, date)` jika tersedia, else `by_household_date` + filter kategori.
-- `avgSpent`: sum spent m1+m2+m3 dengan cara sama, lalu `/ 3`, dibulatkan ke integer (`Math.round`) karena amount whole-number.
+- `avgSpent`: sum spent m1+m2+m3 dengan cara sama, dibagi jumlah bulan yang ada expense-nya (penyebut adaptif, 0 jika tanpa data), dibulatkan ke integer (`Math.round`) karena amount whole-number.
 - `prevLabel`: `formatPeriodLabel(m1, tz, "monthly")` (e.g. "Agustus 2026").
 - `hasHistory = prevBudget !== null || prevSpent > 0 || avgSpent > 0`.
 
