@@ -57,3 +57,6 @@ assets/images/android-icon-monochrome - Copy.png
 assets/images/favicon - Copy.png
 assets/images/icon - Copy.png
 assets/images/splash-icon - Copy.png
+
+# local git worktrees (never commit worktree contents)
+.worktrees/
