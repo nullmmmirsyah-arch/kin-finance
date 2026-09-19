@@ -12,7 +12,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
-import { validateBudgetAmount } from "@/constants/validation";
+import { validateBudgetAmount, BUDGET_AMOUNT_MIN } from "@/constants/validation";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { SelectField } from "@/components/SelectField";
@@ -111,6 +111,11 @@ export default function BudgetForm() {
     setAmount(formatAmountInput(String(value)));
     void hapticSuccess();
   };
+
+  const usablePrevBudget = (suggestion?.prevBudget ?? 0) >= BUDGET_AMOUNT_MIN;
+  const usablePrevSpent = (suggestion?.prevSpent ?? 0) >= BUDGET_AMOUNT_MIN;
+  const usableAvgSpent = (suggestion?.avgSpent ?? 0) >= BUDGET_AMOUNT_MIN;
+  const hasUsableSuggestion = usablePrevBudget || usablePrevSpent || usableAvgSpent;
 
   const handleSubmit = async () => {
     setError(null);
@@ -258,13 +263,13 @@ export default function BudgetForm() {
               <Text className="text-[13px] leading-4 text-text-secondary dark:text-text-secondary-dark">
                 Memuat saran…
               </Text>
-            ) : suggestion !== null && suggestion.hasHistory ? (
+            ) : suggestion !== null && hasUsableSuggestion ? (
               <View className="gap-2">
                 <Text className="text-[14px] font-semibold tracking-[0.02em] leading-5 text-text-primary dark:text-text-primary-dark">
                   Saran cepat
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
-                  {suggestion.prevBudget !== null ? (
+                  {usablePrevBudget && suggestion.prevBudget !== null ? (
                     <Pressable
                       onPress={() => fillFromSuggestion(suggestion.prevBudget!)}
                       accessibilityRole="button"
@@ -277,28 +282,32 @@ export default function BudgetForm() {
                       </Text>
                     </Pressable>
                   ) : null}
-                  <Pressable
-                    onPress={() => fillFromSuggestion(suggestion.prevSpent)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Gunakan spent bulan lalu ${formatNumber(suggestion.prevSpent)}`}
-                    style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
-                    className="px-3 py-2"
-                  >
-                    <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
-                      Spent {suggestion.prevLabel}: {formatNumber(suggestion.prevSpent)}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => fillFromSuggestion(suggestion.avgSpent)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Gunakan rata-rata 3 bulan ${formatNumber(suggestion.avgSpent)}`}
-                    style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
-                    className="px-3 py-2"
-                  >
-                    <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
-                      Rata-rata 3 bln: {formatNumber(suggestion.avgSpent)}
-                    </Text>
-                  </Pressable>
+                  {usablePrevSpent ? (
+                    <Pressable
+                      onPress={() => fillFromSuggestion(suggestion.prevSpent)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Gunakan spent bulan lalu ${formatNumber(suggestion.prevSpent)}`}
+                      style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
+                      className="px-3 py-2"
+                    >
+                      <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
+                        Spent {suggestion.prevLabel}: {formatNumber(suggestion.prevSpent)}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  {usableAvgSpent ? (
+                    <Pressable
+                      onPress={() => fillFromSuggestion(suggestion.avgSpent)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Gunakan rata-rata 3 bulan ${formatNumber(suggestion.avgSpent)}`}
+                      style={{ borderColor: C.border, backgroundColor: C.surface, borderRadius: Radius.sm, borderWidth: 1 }}
+                      className="px-3 py-2"
+                    >
+                      <Text className="text-[13px] font-semibold text-text-primary dark:text-text-primary-dark">
+                        Rata-rata 3 bln: {formatNumber(suggestion.avgSpent)}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               </View>
             ) : null
