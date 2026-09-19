@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUserAndMembership, findUserAndMembership, getScopedDoc } from "./helpers";
-import { validateBudgetAmount } from "../constants/validation";
+import { validateBudgetAmount, validateTimezone } from "../constants/validation";
 import { RESERVED_CATEGORY_NAME } from "../constants/categories";
+import { getPrevPeriod, getMonthBounds, formatMonthLabel } from "../utils/periodTime";
 
 export const list = query({
   args: {
@@ -215,5 +216,72 @@ export const remove = mutation({
     const budget = await getScopedDoc(ctx, args.budgetId, membership.householdId, "Budget");
 
     await ctx.db.delete(args.budgetId);
+  },
+});
+
+export const suggestion = query({
+  args: {
+    categoryId: v.id("categories"),
+    periodStart: v.number(),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await findUserAndMembership(ctx);
+    if (auth === null) return null;
+    const { membership } = auth;
+
+    const tzErr = validateTimezone(args.timezone);
+    if (tzErr) throw new ConvexError(tzErr);
+
+    const category = await ctx.db.get(args.categoryId);
+    if (category === null || category.householdId !== membership.householdId) {
+      throw new ConvexError("Category not found.");
+    }
+
+    const m1Start = getPrevPeriod(args.periodStart, args.timezone, "monthly");
+    const m2Start = getPrevPeriod(m1Start, args.timezone, "monthly");
+    const m3Start = getPrevPeriod(m2Start, args.timezone, "monthly");
+    const m1 = getMonthBounds(m1Start, args.timezone);
+    const m2 = getMonthBounds(m2Start, args.timezone);
+    const m3 = getMonthBounds(m3Start, args.timezone);
+
+    const prevBudgetDoc = await ctx.db
+      .query("budgets")
+      .withIndex("by_category_period", (q) =>
+        q.eq("categoryId", args.categoryId).eq("periodStart", m1.start),
+      )
+      .first();
+
+    const rows = await ctx.db
+      .query("transactions")
+      .withIndex("by_household_date", (q) =>
+        q
+          .eq("householdId", membership.householdId)
+          .gte("date", m3.start)
+          .lt("date", m1.end),
+      )
+      .collect();
+
+    let s1 = 0;
+    let s2 = 0;
+    let s3 = 0;
+    for (const tx of rows) {
+      if (tx.type !== "expense" || tx.categoryId !== args.categoryId) continue;
+      const v = Math.abs(tx.amount);
+      if (tx.date >= m1.start && tx.date < m1.end) s1 += v;
+      else if (tx.date >= m2.start && tx.date < m2.end) s2 += v;
+      else if (tx.date >= m3.start && tx.date < m3.end) s3 += v;
+    }
+
+    const prevBudget = prevBudgetDoc ? prevBudgetDoc.amount : null;
+    const avgSpent = Math.round((s1 + s2 + s3) / 3);
+    return {
+      prevPeriodStart: m1.start,
+      prevLabel: formatMonthLabel(m1.start, args.timezone),
+      prevBudget,
+      prevSpent: s1,
+      avgSpent,
+      hasHistory: prevBudget !== null || s1 > 0 || avgSpent > 0,
+    };
   },
 });
