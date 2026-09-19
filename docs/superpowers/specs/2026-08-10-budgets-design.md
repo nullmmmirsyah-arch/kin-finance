@@ -52,6 +52,7 @@ All functions require sign-in + household membership (same `getUserAndMembership
 | `create` | `{ categoryId, amount, periodStart }` | Validate `amount >= 1`. Category must exist in household and be `type === "expense"` (else *"Cannot create budget for an income category."*). Reject duplicate `(categoryId, periodStart)` with *"A budget already exists for this category in this month."* Insert with `createdBy`/`updatedBy` = user, timestamps = now. |
 | `update` | `{ budgetId, amount }` | Budget must exist in household. `amount >= 1`. Patch `amount`, `updatedBy`, `updatedAt`. |
 | `remove` | `{ budgetId }` | Budget must exist in household. Delete; transactions unaffected. |
+| `suggestion` | `{ categoryId, periodStart, timezone }` | Quick-fill data for the create form (see `docs/superpowers/specs/2026-09-19-budget-suggestion-design.md`): prev-month budget + prev-month spent + adaptive 3-month average spent. Fail-soft `null` when unauthenticated, same as other queries. |
 
 ### `periodStart` timezone decision
 
@@ -96,7 +97,7 @@ New card: category name + hidden marker, spent/budget text, progress bar, edit/d
 
 Top-level route (matches `account-form`/`category-form`):
 
-- Create mode (param `periodStart`): month shown read-only ("August 2026"); `SelectField` of expense categories from `categoryOptions`; `Input amount`; "Set Budget" button.
+- Create mode (param `periodStart`): month shown read-only ("August 2026"); `SelectField` of expense categories from `categoryOptions`; "Saran cepat" quick-fill chips after category selection (see `docs/superpowers/specs/2026-09-19-budget-suggestion-design.md`); `Input amount`; "Set Budget" button.
 - Edit mode (param `id`): `budgets.get` prefills amount; month + category shown read-only/disabled; "Save Changes" button.
 - Client validation: amount required, positive, ≥ 1; category required on create. Server `ConvexError` messages surfaced as inline text.
 - Submit → mutation → `router.back()` + snackbar.

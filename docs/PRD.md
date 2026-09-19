@@ -71,7 +71,7 @@ One shared Household is the root of all financial data, with role-based visibili
 | Categories | Create, edit (name/type/icon/hidden; type change guarded), delete (guarded if referenced), list (visibility-filtered). Icon chosen from 56 allowlist rendered via Streamline Ultimate Color 998 icons via Iconify — CC BY 4.0 Streamline. Two reserved "Initial Balance" categories per household are protected. Owner-only management. |
 | Transactions | Create/edit/delete income, expense, transfer. Account balance(s) auto-update (reverse old, apply new). Transfers move between two accounts, no category. Members respect hidden account/category rules. `list` returns at most 1 000 rows per page; cursor-paginated. Home ledger is period-bound 30/page with Search+Filter. Search global cross-period with Date first chip, default last 14 days. `summary` query computes range income/expense/net server-side (transfers excluded; Members' hidden-category rows excluded). Supports server-side filtering by transaction type, account, and category. Supports server-side substring search by note, amount string, account name and category name (≥2 chars) — committed only after user taps Search button or submits via keyboard (no auto debounce). Amount input is whole-number only. |
 | Search | Global cross-period search with Date first chip, default last 14 days (inclusive `today - 13d`), 30/page FlatList cross-period, Future dates greyed & disabled. FilterSheet for bill type/category/account; summary Records N with income/expense totals. |
-| Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. |
+| Budgets | Create/edit/delete monthly budgets per expense category. List for a month with spent/progress. Members can fully manage. Budgets for hidden categories stay visible to Members. Create form shows quick-fill suggestion chips after category selection (last month's budget, last month's spent, adaptive 3-month average spent); tapping a chip fills Amount. |
 | Home | Dashboard (swipeable period — PagerView 12 periods, MonthPicker Jan-Dec future disabled): household card, Period Balance (Income/Expense/Balance per period via periodBalances), Budgets (single total jar card per selectedPeriodStart — total budgeted + remaining + % honey; tap opens a bottom-sheet breakdown in Budgets-tab order), Full SectionList 30/page daily groups + Today card + My Accounts + Search+Filter period-bound. TransactionCard rows show Category • Account (transfer: Account → ToAccount) with no time. |
 | Analytics | Spending by Category (selected period) + Delta closing vs prev closing on Home below Budgets. PeriodBalances snapshot O(1) read. |
 | Appearance | Theme preference System / Light / Dark, persisted per device (SecureStore). |
@@ -202,6 +202,8 @@ Core records of financial activity: income, expense, or transfer.
 
 Monthly spending limits per expense category. Identified by `(householdId, categoryId, periodStart)` — one budget per category per month. `periodStart` is the first day of the calendar month in the household timezone. Budget amounts are whole numbers. Spending = sum of expense transactions in that category during the month; progress = spent / amount. Both Owner and Member can manage budgets. Budgets for hidden categories remain visible (name + amount, no breakdown). For Members, the spending breakdown of budgets on hidden categories is not shown.
 
+**Quick-fill suggestions (create only):** after selecting a category, the form shows up to 3 tappable suggestion chips — last month's budget amount for that category, last month's actual spent, and the adaptive 3-month average spent (total of the 3 prior calendar months divided by the number of months with spending > 0; 0 when there is no history). Tapping a chip fills the Amount field (still editable manually). Only values ≥ 1 are offered; the box is hidden when the category has no history or when in edit mode.
+
 ### 3.8 Home Dashboard
 
 **MonthPicker Accessibility Note:** The Week and Year tabs in the MonthPicker are currently inactive ("Coming soon"). The Year navigation chevrons are also disabled when `year >= curYear`. Accessibility features for these controls are pending activation. See `components/MonthPicker.tsx`.
@@ -306,7 +308,8 @@ App Open → Onboarding → "Join with Invite Code" → enter 8-char code
 
 ```text
 Budgets tab → month selector → "+" (or tap row to edit)
-  → select expense category, amount → create/update → list shows spent/progress
+  → select expense category → optional: tap a suggestion chip to fill amount
+  → amount → create/update → list shows spent/progress
 ```
 
 ### 4.8 Change Appearance Theme

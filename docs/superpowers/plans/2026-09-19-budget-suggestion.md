@@ -395,3 +395,9 @@ PRD/ARCHITECTURE/DESIGN describe budgets behavior, not form suggestion specifics
 - Spec coverage: §Backend (query args/behavior/return, no schema change) → Task 1; §UI (position, 3 chips, tap-to-fill, loading/hidden states, NativeWind+theme) → Task 2; §Data Flow (create-only reactive query) → Task 2; §Edge Cases (no-history hidden, prevBudget-null chip hidden, future month, hidden-category aggregate, whole-number amounts, tz fallback) → Tasks 1+2; §Verification → Task 3.
 - Placeholder scan: no TBD/TODO; every code step shows exact code; every run step states command + expected output; no "similar to Task N" without repeated code; all referenced symbols (`suggestion`, `fillFromSuggestion`, `formatNumber`, `hapticSuccess`, `Radius`, `C`) are defined in the cited files.
 - Type consistency: `suggestion` return fields (`prevPeriodStart`, `prevLabel`, `prevBudget`, `prevSpent`, `avgSpent`, `hasHistory`) identical in Task 1 producer and Task 2 consumer; `categoryId: Id<"categories">` cast matches `createBudget` call pattern; `timezone: string` fed from existing `timezone` const.
+
+## Amendments (post-merge, on `review`)
+
+- **Adaptive average divisor:** `avgSpent` is now `round(sum / spentMonths)` where `spentMonths` = number of prior months with spending > 0 (0 when no history), instead of fixed `/ 3`. Test expectation updated (`(300+600)/2`) + new single-month case.
+- **Chip validity gating:** each chip renders only when its value is `>= BUDGET_AMOUNT_MIN`; the box renders only when `hasUsableSuggestion` (replaces the `hasHistory` gate in Task 2 step 4). Zero-value chips can no longer fill an invalid Amount.
+- Task 3 Step 3 is superseded: PRD §3.7 + §4.7, ARCHITECTURE function table + `budget-form` row, DESIGN components table, and the 2026-08-10 budgets spec now document the suggestion feature.

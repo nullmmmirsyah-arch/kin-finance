@@ -72,15 +72,15 @@ Tanpa perubahan `convex/schema.ts` (tanpa tabel/index baru). Index yang dipakai 
   );
   ```
 - Posisi: di bawah `SelectField Category`, di atas `Input Amount`.
-- Komponen: box dengan judul "Saran cepat" + 3 chip (`Pressable`, tanpa style-callback — pakai `useState` pressed jika perlu, sesuai gotcha NativeWind v4):
-  - `Budget {prevLabel}: Rp X` — hanya jika `prevBudget !== null`.
-  - `Spent {prevLabel}: Rp Y`.
-  - `Rata-rata 3 bln: Rp Z`.
+- Komponen: box dengan judul "Saran cepat" + chip (`Pressable`, tanpa style-callback — pakai `useState` pressed jika perlu, sesuai gotcha NativeWind v4). Tiap chip hanya tampil jika nilainya valid (`>= BUDGET_AMOUNT_MIN`); box hanya tampil jika ada ≥1 saran valid (`hasUsableSuggestion`):
+  - `Budget {prevLabel}: Rp X` — hanya jika `prevBudget >= 1`.
+  - `Spent {prevLabel}: Rp Y` — hanya jika `prevSpent >= 1`.
+  - `Rata-rata 3 bln: Rp Z` — hanya jika `avgSpent >= 1`.
   - Format angka via `formatNumber` / `formatAmountInput`.
 - Tap chip → `setAmount(formatAmountInput(String(nilai)))` + haptic ringan (`hapticSuccess` atau `selection` yang ada di `lib/haptics`). User tetap bisa edit manual setelahnya (tidak ada lock).
 - States:
   - `suggestion === undefined` → teks kecil "Memuat saran…".
-  - `suggestion === null || !hasHistory` → box disembunyikan total.
+  - `suggestion === null || !hasUsableSuggestion` → box disembunyikan total.
   - kategori belum dipilih → box disembunyikan.
 - Styling: NativeWind `className` + `useThemeColors()` / `Radius` / `Shadow` dari `constants/theme.ts`; tidak ada `StyleSheet.create`; tidak ada warna hardcode.
 
@@ -97,8 +97,8 @@ Edit: tidak ada query suggestion, form tidak berubah
 
 ## Edge Cases
 
-- Kategori baru / tanpa riwayat → `hasHistory=false` → box hidden, form identik seperti sekarang.
-- `prevBudget` null (ada spent tapi tak pernah budget) → chip budget disembunyikan, 2 chip lain tetap tampil.
+- Kategori baru / tanpa riwayat → tidak ada saran valid → box hidden, form identik seperti sekarang.
+- `prevBudget` null (ada spent tapi tak pernah budget) → chip budget disembunyikan, chip spent/rata-rata tetap tampil jika ≥ 1.
 - Bulan form adalah future month (planning ahead) → saran tetap relatif ke `periodStart` form, bukan `Date.now()`.
 - Hidden category + member → saran tetap tampil (agregat saja, konsisten dengan visibility exception budgets; tidak ada breakdown transaksi).
 - Desimal: nilai dari server integer; `formatAmountInput` jaga thousand-separator; validasi `validateBudgetAmount` tetap jalan saat submit.
@@ -109,5 +109,5 @@ Edit: tidak ada query suggestion, form tidak berubah
 ## Verification
 
 - `npx convex codegen` (setelah tambah query), `npx tsc --noEmit`, `npm run lint`.
-- `npm test` — tambah/extend `tests/budgets.suggestion.test.ts` (convex-test): prevBudget null vs ada, prevSpent sum, avg 3 bulan dengan bulan kosong = 0, household isolation, unauthenticated → null.
+- `npm test` — tambah/extend `tests/budgets.suggestion.test.ts` (convex-test): prevBudget null vs ada, prevSpent sum, avg adaptif (2 bulan berdata → bagi 2; 1 bulan berdata → bagi 1; tanpa data → 0), unauthenticated → null.
 - Manual di Expo Go: create budget → pilih kategori bersejarah → 3 chip muncul → tap masing-masing mengisi amount → submit sukses; kategori baru → box hidden; edit mode → tidak ada box.

@@ -47,7 +47,7 @@
 | `app/search.tsx` | Global cross-period search (Date first chip, default 14-day inclusive range `today - 13d` to `today`, 30/page FlatList, FilterSheet) |
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Household detail (`?householdId=` param-driven) — rename + timezone + balance-mode segmented control + "Set as Active" + members + invite code generation/revoke + Danger Zone |
-| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; amount inputs are integer-only |
+| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; `budget-form` create mode renders quick-fill suggestion chips from `budgets.suggestion` (only values ≥ `BUDGET_AMOUNT_MIN`, hidden without history); amount inputs are integer-only |
 | `lib/last-transaction.ts` | Persisted "Repeat last" store: `getLastTransaction`/`setLastTransaction` via `expo-secure-store` (`last-transaction` key), type `LastTransaction {type, amount, accountId, toAccountId?, categoryId?}` |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner, BrandedLoadingShell, UpdateBanner, BudgetTotalCard, BudgetBreakdownSheet) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in -> `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
@@ -388,6 +388,7 @@ updatedAt: number
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted for Members on hidden categories |
 | `budgets` | `get` | query | Single budget |
 | `budgets` | `categoryOptions` | query | Expense categories for budget form |
+| `budgets` | `suggestion` | query | `{categoryId, periodStart, timezone}` → `{prevPeriodStart, prevLabel, prevBudget, prevSpent, avgSpent, hasHistory}`; tz-aware prior-3-month spend aggregation (adaptive divisor = months with spending); fail-soft `null` when unauthenticated |
 | `budgets` | `create` | mutation | Member-ok; unique per category/month |
 | `budgets` | `update` | mutation | Member-ok; amount only |
 | `budgets` | `remove` | mutation | Member-ok |
