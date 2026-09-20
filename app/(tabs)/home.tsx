@@ -188,7 +188,10 @@ export default function Home() {
     () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
     [accountData],
   );
-  const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
+  const categoryOptions = useMemo(
+    () => [...(categoriesResult?.categories ?? []), ...(categoriesResult?.archived ?? [])],
+    [categoriesResult],
+  );
 
   const contextualCategoryOptions = useMemo(() => {
     if (typeFilter === "transfer") return [];

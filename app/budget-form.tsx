@@ -245,6 +245,13 @@ export default function BudgetForm() {
                 <Text className="text-base text-text-primary dark:text-text-primary-dark">
                   {existingBudget?.category?.name ?? "Unknown"}
                 </Text>
+                {(existingBudget?.category as { isArchived?: boolean } | undefined)?.isArchived === true ? (
+                  <View className="rounded-full border border-border bg-background px-2.5 py-1 dark:border-border-dark dark:bg-background-dark">
+                    <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
+                      Archived
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           ) : (

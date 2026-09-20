@@ -191,11 +191,28 @@ export default function TransactionForm() {
   }, [accountResult, isEdit, editingTx]);
 
   const categoryOptions = useMemo(() => {
-    const categories = categoryResult?.categories ?? [];
-    return categories
-      .filter((c) => c.type === type)
-      .map((c) => ({ id: c._id, label: c.name, icon: c.icon }));
-  }, [categoryResult, type]);
+    const categories = (categoryResult?.categories ?? []).filter((c) => c.type === type);
+    const archivedOfType = (categoryResult?.archived ?? []).filter((c) => c.type === type);
+    const archivedIds = new Set<string>(archivedOfType.map((a) => a._id));
+    const options = categories.map((c) => ({
+      id: c._id,
+      label: c.name,
+      icon: c.icon,
+      archived: false,
+    }));
+    if (isEdit && editingTx?.categoryId) {
+      const currentId = editingTx.categoryId as string;
+      if (!options.some((o) => o.id === currentId)) {
+        options.push({
+          id: editingTx.categoryId,
+          label: editingTx.category?.name ?? "Archived category",
+          icon: editingTx.category?.icon,
+          archived: archivedIds.has(currentId),
+        });
+      }
+    }
+    return options;
+  }, [categoryResult, type, isEdit, editingTx]);
 
   useEffect(() => {
     if (categoryResult === undefined) return;
@@ -204,9 +221,10 @@ export default function TransactionForm() {
       categoryId !== null &&
       !categoryOptions.some((o) => o.id === categoryId)
     ) {
+      if (isEdit && editingTx?.categoryId === categoryId) return;
       setCategoryId(null);
     }
-  }, [categoryResult, type, categoryId, categoryOptions]);
+  }, [categoryResult, type, categoryId, categoryOptions, isEdit, editingTx]);
 
   // Auto-select a category created via the Add tile: snapshot option IDs on
   // focus; when returning with a fresh ID (and nothing selected), pick it.
@@ -786,13 +804,27 @@ export default function TransactionForm() {
         {/* Category grid or Transfer dual */}
         <View className="pt-2">
           {type !== "transfer" ? (
-            <CategoryGrid
-              options={categoryOptions}
-              value={categoryId}
-              onSelect={handleCategorySelect}
-              isOwner={categoryResult?.isOwner ?? false}
-              onAdd={handleAddCategory}
-            />
+            <>
+              {categoryId !== null &&
+              (categoryOptions.find((o) => o.id === categoryId) as { archived?: boolean } | undefined)?.archived ? (
+                <View
+                  style={{ borderColor: C.border }}
+                  className="mx-3 mb-2 flex-row items-center gap-2 rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
+                >
+                  <Feather name="archive" size={16} color={C.textSecondary} />
+                  <Text className="flex-1 text-sm text-text-secondary dark:text-text-secondary-dark">
+                    This transaction uses an archived category. You can still edit and save, or pick an active category.
+                  </Text>
+                </View>
+              ) : null}
+              <CategoryGrid
+                options={categoryOptions}
+                value={categoryId}
+                onSelect={handleCategorySelect}
+                isOwner={categoryResult?.isOwner ?? false}
+                onAdd={handleAddCategory}
+              />
+            </>
           ) : (
             <TransferDual
               fromAcc={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}

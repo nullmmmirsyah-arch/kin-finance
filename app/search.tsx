@@ -82,7 +82,10 @@ export default function Search() {
     () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
     [accountData],
   );
-  const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
+  const categoryOptions = useMemo(
+    () => [...(categoriesResult?.categories ?? []), ...(categoriesResult?.archived ?? [])],
+    [categoriesResult],
+  );
 
   const queryArgs = useMemo(() => {
     const normalizedAccounts = normalizeSelection(
