@@ -184,7 +184,10 @@ export default function Home() {
     setSearchCommitted("");
   }, []);
 
-  const accountOptions = useMemo(() => accountData?.accounts ?? [], [accountData]);
+  const accountOptions = useMemo(
+    () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
+    [accountData],
+  );
   const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
 
   const contextualCategoryOptions = useMemo(() => {
@@ -1087,7 +1090,7 @@ export default function Home() {
         typeFilter={typeFilter}
         accountIds={accountIds}
         categoryIds={categoryIds}
-        accounts={accountData?.accounts ?? []}
+        accounts={accountOptions}
         categories={categoriesResult?.categories ?? []}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);

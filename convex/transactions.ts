@@ -77,6 +77,10 @@ export const create = mutation({
 
     const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
+    if (account.isArchived ?? false) {
+      throw new ConvexError("This account is archived.");
+    }
+
     let category: Doc<"categories"> | undefined;
     let toAccount: Doc<"accounts"> | undefined;
 
@@ -91,6 +95,9 @@ export const create = mutation({
         throw new ConvexError("From and To accounts must be different.");
       }
       const to = await getScopedDoc(ctx, args.toAccountId, membership.householdId, "To account");
+      if (to.isArchived ?? false) {
+        throw new ConvexError("This account is archived.");
+      }
       toAccount = to;
     } else {
       if (args.toAccountId !== undefined) {
@@ -267,6 +274,17 @@ export const update = mutation({
     if (toAccountId !== undefined) {
       const to = await getScopedDoc(ctx, toAccountId, membership.householdId, "To account");
       toAccount = to;
+    }
+
+    if (accountId !== tx.accountId && (account.isArchived ?? false)) {
+      throw new ConvexError("This account is archived.");
+    }
+    if (
+      toAccount !== undefined &&
+      toAccountId !== tx.toAccountId &&
+      (toAccount.isArchived ?? false)
+    ) {
+      throw new ConvexError("This account is archived.");
     }
 
     if (membership.role !== "owner" && tx.categoryId !== undefined) {

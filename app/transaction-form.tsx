@@ -172,13 +172,15 @@ export default function TransactionForm() {
 
   const accountOptions = useMemo(() => {
     const accounts = accountResult?.accounts ?? [];
-    const options = accounts.map((a) => ({ id: a._id, label: a.name }));
+    const archived = accountResult?.archived ?? [];
+    const archivedIds = new Set<string>(archived.map((a) => a._id));
+    const options = accounts.map((a) => ({ id: a._id, label: a.name, archived: false }));
     const addIfMissing = (
       id: Id<"accounts"> | undefined,
       name: string | undefined,
     ) => {
       if (id && name && !options.some((o) => o.id === id)) {
-        options.push({ id, label: name });
+        options.push({ id, label: name, archived: archivedIds.has(id as string) });
       }
     };
     if (isEdit && editingTx) {
@@ -670,8 +672,15 @@ export default function TransactionForm() {
     );
   }
 
-  const selectedAccount = accountResult.accounts.find((a) => a._id === accountId) ?? null;
-  const toAcc = accountResult.accounts.find((a) => a._id === toAccountId) ?? null;
+  const archivedAccounts = accountResult.archived ?? [];
+  const selectedAccount =
+    accountResult.accounts.find((a) => a._id === accountId) ??
+    archivedAccounts.find((a) => a._id === accountId) ??
+    null;
+  const toAcc =
+    accountResult.accounts.find((a) => a._id === toAccountId) ??
+    archivedAccounts.find((a) => a._id === toAccountId) ??
+    null;
 
   const handleSwap = () => {
     const prevFrom = accountId;
@@ -1036,7 +1045,10 @@ export default function TransactionForm() {
                 data={accountOptions}
                 keyExtractor={(o) => o.id}
                 renderItem={({ item }) => {
-                  const acc = accountResult.accounts.find((a) => a._id === item.id) ?? null;
+                  const acc =
+                    accountResult.accounts.find((a) => a._id === item.id) ??
+                    (accountResult.archived ?? []).find((a) => a._id === item.id) ??
+                    null;
                   const isSelected =
                     (accountSheetTarget === "single" && accountId === item.id) ||
                     (accountSheetTarget === "from" && accountId === item.id) ||
@@ -1058,6 +1070,11 @@ export default function TransactionForm() {
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>
+                      {item.archived ? (
+                        <Text className="text-xs" style={{ color: C.textSecondary }}>
+                          Archived
+                        </Text>
+                      ) : null}
                       {isSelected ? <Feather name="check" size={16} color={C.primary} /> : null}
                     </Pressable>
                   );

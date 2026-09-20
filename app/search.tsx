@@ -78,7 +78,10 @@ export default function Search() {
     [startDate, endDate, tz],
   );
 
-  const accountOptions = useMemo(() => accountData?.accounts ?? [], [accountData]);
+  const accountOptions = useMemo(
+    () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
+    [accountData],
+  );
   const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
 
   const queryArgs = useMemo(() => {
@@ -506,7 +509,7 @@ export default function Search() {
         typeFilter={typeFilter}
         accountIds={accountIds}
         categoryIds={categoryIds}
-        accounts={accountData?.accounts ?? []}
+        accounts={accountOptions}
         categories={categoriesResult?.categories ?? []}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
