@@ -672,8 +672,15 @@ export default function TransactionForm() {
     );
   }
 
-  const selectedAccount = accountResult.accounts.find((a) => a._id === accountId) ?? null;
-  const toAcc = accountResult.accounts.find((a) => a._id === toAccountId) ?? null;
+  const archivedAccounts = accountResult.archived ?? [];
+  const selectedAccount =
+    accountResult.accounts.find((a) => a._id === accountId) ??
+    archivedAccounts.find((a) => a._id === accountId) ??
+    null;
+  const toAcc =
+    accountResult.accounts.find((a) => a._id === toAccountId) ??
+    archivedAccounts.find((a) => a._id === toAccountId) ??
+    null;
 
   const handleSwap = () => {
     const prevFrom = accountId;
@@ -1038,7 +1045,10 @@ export default function TransactionForm() {
                 data={accountOptions}
                 keyExtractor={(o) => o.id}
                 renderItem={({ item }) => {
-                  const acc = accountResult.accounts.find((a) => a._id === item.id) ?? null;
+                  const acc =
+                    accountResult.accounts.find((a) => a._id === item.id) ??
+                    (accountResult.archived ?? []).find((a) => a._id === item.id) ??
+                    null;
                   const isSelected =
                     (accountSheetTarget === "single" && accountId === item.id) ||
                     (accountSheetTarget === "from" && accountId === item.id) ||

@@ -329,7 +329,7 @@ export default function AccountForm() {
               variant={isArchived ? "secondary" : "danger"}
               onPress={handleArchiveToggle}
               loading={isLoading}
-              disabled={isLoading}
+              disabled={isLoading || isDirty}
             />
           ) : null}
         </KeyboardAwareScrollView>
