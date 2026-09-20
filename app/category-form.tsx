@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   Switch,
   Text,
@@ -23,7 +24,7 @@ import { Chip } from "@/components/Chip";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { getConvexErrorMessage } from "@/lib/errors";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 
 export default function CategoryForm() {
   const router = useRouter();
@@ -34,6 +35,9 @@ export default function CategoryForm() {
   const result = useQuery(api.categories.list);
   const createCategory = useMutation(api.categories.create);
   const updateCategory = useMutation(api.categories.update);
+  const archiveCategory = useMutation(api.categories.archive);
+  const unarchiveCategory = useMutation(api.categories.unarchive);
+  const removeCategory = useMutation(api.categories.remove);
   const { show } = useSnackbar();
   const C = useThemeColors();
 
@@ -46,7 +50,10 @@ export default function CategoryForm() {
 
   const editingCategory = useMemo(() => {
     if (!isEdit || result?.categories === null) return undefined;
-    return result?.categories?.find((c) => c._id === categoryId);
+    return (
+      result?.categories?.find((c) => c._id === categoryId) ??
+      result?.archived?.find((c) => c._id === categoryId)
+    );
   }, [isEdit, categoryId, result]);
 
   const seeded = useRef(false);
@@ -71,6 +78,9 @@ export default function CategoryForm() {
     !isLoading &&
     result?.isOwner === true &&
     (!isEdit || editingCategory !== undefined);
+
+  const isArchived = editingCategory?.isArchived ?? false;
+  const canManage = isEdit && result !== undefined && result.isOwner === true;
 
   const isDirty = useMemo(() => {
     if (!isEdit) {
@@ -133,6 +143,70 @@ export default function CategoryForm() {
     }
   };
 
+  const handleArchiveToggle = async () => {
+    if (categoryId === undefined) return;
+    const action = isArchived ? unarchiveCategory : archiveCategory;
+    const verb = isArchived ? "Unarchive" : "Archive";
+    Alert.alert(
+      `${verb} Category`,
+      isArchived
+        ? `Unarchive "${name.trim()}"? It will return to the main list and pickers.`
+        : `Archive "${name.trim()}"? New transactions and budgets cannot use it. History is kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: verb,
+          style: isArchived ? "default" : "destructive",
+          onPress: () => {
+            setIsLoading(true);
+            action({ categoryId: categoryId as Id<"categories"> })
+              .then(() => {
+                show(isArchived ? "Category unarchived" : "Category archived");
+                void hapticSuccess();
+                markIntentional();
+                router.back();
+              })
+              .catch((e: unknown) => {
+                void hapticError();
+                show(getConvexErrorMessage(e, `Failed to ${verb.toLowerCase()} category.`));
+              })
+              .finally(() => setIsLoading(false));
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDelete = async () => {
+    if (categoryId === undefined || !editingCategory) return;
+    Alert.alert(
+      "Delete Category",
+      `Delete "${editingCategory.name}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            setIsLoading(true);
+            removeCategory({ categoryId: categoryId as Id<"categories"> })
+              .then(() => {
+                show(`"${editingCategory.name}" deleted`);
+                void hapticSuccess();
+                markIntentional();
+                router.back();
+              })
+              .catch((e: unknown) => {
+                void hapticError();
+                show(getConvexErrorMessage(e, "Failed to delete category."));
+              })
+              .finally(() => setIsLoading(false));
+          },
+        },
+      ],
+    );
+  };
+
   if (result !== undefined && result.isOwner === false) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background px-6 dark:bg-background-dark">
@@ -183,6 +257,17 @@ export default function CategoryForm() {
           keyboardShouldPersistTaps="handled"
           bottomOffset={16}
         >
+          {isEdit && isArchived ? (
+            <View
+              style={{ borderColor: C.border }}
+              className="flex-row items-center gap-2 rounded-[12px] border bg-surface px-4 py-3 dark:bg-surface-dark"
+            >
+              <Feather name="archive" size={16} color={C.textSecondary} />
+              <Text className="flex-1 text-sm text-text-secondary dark:text-text-secondary-dark">
+                This category is archived — new transactions and budgets cannot use it.
+              </Text>
+            </View>
+          ) : null}
           <Input
             label="Category name"
             placeholder="e.g. Food, Salary"
@@ -241,6 +326,24 @@ export default function CategoryForm() {
             loading={isLoading}
             disabled={!canSubmit}
           />
+          {canManage ? (
+            <Button
+              title={isArchived ? "Unarchive Category" : "Archive Category"}
+              variant={isArchived ? "secondary" : "danger"}
+              onPress={handleArchiveToggle}
+              loading={isLoading}
+              disabled={isLoading || isDirty}
+            />
+          ) : null}
+          {canManage ? (
+            <Button
+              title="Delete Category"
+              variant="danger"
+              onPress={handleDelete}
+              loading={isLoading}
+              disabled={isLoading || isDirty}
+            />
+          ) : null}
         </KeyboardAwareScrollView>
       </View>
     </SafeAreaView>
