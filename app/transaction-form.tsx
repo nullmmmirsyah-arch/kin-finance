@@ -200,7 +200,7 @@ export default function TransactionForm() {
       icon: c.icon,
       archived: false,
     }));
-    if (isEdit && editingTx?.categoryId) {
+    if (isEdit && editingTx?.categoryId && editingTx.type === type) {
       const currentId = editingTx.categoryId as string;
       if (!options.some((o) => o.id === currentId)) {
         options.push({
@@ -221,7 +221,7 @@ export default function TransactionForm() {
       categoryId !== null &&
       !categoryOptions.some((o) => o.id === categoryId)
     ) {
-      if (isEdit && editingTx?.categoryId === categoryId) return;
+      if (isEdit && editingTx?.categoryId === categoryId && type === editingTx.type) return;
       setCategoryId(null);
     }
   }, [categoryResult, type, categoryId, categoryOptions, isEdit, editingTx]);
