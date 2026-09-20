@@ -1000,8 +1000,6 @@ export default function TransactionForm() {
                   }}
                 >
                   <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
                     className="text-xs"
                     style={{ color: C.textPrimary }}
                   >
