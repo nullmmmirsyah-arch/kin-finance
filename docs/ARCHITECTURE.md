@@ -383,6 +383,7 @@ updatedAt: number
 | `transactions` | `create` | mutation | Validates sign/type/category/transfer; rejects archived account/toAccount (`"This account is archived."`, all roles); rejects archived category (`"This category is archived."`, all roles) |
 | `transactions` | `update` | mutation | Reverse old + apply new balances; rejects reassign-to-archived (account or category), allows keep-reference edits and archived→active reassign |
 | `transactions` | `remove` | mutation | Reverse balances |
+| `transactions` | `restore` | mutation | Undo-only re-insert after delete; all `create` validations except archived guards (restores archived refs) |
 | `transactions` | `list` | query | Date-range + optional filters/search; cursor-paginated; cached hydration |
 | `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list`; transfers excluded |
 | `transactions` | `recent` | query | Latest N with cursor pagination |

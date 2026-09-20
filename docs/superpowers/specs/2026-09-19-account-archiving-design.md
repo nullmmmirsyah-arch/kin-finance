@@ -166,7 +166,7 @@ Typecheck (`npx tsc --noEmit`) + lint (`npm run lint`) setelah perubahan `convex
 
 ## Out of scope (tidak dikerjakan di sini)
 
-- Category archiving (pola sama, spec terpisah jika diminta).
+- Category archiving — implemented, see `2026-09-20-category-archiving-design.md`.
 - Bulk reassign-then-delete (`reassignMany`) — tetap manual satu per satu via `transaction-form`.
 - `archivedAt` timestamp / audit log (upgrade mudah dari boolean bila dibutuhkan).
 - Household archiving (tetap future, PRD Appendix A).

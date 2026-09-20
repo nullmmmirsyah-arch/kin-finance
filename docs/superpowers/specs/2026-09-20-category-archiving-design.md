@@ -194,6 +194,7 @@ Typecheck (`npx tsc --noEmit`) + lint (`npm run lint`) setelah perubahan `convex
 
 - `transactions.restore` (undo-only): `transaction-form` "Undo" setelah delete kini memakai `restore`, bukan `create` — semua validasi `create` berlaku kecuali guard archived, sehingga transaksi lama di kategori/akun archived bisa dikembalikan. `create` tidak berubah.
 - FilterSheet Home/Search menerima `categoryOptions` inklusif-archived (bukan hanya active), sehingga kategori archived tampil dan bisa dipilih sebagai filter; type-filtering tetap di dalam sheet.
+- Ganti tipe saat edit transaksi legacy berkategori archived me-reset pilihan kategori (nilai archived hanya dipertahankan jika tipe tidak berubah), agar tidak tersangkut guard type-match.
 
 ## Out of scope (tidak dikerjakan di sini)
 
