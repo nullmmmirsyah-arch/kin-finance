@@ -984,17 +984,13 @@ export default function TransactionForm() {
             </View>
           ) : null}
           {noteFocused && noteSuggestions.length > 0 ? (
-            <FlatList
-              data={noteSuggestions}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(s) => s}
-              contentContainerStyle={{ gap: 8 }}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item: s }) => (
+            <View className="flex-row flex-wrap gap-2">
+              {noteSuggestions.map((s) => (
                 <Pressable
+                  key={s}
                   onPress={() => setNote(s)}
                   style={{
+                    flexShrink: 0,
                     borderWidth: 1,
                     borderColor: C.border,
                     backgroundColor: C.surface,
@@ -1003,12 +999,17 @@ export default function TransactionForm() {
                     paddingVertical: 6,
                   }}
                 >
-                  <Text className="text-xs" style={{ color: C.textPrimary }}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    className="text-xs"
+                    style={{ color: C.textPrimary }}
+                  >
                     {s}
                   </Text>
                 </Pressable>
-              )}
-            />
+              ))}
+            </View>
           ) : null}
         </View>
         {dateError && type !== "transfer" ? (
