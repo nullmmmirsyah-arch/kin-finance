@@ -984,19 +984,18 @@ export default function TransactionForm() {
             </View>
           ) : null}
           {noteFocused && noteSuggestions.length > 0 ? (
-            <View className="flex-row flex-wrap gap-2">
+            <View className="gap-2">
               {noteSuggestions.map((s) => (
                 <Pressable
                   key={s}
                   onPress={() => setNote(s)}
                   style={{
-                    flexShrink: 0,
                     borderWidth: 1,
                     borderColor: C.border,
                     backgroundColor: C.surface,
-                    borderRadius: 999,
+                    borderRadius: Radius.md,
                     paddingHorizontal: 12,
-                    paddingVertical: 6,
+                    paddingVertical: 10,
                   }}
                 >
                   <Text
