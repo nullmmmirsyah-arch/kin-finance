@@ -1094,7 +1094,7 @@ export default function Home() {
         accountIds={accountIds}
         categoryIds={categoryIds}
         accounts={accountOptions}
-        categories={categoriesResult?.categories ?? []}
+        categories={categoryOptions}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
           setAccountIds(aIds);

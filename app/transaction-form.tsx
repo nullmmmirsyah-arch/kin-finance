@@ -71,6 +71,7 @@ export default function TransactionForm() {
   const createTransaction = useMutation(api.transactions.create);
   const updateTransaction = useMutation(api.transactions.update);
   const removeTransaction = useMutation(api.transactions.remove);
+  const restoreTransaction = useMutation(api.transactions.restore);
 
   const [type, setType] = useState<TransactionType>("expense");
   const [amountText, setAmountText] = useState("");
@@ -617,7 +618,7 @@ export default function TransactionForm() {
                 show("Transaction deleted", {
                   label: "Undo",
                   onPress: () => {
-                    createTransaction(deletedPayload)
+                    restoreTransaction(deletedPayload)
                       .then(() => {
                         void hapticSuccess();
                         show("Transaction restored");
