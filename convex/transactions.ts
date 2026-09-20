@@ -107,6 +107,9 @@ export const create = mutation({
         throw new ConvexError("Category is required for income and expense transactions.");
       }
       const cat = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
+      if (cat.isArchived ?? false) {
+        throw new ConvexError("This category is archived.");
+      }
       if (cat.type !== args.type) {
         throw new ConvexError("Category type must match transaction type.");
       }
@@ -268,6 +271,14 @@ export const update = mutation({
         throw new ConvexError("Category type must match transaction type.");
       }
       category = cat;
+    }
+
+    if (
+      category !== undefined &&
+      categoryId !== tx.categoryId &&
+      (category.isArchived ?? false)
+    ) {
+      throw new ConvexError("This category is archived.");
     }
 
     let toAccount: Doc<"accounts"> | undefined;

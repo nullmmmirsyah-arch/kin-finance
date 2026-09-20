@@ -133,7 +133,9 @@ export const categoryOptions = query({
       )
       .collect();
 
-    return categories.map((c) => ({ _id: c._id, name: c.name, hidden: c.hidden, icon: c.icon }));
+    return categories
+      .filter((c) => !(c.isArchived ?? false))
+      .map((c) => ({ _id: c._id, name: c.name, hidden: c.hidden, icon: c.icon }));
   },
 });
 
@@ -150,6 +152,10 @@ export const create = mutation({
     if (err) throw new ConvexError(err);
 
     const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
+
+    if (category.isArchived ?? false) {
+      throw new ConvexError("This category is archived.");
+    }
 
     if (category.type !== "expense") {
       throw new ConvexError("Cannot create budget for an income category.");
