@@ -157,6 +157,13 @@ Typecheck (`npx tsc --noEmit`) + lint (`npm run lint`) setelah perubahan `convex
 
 ---
 
+## Review follow-ups (PR, implemented 2026-09-20)
+
+- Archived section moved from sibling `View` into SectionList `ListFooterComponent` (expanded cards otherwise unreachable below a `flex-1` list).
+- Archive/Unarchive button disabled while the form is dirty (success path bypasses the discard guard, so dirty archiving would silently drop edits).
+- Home + Search account filters include archived accounts (normalizeSelection + FilterSheet options), so archived history stays filterable.
+- `selectedAccount`/`toAcc` + sheet icon lookups fall back to `archived`, so editing legacy transactions shows the archived account instead of "Select account".
+
 ## Out of scope (tidak dikerjakan di sini)
 
 - Category archiving (pola sama, spec terpisah jika diminta).

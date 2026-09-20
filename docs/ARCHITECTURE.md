@@ -47,7 +47,7 @@
 | `app/search.tsx` | Global cross-period search (Date first chip, default 14-day inclusive range `today - 13d` to `today`, 30/page FlatList, FilterSheet) |
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Household detail (`?householdId=` param-driven) — rename + timezone + balance-mode segmented control + "Set as Active" + members + invite code generation/revoke + Danger Zone |
-| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; `budget-form` create mode renders quick-fill suggestion chips from `budgets.suggestion` (only values ≥ `BUDGET_AMOUNT_MIN`, hidden without history); amount inputs are integer-only |
+| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; `budget-form` create mode renders quick-fill suggestion chips from `budgets.suggestion` (only values ≥ `BUDGET_AMOUNT_MIN`, hidden without history); amount inputs are integer-only. `account-form` (edit, owner) has an Archive/Unarchive danger zone (disabled while dirty) + archived banner; `transaction-form` pickers show active accounts only (archived shown locked with badge when editing legacy transactions); Accounts tab renders a collapsed Archived section as the SectionList footer; Home/Search account filters include archived accounts |
 | `lib/last-transaction.ts` | Persisted "Repeat last" store: `getLastTransaction`/`setLastTransaction` via `expo-secure-store` (`last-transaction` key), type `LastTransaction {type, amount, accountId, toAccountId?, categoryId?}` |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner, BrandedLoadingShell, UpdateBanner, BudgetTotalCard, BudgetBreakdownSheet) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in -> `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
@@ -282,12 +282,11 @@ type: "asset" | "debt"
 subType: "cash" | "bank" | "ewallet" | "credit_card" | "other"   // must pair with type
 balance: number               // auto-updated
 hidden: boolean               // default false
+isArchived: boolean | undefined  // optional, undefined = active (no migration)
 createdAt: number
 updatedAt: number
 ```
-**Indexes:** `by_householdId`
-
-### `categories`
+**Indexes:** `by_householdId` (archive is a post-collect filter, same pattern as `hidden`)
 
 ```text
 householdId: id<households>
@@ -368,18 +367,19 @@ updatedAt: number
 | `invitations` | `revoke` | mutation | Owner only |
 | `invitations` | `redeem` | mutation | Atomic join; rate limited |
 | `invitations` | `listActive` | query | Active invites for the requested household; owner only |
-| `accounts` | `list` | query | Visibility-filtered accounts + `isOwner` |
+| `accounts` | `list` | query | `{accounts (active), archived, isOwner}`; hidden-filtered per half for Members |
 | `accounts` | `create` | mutation | Owner; optional opening balance |
 | `accounts` | `update` | mutation | Owner; name/type/hidden |
-| `accounts` | `remove` | mutation | Owner; guarded by referencing transactions |
+| `accounts` | `archive` / `unarchive` | mutation | Owner only; anytime incl. with transactions; idempotent |
+| `accounts` | `remove` | mutation | Owner; guarded by referencing transactions (still blocked when archived) |
 | `accounts` | `verify` | query | Read-only diff `{discrepancies, totalStored, totalExpected, isOwner}`; 10k cap; returns `null` when not member |
 | `accounts` | `reconcile` | mutation | **Owner only**; recomputes expected balances and patches drifted accounts; 10k cap |
 | `categories` | `list` | query | Filtered, excludes reserved categories |
 | `categories` | `create` | mutation | Owner |
 | `categories` | `update` | mutation | Owner; type change guarded |
 | `categories` | `remove` | mutation | Owner; guarded by references |
-| `transactions` | `create` | mutation | Validates sign/type/category/transfer |
-| `transactions` | `update` | mutation | Reverse old + apply new balances |
+| `transactions` | `create` | mutation | Validates sign/type/category/transfer; rejects archived account/toAccount (`"This account is archived."`, all roles) |
+| `transactions` | `update` | mutation | Reverse old + apply new balances; rejects reassign-to-archived, allows keep-account edits and archived→active reassign |
 | `transactions` | `remove` | mutation | Reverse balances |
 | `transactions` | `list` | query | Date-range + optional filters/search; cursor-paginated; cached hydration |
 | `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list`; transfers excluded |
