@@ -188,7 +188,10 @@ export default function Home() {
     () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
     [accountData],
   );
-  const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
+  const categoryOptions = useMemo(
+    () => [...(categoriesResult?.categories ?? []), ...(categoriesResult?.archived ?? [])],
+    [categoriesResult],
+  );
 
   const contextualCategoryOptions = useMemo(() => {
     if (typeFilter === "transfer") return [];
@@ -1091,7 +1094,7 @@ export default function Home() {
         accountIds={accountIds}
         categoryIds={categoryIds}
         accounts={accountOptions}
-        categories={categoriesResult?.categories ?? []}
+        categories={categoryOptions}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
           setAccountIds(aIds);

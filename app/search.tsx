@@ -82,7 +82,10 @@ export default function Search() {
     () => [...(accountData?.accounts ?? []), ...(accountData?.archived ?? [])],
     [accountData],
   );
-  const categoryOptions = useMemo(() => categoriesResult?.categories ?? [], [categoriesResult]);
+  const categoryOptions = useMemo(
+    () => [...(categoriesResult?.categories ?? []), ...(categoriesResult?.archived ?? [])],
+    [categoriesResult],
+  );
 
   const queryArgs = useMemo(() => {
     const normalizedAccounts = normalizeSelection(
@@ -510,7 +513,7 @@ export default function Search() {
         accountIds={accountIds}
         categoryIds={categoryIds}
         accounts={accountOptions}
-        categories={categoriesResult?.categories ?? []}
+        categories={categoryOptions}
         onApply={(type, aIds, cIds) => {
           setTypeFilter(type);
           setAccountIds(aIds);

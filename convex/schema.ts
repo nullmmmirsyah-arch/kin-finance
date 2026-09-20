@@ -70,6 +70,7 @@ export default defineSchema({
     type: v.union(v.literal("income"), v.literal("expense")),
     icon: v.optional(v.string()),
     hidden: v.boolean(),
+    isArchived: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_householdId", ["householdId"]),

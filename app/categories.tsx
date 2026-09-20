@@ -1,17 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
+  ScrollView,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import Feather from "@expo/vector-icons/Feather";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Radius, useThemeColors } from "@/constants/theme";
 import { CATEGORY_TYPES, CategoryType } from "@/constants/categories";
 import { Chip } from "@/components/Chip";
@@ -19,8 +18,6 @@ import { Fab } from "@/components/Fab";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
-import { useSnackbar } from "@/components/Snackbar";
-import { getConvexErrorMessage } from "@/lib/errors";
 
 type Filter = "all" | CategoryType;
 
@@ -32,13 +29,15 @@ const FILTERS: { id: Filter; label: string }[] = [
 export default function Categories() {
   const router = useRouter();
   const result = useQuery(api.categories.list);
-  const updateCategory = useMutation(api.categories.update);
-  const removeCategory = useMutation(api.categories.remove);
-  const { show } = useSnackbar();
   const [filter, setFilter] = useState<Filter>("all");
   const C = useThemeColors();
 
   const categories = result?.categories ?? null;
+  const archivedCategories = useMemo(
+    () => result?.archived ?? [],
+    [result?.archived],
+  );
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const isOwner = result?.isOwner ?? false;
 
   const visibleCategories = useMemo(() => {
@@ -48,46 +47,12 @@ export default function Categories() {
       : categories.filter((c) => c.type === filter);
   }, [categories, filter]);
 
-  const handleToggleVisibility = useCallback(
-    (category: { _id: Id<"categories">; hidden: boolean }) => {
-      updateCategory({ categoryId: category._id, hidden: !category.hidden })
-        .then(() => {
-          show(category.hidden ? "Category visible to members" : "Category hidden from members");
-        })
-        .catch((e: unknown) => {
-          show(getConvexErrorMessage(e, "Failed to update category."));
-        });
-    },
-    [updateCategory, show],
-  );
-
-  const handleDelete = useCallback(
-    (category: { _id: Id<"categories">; name: string }) => {
-      Alert.alert(
-        "Delete Category",
-        `Delete "${category.name}"? This cannot be undone.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => {
-              removeCategory({ categoryId: category._id })
-                .then(() => {
-                  show(`"${category.name}" deleted`);
-                })
-                .catch((e: unknown) => {
-                  show(
-                    getConvexErrorMessage(e, "Failed to delete category."),
-                  );
-                });
-            },
-          },
-        ],
-      );
-    },
-    [removeCategory, show],
-  );
+  const visibleArchived = useMemo(() => {
+    if (categories === null) return [];
+    return filter === "all"
+      ? archivedCategories
+      : archivedCategories.filter((c) => c.type === filter);
+  }, [archivedCategories, categories, filter]);
 
   if (result === undefined) {
     return (
@@ -124,6 +89,62 @@ export default function Categories() {
     );
   }
 
+  const archivedSection =
+    visibleArchived.length > 0 ? (
+      <View className="px-5 pb-4">
+        <Pressable
+          onPress={() => setArchivedOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={archivedOpen ? "Collapse archived categories" : "Expand archived categories"}
+          className="flex-row items-center gap-2 py-3"
+        >
+          <Feather name="archive" size={16} color={C.textSecondary} />
+          <Text className="flex-1 text-sm font-semibold text-text-secondary dark:text-text-secondary-dark">
+            Archived ({visibleArchived.length})
+          </Text>
+          <Feather
+            name={archivedOpen ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={C.textSecondary}
+          />
+        </Pressable>
+        {archivedOpen
+          ? visibleArchived.map((item) =>
+              isOwner ? (
+                <Pressable
+                  key={item._id}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/category-form",
+                      params: { id: item._id },
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${item.name}`}
+                >
+                  <CategoryCard
+                    name={item.name}
+                    type={item.type}
+                    icon={item.icon}
+                    hidden={item.hidden}
+                    archived
+                  />
+                </Pressable>
+              ) : (
+                <CategoryCard
+                  key={item._id}
+                  name={item.name}
+                  type={item.type}
+                  icon={item.icon}
+                  hidden={item.hidden}
+                  archived
+                />
+              ),
+            )
+          : null}
+      </View>
+    ) : null;
+
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-background-dark">
       <View className="px-5 pt-4">
@@ -155,7 +176,10 @@ export default function Categories() {
       </View>
 
       {visibleCategories !== null && visibleCategories.length === 0 ? (
-        <View className="mt-6 flex-1 px-5">
+        <ScrollView
+          className="mt-6 flex-1"
+          contentContainerClassName="gap-3 px-5 pb-28"
+        >
           <View
             style={{ backgroundColor: C.background }}
             className="rounded-[16px]"
@@ -170,7 +194,8 @@ export default function Categories() {
               }
             />
           </View>
-        </View>
+          {archivedSection}
+        </ScrollView>
       ) : (
         <FlatList
           className="mt-4 flex-1"
@@ -179,29 +204,35 @@ export default function Categories() {
           keyExtractor={(item) => item._id}
           renderItem={({ item }) =>
             isOwner ? (
-              <CategoryCard
-                name={item.name}
-                type={item.type}
-                icon={item.icon}
-                hidden={item.hidden}
-                onToggleVisibility={() => handleToggleVisibility(item)}
-                onEdit={() =>
+              <Pressable
+                onPress={() =>
                   router.push({
                     pathname: "/category-form",
                     params: { id: item._id },
                   })
                 }
-                onDelete={() => handleDelete(item)}
-              />
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${item.name}`}
+              >
+                <CategoryCard
+                  name={item.name}
+                  type={item.type}
+                  icon={item.icon}
+                  hidden={item.hidden}
+                  archived={item.isArchived ?? false}
+                />
+              </Pressable>
             ) : (
               <CategoryCard
                 name={item.name}
                 type={item.type}
                 icon={item.icon}
                 hidden={item.hidden}
+                archived={item.isArchived ?? false}
               />
             )
           }
+          ListFooterComponent={archivedSection}
         />
       )}
 

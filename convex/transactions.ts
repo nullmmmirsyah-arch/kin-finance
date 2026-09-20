@@ -55,19 +55,33 @@ async function reverseBalances(ctx: MutationCtx, tx: Doc<"transactions">, now: n
   }
 }
 
-export const create = mutation({
-  args: {
-    accountId: v.id("accounts"),
-    categoryId: v.optional(v.id("categories")),
-    toAccountId: v.optional(v.id("accounts")),
-    amount: v.number(),
-    type: transactionType,
-    note: v.optional(v.string()),
-    date: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const { user, membership } = await getUserAndMembership(ctx);
+type TxWriteArgs = {
+  accountId: Id<"accounts">;
+  categoryId?: Id<"categories">;
+  toAccountId?: Id<"accounts">;
+  amount: number;
+  type: "income" | "expense" | "transfer";
+  note?: string;
+  date: number;
+};
 
+const txWriteArgsValidator = {
+  accountId: v.id("accounts"),
+  categoryId: v.optional(v.id("categories")),
+  toAccountId: v.optional(v.id("accounts")),
+  amount: v.number(),
+  type: transactionType,
+  note: v.optional(v.string()),
+  date: v.number(),
+};
+
+async function insertTransactionCore(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  membership: Doc<"householdMemberships">,
+  args: TxWriteArgs,
+  opts: { allowArchivedRefs: boolean },
+) {
     const err = validateTransactionAmount(args.amount, args.type);
     if (err) throw new ConvexError(err);
     const noteErr = validateNote(args.note);
@@ -77,7 +91,7 @@ export const create = mutation({
 
     const account = await getScopedDoc(ctx, args.accountId, membership.householdId, "Account");
 
-    if (account.isArchived ?? false) {
+    if (!opts.allowArchivedRefs && (account.isArchived ?? false)) {
       throw new ConvexError("This account is archived.");
     }
 
@@ -95,7 +109,7 @@ export const create = mutation({
         throw new ConvexError("From and To accounts must be different.");
       }
       const to = await getScopedDoc(ctx, args.toAccountId, membership.householdId, "To account");
-      if (to.isArchived ?? false) {
+      if (!opts.allowArchivedRefs && (to.isArchived ?? false)) {
         throw new ConvexError("This account is archived.");
       }
       toAccount = to;
@@ -107,6 +121,9 @@ export const create = mutation({
         throw new ConvexError("Category is required for income and expense transactions.");
       }
       const cat = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
+      if (!opts.allowArchivedRefs && (cat.isArchived ?? false)) {
+        throw new ConvexError("This category is archived.");
+      }
       if (cat.type !== args.type) {
         throw new ConvexError("Category type must match transaction type.");
       }
@@ -154,6 +171,29 @@ export const create = mutation({
     }
 
     return transactionId;
+}
+
+export const create = mutation({
+  args: txWriteArgsValidator,
+  handler: async (ctx, args) => {
+    const { user, membership } = await getUserAndMembership(ctx);
+    return await insertTransactionCore(ctx, user, membership, args, {
+      allowArchivedRefs: false,
+    });
+  },
+});
+
+export const restore = mutation({
+  args: txWriteArgsValidator,
+  handler: async (ctx, args) => {
+    const { user, membership } = await getUserAndMembership(ctx);
+    // Undo-only path (transaction-form "Undo" after delete): faithful
+    // re-insert of the just-deleted transaction. All create validations
+    // apply except the archived-reference guards, so a legacy transaction
+    // on an archived category/account can be restored.
+    return await insertTransactionCore(ctx, user, membership, args, {
+      allowArchivedRefs: true,
+    });
   },
 });
 
@@ -268,6 +308,14 @@ export const update = mutation({
         throw new ConvexError("Category type must match transaction type.");
       }
       category = cat;
+    }
+
+    if (
+      category !== undefined &&
+      categoryId !== tx.categoryId &&
+      (category.isArchived ?? false)
+    ) {
+      throw new ConvexError("This category is archived.");
     }
 
     let toAccount: Doc<"accounts"> | undefined;

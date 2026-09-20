@@ -26,10 +26,15 @@ export const list = query({
     const manageable = all.filter(
       (category) => category.name !== RESERVED_CATEGORY_NAME,
     );
+    const active = manageable.filter((c) => !(c.isArchived ?? false));
+    const archivedAll = manageable.filter((c) => c.isArchived ?? false);
     const categories = isOwner
-      ? manageable
-      : manageable.filter((category) => !category.hidden);
-    return { categories, isOwner };
+      ? active
+      : active.filter((category) => !category.hidden);
+    const archived = isOwner
+      ? archivedAll
+      : archivedAll.filter((category) => !category.hidden);
+    return { categories, archived, isOwner };
   },
 });
 
@@ -181,6 +186,46 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.categoryId, patch);
+    return await ctx.db.get(args.categoryId);
+  },
+});
+
+export const archive = mutation({
+  args: { categoryId: v.id("categories") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
+
+    if (category.name === RESERVED_CATEGORY_NAME) {
+      throw new ConvexError("This category cannot be modified.");
+    }
+
+    await ctx.db.patch(args.categoryId, {
+      isArchived: true,
+      updatedAt: Date.now(),
+    });
+    return await ctx.db.get(args.categoryId);
+  },
+});
+
+export const unarchive = mutation({
+  args: { categoryId: v.id("categories") },
+  handler: async (ctx, args) => {
+    const { membership } = await getUserAndMembership(ctx);
+    requireOwner(membership);
+
+    const category = await getScopedDoc(ctx, args.categoryId, membership.householdId, "Category");
+
+    if (category.name === RESERVED_CATEGORY_NAME) {
+      throw new ConvexError("This category cannot be modified.");
+    }
+
+    await ctx.db.patch(args.categoryId, {
+      isArchived: false,
+      updatedAt: Date.now(),
+    });
     return await ctx.db.get(args.categoryId);
   },
 });

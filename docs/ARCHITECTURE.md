@@ -47,7 +47,7 @@
 | `app/search.tsx` | Global cross-period search (Date first chip, default 14-day inclusive range `today - 13d` to `today`, 30/page FlatList, FilterSheet) |
 | `app/onboarding.tsx` | Create/Join household |
 | `app/members.tsx` | Household detail (`?householdId=` param-driven) — rename + timezone + balance-mode segmented control + "Set as Active" + members + invite code generation/revoke + Danger Zone |
-| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; `budget-form` create mode renders quick-fill suggestion chips from `budgets.suggestion` (only values ≥ `BUDGET_AMOUNT_MIN`, hidden without history); amount inputs are integer-only. `account-form` (edit, owner) has an Archive/Unarchive danger zone (disabled while dirty) + archived banner; `transaction-form` pickers show active accounts only (archived shown locked with badge when editing legacy transactions); Accounts tab renders a collapsed Archived section as the SectionList footer; Home/Search account filters include archived accounts |
+| `app/account-form.tsx` / `category-form.tsx` / `transaction-form.tsx` / `budget-form.tsx` / `categories.tsx` | Feature CRUD screens; `transaction-form` persists `lastTransaction` via `lib/last-transaction.ts` + duplicate check against `transactions.recent`; `budget-form` create mode renders quick-fill suggestion chips from `budgets.suggestion` (only values ≥ `BUDGET_AMOUNT_MIN`, hidden without history); amount inputs are integer-only. `account-form` (edit, owner) has an Archive/Unarchive danger zone (disabled while dirty) + archived banner; `transaction-form` pickers show active accounts only (archived shown locked with badge when editing legacy transactions); Accounts tab renders a collapsed Archived section as the SectionList footer; Home/Search account filters include archived accounts. `category-form` (edit, owner) has an Archive/Unarchive danger zone (disabled while dirty) + archived banner; `transaction-form`/`budget-form` pickers show active categories only (archived shown locked with badge when editing legacy transactions/budgets); Categories screen renders a collapsed Archived section as the list footer; Home/Search category filters include archived categories |
 | `lib/last-transaction.ts` | Persisted "Repeat last" store: `getLastTransaction`/`setLastTransaction` via `expo-secure-store` (`last-transaction` key), type `LastTransaction {type, amount, accountId, toAccountId?, categoryId?}` |
 | `components/` | Reusable UI (Button, Input, Card, Fab, EmptyState, Snackbar with optional action, Skeleton, ThemeProvider, TransactionCard, Chip, DateField, GradientCard, SelectField with search, ConnectivityBanner, BrandedLoadingShell, UpdateBanner, BudgetTotalCard, BudgetBreakdownSheet) + non-UI controllers (OtaUpdater) |
 | `hooks/useDiscardGuard.ts` | Shared unsaved-changes guard: dirty flag in -> `handleBack` + `markIntentional` out; owns the `usePreventRemove` registration and discard Alert used by all four forms |
@@ -293,10 +293,11 @@ householdId: id<households>
 name: string
 type: "income" | "expense"
 hidden: boolean               // default false
+isArchived: boolean | undefined  // optional, undefined = active (no migration)
 createdAt: number
 updatedAt: number
 ```
-**Indexes:** `by_householdId`
+**Indexes:** `by_householdId` (archive is a post-collect filter, same pattern as `hidden`)
 
 ### `transactions`
 
@@ -374,12 +375,13 @@ updatedAt: number
 | `accounts` | `remove` | mutation | Owner; guarded by referencing transactions (still blocked when archived) |
 | `accounts` | `verify` | query | Read-only diff `{discrepancies, totalStored, totalExpected, isOwner}`; 10k cap; returns `null` when not member |
 | `accounts` | `reconcile` | mutation | **Owner only**; recomputes expected balances and patches drifted accounts; 10k cap |
-| `categories` | `list` | query | Filtered, excludes reserved categories |
+| `categories` | `list` | query | `{categories (active), archived, isOwner}`; hidden-filtered per half for Members |
 | `categories` | `create` | mutation | Owner |
 | `categories` | `update` | mutation | Owner; type change guarded |
-| `categories` | `remove` | mutation | Owner; guarded by references |
-| `transactions` | `create` | mutation | Validates sign/type/category/transfer; rejects archived account/toAccount (`"This account is archived."`, all roles) |
-| `transactions` | `update` | mutation | Reverse old + apply new balances; rejects reassign-to-archived, allows keep-account edits and archived→active reassign |
+| `categories` | `archive` / `unarchive` | mutation | Owner only; anytime incl. with transactions/budgets; idempotent |
+| `categories` | `remove` | mutation | Owner; guarded by references (still blocked when archived) |
+| `transactions` | `create` | mutation | Validates sign/type/category/transfer; rejects archived account/toAccount (`"This account is archived."`, all roles); rejects archived category (`"This category is archived."`, all roles) |
+| `transactions` | `update` | mutation | Reverse old + apply new balances; rejects reassign-to-archived (account or category), allows keep-reference edits and archived→active reassign |
 | `transactions` | `remove` | mutation | Reverse balances |
 | `transactions` | `list` | query | Date-range + optional filters/search; cursor-paginated; cached hydration |
 | `transactions` | `summary` | query | Range totals `{income, expense, net}`; same filters as `list`; transfers excluded |
@@ -387,9 +389,9 @@ updatedAt: number
 | `transactions` | `get` | query | Single transaction (hidden-category aware) |
 | `budgets` | `list` | query | `{periodStart, periodEnd}`; spent + progress; redacted for Members on hidden categories |
 | `budgets` | `get` | query | Single budget |
-| `budgets` | `categoryOptions` | query | Expense categories for budget form |
+| `budgets` | `categoryOptions` | query | Expense categories for budget form (active only) |
 | `budgets` | `suggestion` | query | `{categoryId, periodStart, timezone}` → `{prevPeriodStart, prevLabel, prevBudget, prevSpent, avgSpent, hasHistory}`; tz-aware prior-3-month spend aggregation (adaptive divisor = months with spending); fail-soft `null` when unauthenticated |
-| `budgets` | `create` | mutation | Member-ok; unique per category/month |
+| `budgets` | `create` | mutation | Member-ok; unique per category/month; rejects archived category (`"This category is archived."`, all roles) |
 | `budgets` | `update` | mutation | Member-ok; amount only |
 | `budgets` | `remove` | mutation | Member-ok |
 | `transactions` | `cashflow` | query | Single-scan 6-month window, buckets by household timezone, transfers excluded |
