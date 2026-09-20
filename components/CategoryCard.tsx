@@ -9,6 +9,7 @@ type Props = {
   type: CategoryType;
   icon?: string;
   hidden: boolean;
+  archived?: boolean;
   onToggleVisibility?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -19,6 +20,7 @@ export function CategoryCard({
   type,
   icon,
   hidden,
+  archived = false,
   onToggleVisibility,
   onEdit,
   onDelete,
@@ -60,6 +62,22 @@ export function CategoryCard({
           >
             {isIncome ? "Income" : "Expense"}
           </Text>
+        </View>
+        <View className="flex-row gap-1.5">
+          {hidden ? (
+            <View className="self-start rounded-full border border-border bg-background px-2.5 py-1 dark:border-border-dark dark:bg-background-dark">
+              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
+                Hidden
+              </Text>
+            </View>
+          ) : null}
+          {archived ? (
+            <View className="self-start rounded-full border border-border bg-background px-2.5 py-1 dark:border-border-dark dark:bg-background-dark">
+              <Text className="text-[11px] font-semibold tracking-[0.08em] leading-3 text-text-secondary dark:text-text-secondary-dark">
+                Archived
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       {onToggleVisibility !== undefined ||
