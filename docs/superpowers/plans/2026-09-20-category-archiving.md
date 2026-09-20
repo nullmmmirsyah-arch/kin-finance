@@ -1193,7 +1193,7 @@ Expected: PASS semua (termasuk 2 file baru + tidak ada regresi di `categories.*`
 
 - [ ] **Step 2: Checklist manual di Expo Go / dev-client**
 
-1. Buat kategori + transaksi + budget → archive via category-form → kategori pindah ke section Archived (collapsed), hilang dari picker create/edit, transaksi lama + report + budget tetap muncul.
+1. Buat kategori + transaksi + budget → archive via category-form → kategori pindah ke section Archived (collapsed), hilang dari picker create maupun daftar pilih saat ganti kategori (nilai archived lama tampil terkunci saat edit), transaksi lama + report + budget tetap muncul.
 2. Buka transaksi lama (kategori archived) → banner terkunci tampil → edit note/amount → sukses tersimpan.
 3. Coba reassign transaksi ke kategori archived → Snackbar `"This category is archived."`.
 4. Coba buat budget dengan kategori archived → ditolak `"This category is archived."`.

@@ -71,7 +71,7 @@ Behavior (keduanya):
 - `create`: setelah `getScopedDoc` category (cabang income/expense), tolak jika `(category.isArchived ?? false)` → `ConvexError("This category is archived.")`. Berlaku owner + member (berbeda dengan `hidden` yang longgar untuk owner). Transfer tidak punya kategori — tidak tersentuh.
 - `update`: tolak hanya jika **kategori baru beda dari lama dan archived**:
   - `categoryId !== tx.categoryId && newCategory.isArchived` → tolak.
-  - Keep-same archived (edit amount/note/date/type tanpa ganti kategori, atau ganti field lain) tetap boleh — ini yang memungkinkan "transaksi yang kategorinya di-archive masih bisa diedit semua datanya".
+  - Keep-same archived (edit amount/note/date atau ganti field lain tanpa ganti kategori) tetap boleh — ini yang memungkinkan "transaksi yang kategorinya di-archive masih bisa diedit semua datanya". Ubah tipe tanpa ganti kategori tetap ditolak guard type-match yang sudah ada (`Category type must match transaction type.`), karena tipe kategori bersifat tetap.
   - Reassign archived→active boleh (jalan manual keluar dari archive).
   - Reassign active→archived atau archived→archived-lain ditolak.
 - Pesan error tunggal: `"This category is archived."` (stabil untuk UI Snackbar via `getConvexErrorMessage`).
@@ -140,7 +140,8 @@ Behavior (keduanya):
 | Aksi | Boleh? |
 |---|---|
 | Buat transaksi baru memakai kategori archived | ❌ ditolak backend |
-| Edit transaksi lama (amount/note/date/type) tanpa ganti kategori, kategori archived | ✅ owner + member |
+| Edit transaksi lama (amount/note/date) tanpa ganti kategori, kategori archived | ✅ owner + member |
+| Ubah tipe transaksi tanpa ganti kategori (kategori archived) | ❌ ditolak guard type-match yang sudah ada |
 | Reassign keluar archived → active | ✅ owner + member (jalan manual keluar dari archive) |
 | Reassign ke archived (dari kategori mana pun, termasuk archived→archived-lain) | ❌ ditolak backend |
 | Buat budget baru memakai kategori archived | ❌ ditolak backend |
@@ -156,7 +157,7 @@ Rasional: kunci total akan menjebak user (tak bisa betulkan typo, tak bisa pinda
 |---|---|---|
 | Transaksi baru / reassign ke kategori archived | `"This category is archived."` | Snackbar (`getConvexErrorMessage`) |
 | Budget baru memakai kategori archived | `"This category is archived."` | Snackbar |
-| Member panggil archive/unarchive | `"Only household owners can ..."` (via `requireOwner` yang ada) | Snackbar |
+| Member panggil archive/unarchive | `"You are not the owner of this household."` (via `requireOwner`) | Snackbar |
 | Archive kategori reserved | `"This category cannot be modified."` (pesan yang sudah ada) | Snackbar |
 | Delete kategori archived yang masih punya transaksi/budget | pesan lama `"Cannot delete category — ..."` | Snackbar/inline (tidak berubah) |
 
@@ -177,7 +178,7 @@ Rasional: kunci total akan menjebak user (tak bisa betulkan typo, tak bisa pinda
 
 ### UI tests (jika pola tersedia) / Manual (Expo)
 
-1. Buat kategori + transaksi + budget → archive via category-form → kategori pindah ke section Archived, hilang dari picker create/edit, transaksi lama + report + budget tetap.
+1. Buat kategori + transaksi + budget → archive via category-form → kategori pindah ke section Archived, hilang dari picker create maupun daftar pilih saat ganti kategori (nilai archived lama tampil terkunci saat edit), transaksi lama + report + budget tetap.
 2. Buka transaksi lama (kategori archived) → nilai tampil terkunci → edit note/amount → sukses tersimpan.
 3. Coba reassign transaksi ke kategori archived (via API/picker terkunci) → Snackbar `"This category is archived."`.
 4. Coba buat budget dengan kategori archived → ditolak.
@@ -188,6 +189,11 @@ Rasional: kunci total akan menjebak user (tak bisa betulkan typo, tak bisa pinda
 Typecheck (`npx tsc --noEmit`) + lint (`npm run lint`) setelah perubahan `convex/*.ts` diawali `npx convex codegen`.
 
 ---
+
+## Review follow-ups (PR)
+
+- `transactions.restore` (undo-only): `transaction-form` "Undo" setelah delete kini memakai `restore`, bukan `create` — semua validasi `create` berlaku kecuali guard archived, sehingga transaksi lama di kategori/akun archived bisa dikembalikan. `create` tidak berubah.
+- FilterSheet Home/Search menerima `categoryOptions` inklusif-archived (bukan hanya active), sehingga kategori archived tampil dan bisa dipilih sebagai filter; type-filtering tetap di dalam sheet.
 
 ## Out of scope (tidak dikerjakan di sini)
 
