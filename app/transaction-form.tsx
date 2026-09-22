@@ -35,7 +35,7 @@ import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { useNoteSuggestions } from "@/hooks/useNoteSuggestions";
 import { NoteSuggestChips } from "@/components/transaction/NoteSuggestChips";
-import { addDismissedNote, applyDismissed, buildDismissedKey, loadDismissedNotes, saveDismissedNotes, type DismissedNotesStore } from "@/lib/dismissed-notes";
+import { addDismissedNote, applyDismissed, buildDismissedKey, loadDismissedNotes, removeDismissedNote, saveDismissedNotes, type DismissedNotesStore } from "@/lib/dismissed-notes";
 import { CategoryGrid } from "@/components/transaction/CategoryGrid";
 import { TransferDual } from "@/components/transaction/TransferDual";
 import { AccountPill } from "@/components/transaction/AccountPill";
@@ -512,6 +512,17 @@ export default function TransactionForm() {
           setLastTransactionState(persisted);
           void setLastTransaction(persisted);
         }
+        // Re-adopt: a note reused for a saved transaction leaves the dismissed list.
+        if (type !== "transfer" && categoryId !== null && householdId !== null && note.trim() !== "") {
+          const savedNote = note.trim();
+          const savedCategoryId = categoryId;
+          const savedHouseholdId = householdId;
+          setDismissedStore((prev) => {
+            const next = removeDismissedNote(prev, savedHouseholdId, savedCategoryId, savedNote);
+            if (next !== prev) void saveDismissedNotes(next);
+            return next;
+          });
+        }
         show(isEdit ? "Transaction updated" : "Transaction added");
         void hapticSuccess();
         markIntentional();
@@ -568,6 +579,7 @@ export default function TransactionForm() {
     isEdit,
     dupeCheck,
     transactionId,
+    householdId,
     updateTransaction,
     createTransaction,
     show,

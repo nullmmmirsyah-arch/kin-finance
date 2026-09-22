@@ -7,6 +7,7 @@ import {
   buildDismissedKey,
   isDismissed,
   loadDismissedNotes,
+  removeDismissedNote,
   saveDismissedNotes,
   trimDismissed,
 } from "@/lib/dismissed-notes";
@@ -96,4 +97,32 @@ describe("loadDismissedNotes", () => {
     getItem.mockResolvedValueOnce(JSON.stringify(store));
     await expect(loadDismissedNotes()).resolves.toEqual(store);
   });
+});
+
+describe("removeDismissedNote", () => {
+  it("re-adopts a reused note case-insensitively and keeps the rest", () =>
+    expect(
+      removeDismissedNote({ "h1:c1": ["kelapa", "pekanan"] }, "h1", "c1", "KELAPA"),
+    ).toEqual({ "h1:c1": ["pekanan"] }));
+  it("returns the same store when the note was not dismissed", () => {
+    const prev = { "h1:c1": ["kelapa"] };
+    expect(removeDismissedNote(prev, "h1", "c1", "ayam")).toBe(prev);
+  });
+  it("returns the same store when the key is missing", () => {
+    const prev = { "h1:c1": ["kelapa"] };
+    expect(removeDismissedNote(prev, "h1", "c9", "kelapa")).toBe(prev);
+  });
+  it("drops the key when the last entry is re-adopted", () =>
+    expect(removeDismissedNote({ "h1:c1": ["kelapa"] }, "h1", "c1", "kelapa")).toEqual(
+      {},
+    ));
+  it("leaves other categories untouched", () =>
+    expect(
+      removeDismissedNote(
+        { "h1:c1": ["kelapa"], "h1:c2": ["kelapa"] },
+        "h1",
+        "c1",
+        "kelapa",
+      ),
+    ).toEqual({ "h1:c2": ["kelapa"] }));
 });

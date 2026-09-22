@@ -59,3 +59,23 @@ export async function saveDismissedNotes(store: DismissedNotesStore): Promise<vo
     // Best-effort; dismissal persistence must never block the form.
   }
 }
+
+export function removeDismissedNote(
+  store: DismissedNotesStore,
+  householdId: string,
+  categoryId: string,
+  note: string,
+): DismissedNotesStore {
+  const key = buildDismissedKey(householdId, categoryId);
+  const current = store[key];
+  if (!current) return store;
+  const q = note.toLowerCase();
+  const next = current.filter((d) => d.toLowerCase() !== q);
+  if (next.length === current.length) return store;
+  if (next.length === 0) {
+    const rest = { ...store };
+    delete rest[key];
+    return rest;
+  }
+  return { ...store, [key]: next };
+}
