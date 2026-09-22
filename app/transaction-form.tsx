@@ -34,6 +34,8 @@ import { AccountIcon } from "@/components/AccountIcon";
 import { useSnackbar } from "@/components/Snackbar";
 import { useDiscardGuard } from "@/hooks/useDiscardGuard";
 import { useNoteSuggestions } from "@/hooks/useNoteSuggestions";
+import { NoteSuggestChips } from "@/components/transaction/NoteSuggestChips";
+import { addDismissedNote, applyDismissed, buildDismissedKey, loadDismissedNotes, saveDismissedNotes, type DismissedNotesStore } from "@/lib/dismissed-notes";
 import { CategoryGrid } from "@/components/transaction/CategoryGrid";
 import { TransferDual } from "@/components/transaction/TransferDual";
 import { AccountPill } from "@/components/transaction/AccountPill";
@@ -93,6 +95,31 @@ export default function TransactionForm() {
   const [dateDraft, setDateDraft] = useState<Date | null>(null);
 
   const noteSuggestions = useNoteSuggestions(categoryId, note);
+  const [dismissedStore, setDismissedStore] = useState<DismissedNotesStore>({});
+  const householdId = household?._id ?? null;
+  useEffect(() => {
+    if (householdId === null) return;
+    void loadDismissedNotes().then(setDismissedStore);
+  }, [householdId]);
+  const dismissedForCategory =
+    householdId !== null && categoryId !== null
+      ? (dismissedStore[buildDismissedKey(householdId, categoryId)] ?? [])
+      : [];
+  const visibleNoteSuggestions = useMemo(
+    () => applyDismissed(noteSuggestions, dismissedForCategory),
+    [noteSuggestions, dismissedForCategory],
+  );
+  const handleDismissSuggestion = useCallback(
+    (s: string) => {
+      if (householdId === null || categoryId === null) return;
+      setDismissedStore((prev) => {
+        const next = addDismissedNote(prev, householdId, categoryId, s);
+        if (next !== prev) void saveDismissedNotes(next);
+        return next;
+      });
+    },
+    [householdId, categoryId],
+  );
 
   const [lastTransaction, setLastTransactionState] = useState<LastTransaction | null>(null);
   const [lastChecked, setLastChecked] = useState(false);
@@ -983,30 +1010,12 @@ export default function TransactionForm() {
               </Text>
             </View>
           ) : null}
-          {noteFocused && noteSuggestions.length > 0 ? (
-            <View className="gap-2">
-              {noteSuggestions.map((s) => (
-                <Pressable
-                  key={s}
-                  onPress={() => setNote(s)}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.surface,
-                    borderRadius: Radius.md,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Text
-                    className="text-xs"
-                    style={{ color: C.textPrimary }}
-                  >
-                    {s}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+          {noteFocused && visibleNoteSuggestions.length > 0 ? (
+            <NoteSuggestChips
+              suggestions={visibleNoteSuggestions}
+              onSelect={setNote}
+              onDismiss={handleDismissSuggestion}
+            />
           ) : null}
         </View>
         {dateError && type !== "transfer" ? (
