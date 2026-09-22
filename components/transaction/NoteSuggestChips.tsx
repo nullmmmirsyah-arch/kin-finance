@@ -42,7 +42,7 @@ export function NoteSuggestChips({ suggestions, onSelect, onDismiss }: Props) {
             onPress={() => onSelect(s)}
             accessibilityRole="button"
             accessibilityLabel={`Use note ${s}`}
-            style={{ flex: 1 }}
+            style={{ flexGrow: 0, flexShrink: 1, minWidth: 0 }}
           >
             <Text
               numberOfLines={1}
