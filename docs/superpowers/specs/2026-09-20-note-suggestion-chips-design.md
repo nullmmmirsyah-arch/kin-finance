@@ -56,6 +56,10 @@ filter follows typing (current behavior kept); layout = horizontal + ×
   another member's suggestions.
 - Tap × writes through async with no loading state; the underlying
   transaction is never touched. No cross-device sync, no undo in v1.
+- Re-adopt on save: when an income/expense transaction is saved with a
+  non-empty note, that note (case-insensitive) is removed from the dismissed
+  list of its category — reusing a note revives its suggestion. Transfers
+  and empty notes never touch the dismissal list.
 
 ## 3. Measuring-bug mitigation & verification
 
