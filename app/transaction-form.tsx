@@ -994,9 +994,9 @@ export default function TransactionForm() {
               }}
               onSwap={handleSwap}
               fromSubLabel={selectedAccount ? formatProjection(selectedAccount.balance, fromProjected) : null}
-              fromSubLabelDanger={(fromProjected ?? 0) < 0}
+              fromSubLabelDanger={hasAmount && (fromProjected ?? 0) < 0}
               toSubLabel={toAcc ? formatProjection(toAcc.balance, toProjected) : null}
-              toSubLabelDanger={(toProjected ?? 0) < 0}
+              toSubLabelDanger={hasAmount && (toProjected ?? 0) < 0}
             />
           )}
           {type !== "transfer" && categoryError ? (
@@ -1016,7 +1016,7 @@ export default function TransactionForm() {
               label="Select account"
               account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
               subLabel={singleSubLabel}
-              subLabelDanger={(singleProjected ?? 0) < 0}
+              subLabelDanger={hasAmount && (singleProjected ?? 0) < 0}
               onPress={() => {
                 setAccountSheetTarget("single");
                 setShowAccountSheet(true);
@@ -1226,6 +1226,21 @@ export default function TransactionForm() {
                     (accountSheetTarget === "single" && accountId === item.id) ||
                     (accountSheetTarget === "from" && accountId === item.id) ||
                     (accountSheetTarget === "to" && toAccountId === item.id);
+                  const projected =
+                    item.archived || acc === null
+                      ? null
+                      : projectAccountBalance({
+                          balance: acc.balance,
+                          type,
+                          side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
+                          amount: amountValue,
+                          oldAbsAmount,
+                          isSameAccount:
+                            isSameType &&
+                            (accountSheetTarget === "to"
+                              ? item.id === editingTx?.toAccountId
+                              : item.id === editingTx?.accountId),
+                        });
                   return (
                     <Pressable
                       onPress={() => {
@@ -1249,40 +1264,14 @@ export default function TransactionForm() {
                           className="text-xs tabular-nums"
                           style={{
                             color:
-                              hasAmount &&
-                              projectAccountBalance({
-                                balance: acc.balance,
-                                type,
-                                side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
-                                amount: amountValue,
-                                oldAbsAmount,
-                                isSameAccount:
-                                  isSameType &&
-                                  (accountSheetTarget === "to"
-                                    ? item.id === editingTx?.toAccountId
-                                    : item.id === editingTx?.accountId),
-                              }) < 0
+                              hasAmount && (projected ?? 0) < 0
                                 ? C.error
                                 : C.textSecondary,
                           }}
                         >
-                          {(() => {
-                            const projected = projectAccountBalance({
-                              balance: acc.balance,
-                              type,
-                              side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
-                              amount: amountValue,
-                              oldAbsAmount,
-                              isSameAccount:
-                                isSameType &&
-                                (accountSheetTarget === "to"
-                                  ? item.id === editingTx?.toAccountId
-                                  : item.id === editingTx?.accountId),
-                            });
-                            return hasAmount
-                              ? `${formatNumber(acc.balance)} → ${formatNumber(projected)}`
-                              : formatNumber(acc.balance);
-                          })()}
+                          {hasAmount && projected !== null
+                            ? `${formatNumber(acc.balance)} → ${formatNumber(projected)}`
+                            : formatNumber(acc.balance)}
                         </Text>
                       )}
                       {item.archived ? (
