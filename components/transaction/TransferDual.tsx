@@ -9,13 +9,33 @@ type Props = {
   onSelectFrom: () => void;
   onSelectTo: () => void;
   onSwap: () => void;
+  fromSubLabel?: string | null;
+  fromSubLabelDanger?: boolean;
+  toSubLabel?: string | null;
+  toSubLabelDanger?: boolean;
 };
 
-export function TransferDual({ fromAcc, toAcc, onSelectFrom, onSelectTo, onSwap }: Props) {
+export function TransferDual({
+  fromAcc,
+  toAcc,
+  onSelectFrom,
+  onSelectTo,
+  onSwap,
+  fromSubLabel,
+  fromSubLabelDanger,
+  toSubLabel,
+  toSubLabelDanger,
+}: Props) {
   const C = useThemeColors();
   return (
     <View className="flex-row items-center justify-between gap-3 px-4 py-3">
-      <AccountPill label="Payment account" account={fromAcc} onPress={onSelectFrom} />
+      <AccountPill
+        label="Payment account"
+        account={fromAcc}
+        onPress={onSelectFrom}
+        subLabel={fromSubLabel}
+        subLabelDanger={fromSubLabelDanger}
+      />
       <Pressable
         onPress={onSwap}
         accessibilityRole="button"
@@ -33,7 +53,13 @@ export function TransferDual({ fromAcc, toAcc, onSelectFrom, onSelectTo, onSwap 
       >
         <Feather name="repeat" size={18} color={C.primary} />
       </Pressable>
-      <AccountPill label="Receive account" account={toAcc} onPress={onSelectTo} />
+      <AccountPill
+        label="Receive account"
+        account={toAcc}
+        onPress={onSelectTo}
+        subLabel={toSubLabel}
+        subLabelDanger={toSubLabelDanger}
+      />
     </View>
   );
 }
