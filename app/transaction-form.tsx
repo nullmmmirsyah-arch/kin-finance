@@ -45,6 +45,7 @@ import { formatDateShortTz, getDayBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { evaluateKeypadExpression } from "@/utils/keypadEval";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { projectAccountBalance } from "@/utils/remaining";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import {
   getLastTransaction,
@@ -740,6 +741,56 @@ export default function TransactionForm() {
     archivedAccounts.find((a) => a._id === toAccountId) ??
     null;
 
+  const hasAmount =
+    amountValue !== null && Number.isFinite(amountValue) && amountValue > 0;
+  const oldAbsAmount = editingTx ? Math.abs(editingTx.amount) : undefined;
+  const isSameType = isEdit && editingTx !== undefined && editingTx.type === type;
+
+  const singleProjected =
+    selectedAccount !== null
+      ? projectAccountBalance({
+          balance: selectedAccount.balance,
+          type,
+          side: "single",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && accountId === editingTx?.accountId,
+        })
+      : null;
+  const singleSubLabel =
+    selectedAccount !== null
+      ? hasAmount
+        ? `${formatNumber(selectedAccount.balance)} → ${formatNumber(singleProjected ?? selectedAccount.balance)}`
+        : formatNumber(selectedAccount.balance)
+      : null;
+
+  const fromProjected =
+    selectedAccount !== null && type === "transfer"
+      ? projectAccountBalance({
+          balance: selectedAccount.balance,
+          type,
+          side: "from",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && accountId === editingTx?.accountId,
+        })
+      : null;
+  const toProjected =
+    toAcc !== null && type === "transfer"
+      ? projectAccountBalance({
+          balance: toAcc.balance,
+          type,
+          side: "to",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && toAccountId === editingTx?.toAccountId,
+        })
+      : null;
+  const formatProjection = (balance: number, projected: number | null) =>
+    hasAmount && projected !== null
+      ? `${formatNumber(balance)} → ${formatNumber(projected)}`
+      : formatNumber(balance);
+
   const handleSwap = () => {
     const prevFrom = accountId;
     const prevTo = toAccountId;
@@ -878,6 +929,10 @@ export default function TransactionForm() {
                 setShowAccountSheet(true);
               }}
               onSwap={handleSwap}
+              fromSubLabel={selectedAccount ? formatProjection(selectedAccount.balance, fromProjected) : null}
+              fromSubLabelDanger={(fromProjected ?? 0) < 0}
+              toSubLabel={toAcc ? formatProjection(toAcc.balance, toProjected) : null}
+              toSubLabelDanger={(toProjected ?? 0) < 0}
             />
           )}
           {type !== "transfer" && categoryError ? (
@@ -896,6 +951,8 @@ export default function TransactionForm() {
             <AccountPill
               label="Select account"
               account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
+              subLabel={singleSubLabel}
+              subLabelDanger={(singleProjected ?? 0) < 0}
               onPress={() => {
                 setAccountSheetTarget("single");
                 setShowAccountSheet(true);
@@ -1122,6 +1179,48 @@ export default function TransactionForm() {
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>
+                      {item.archived || acc === null ? null : (
+                        <Text
+                          numberOfLines={1}
+                          className="text-xs tabular-nums"
+                          style={{
+                            color:
+                              hasAmount &&
+                              projectAccountBalance({
+                                balance: acc.balance,
+                                type,
+                                side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
+                                amount: amountValue,
+                                oldAbsAmount,
+                                isSameAccount:
+                                  isSameType &&
+                                  (accountSheetTarget === "to"
+                                    ? item.id === editingTx?.toAccountId
+                                    : item.id === editingTx?.accountId),
+                              }) < 0
+                                ? C.error
+                                : C.textSecondary,
+                          }}
+                        >
+                          {(() => {
+                            const projected = projectAccountBalance({
+                              balance: acc.balance,
+                              type,
+                              side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
+                              amount: amountValue,
+                              oldAbsAmount,
+                              isSameAccount:
+                                isSameType &&
+                                (accountSheetTarget === "to"
+                                  ? item.id === editingTx?.toAccountId
+                                  : item.id === editingTx?.accountId),
+                            });
+                            return hasAmount
+                              ? `${formatNumber(acc.balance)} → ${formatNumber(projected)}`
+                              : formatNumber(acc.balance);
+                          })()}
+                        </Text>
+                      )}
                       {item.archived ? (
                         <Text className="text-xs" style={{ color: C.textSecondary }}>
                           Archived
