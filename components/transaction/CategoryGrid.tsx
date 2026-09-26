@@ -7,6 +7,8 @@ type CategoryOption = {
   id: string;
   label: string;
   icon?: string;
+  remainingText?: string | null;
+  remainingDanger?: boolean;
 };
 
 type Props = {
@@ -111,6 +113,16 @@ export function CategoryGrid({ options, value, onSelect, isOwner, onAdd }: Props
             >
               {item.option.label}
             </Text>
+            {item.kind === "category" && item.option.remainingText ? (
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                className="text-center text-[11px] tabular-nums"
+                style={{ color: item.option.remainingDanger ? C.error : C.textSecondary }}
+              >
+                {item.option.remainingText}
+              </Text>
+            ) : null}
           </View>
         );
       }}

@@ -45,7 +45,8 @@ import { formatDateShortTz, getDayBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { evaluateKeypadExpression } from "@/utils/keypadEval";
 import { getConvexErrorMessage } from "@/lib/errors";
-import { projectAccountBalance } from "@/utils/remaining";
+import { getPeriodBounds } from "@/utils/period";
+import { projectAccountBalance, projectBudgetRemaining } from "@/utils/remaining";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import {
   getLastTransaction,
@@ -162,6 +163,41 @@ export default function TransactionForm() {
     () => (isEdit ? getResult?.transaction : undefined),
     [isEdit, getResult],
   );
+  const budgetPeriod = useMemo(
+    () => getPeriodBounds(date.getTime(), tz, "monthly"),
+    [date, tz],
+  );
+  const budgetResult = useQuery(
+    api.budgets.list,
+    type === "expense"
+      ? { periodStart: budgetPeriod.start, periodEnd: budgetPeriod.end }
+      : "skip",
+  );
+  const remainingByCategory = useMemo(() => {
+    const map = new Map<string, { amount: number; spent: number | undefined }>();
+    for (const b of budgetResult?.budgets ?? []) {
+      map.set(b.categoryId, { amount: b.amount, spent: b.spent });
+    }
+    return map;
+  }, [budgetResult]);
+
+  // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
+  // Hoisted above categoryOptions: the budget captions project `amountValue`.
+  const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
+  const parsedAmount = amountText.replace(/,/g, "");
+  const amountValue =
+    evalValue !== null
+      ? evalValue
+      : parsedAmount === "" || parsedAmount === "-"
+        ? null
+        : Number(parsedAmount);
+  const signedAmount =
+    type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
+
+  const hasAmount =
+    amountValue !== null && Number.isFinite(amountValue) && amountValue > 0;
+  const oldAbsAmount = editingTx ? Math.abs(editingTx.amount) : undefined;
+  const isSameType = isEdit && editingTx !== undefined && editingTx.type === type;
 
   const seeded = useRef(false);
   useEffect(() => {
@@ -223,12 +259,32 @@ export default function TransactionForm() {
     const categories = (categoryResult?.categories ?? []).filter((c) => c.type === type);
     const archivedOfType = (categoryResult?.archived ?? []).filter((c) => c.type === type);
     const archivedIds = new Set<string>(archivedOfType.map((a) => a._id));
-    const options = categories.map((c) => ({
-      id: c._id,
-      label: c.name,
-      icon: c.icon,
-      archived: false,
-    }));
+    const options = categories.map((c) => {
+      const info = remainingByCategory.get(c._id);
+      const projected =
+        info !== undefined && info.spent !== undefined
+          ? projectBudgetRemaining({
+              budgetAmount: info.amount,
+              spent: info.spent,
+              amount: amountValue,
+              oldAbsAmount,
+              isSameCategory: isSameType && c._id === editingTx?.categoryId && editingTx?.type === "expense",
+            })
+          : null;
+      return {
+        id: c._id,
+        label: c.name,
+        icon: c.icon,
+        archived: false,
+        remainingText:
+          info !== undefined && info.spent !== undefined && projected !== null
+            ? hasAmount
+              ? `sisa ${formatNumber(projected)}`
+              : `sisa ${formatNumber(info.amount - info.spent)}`
+            : null,
+        remainingDanger: projected !== null && projected < 0,
+      };
+    });
     if (isEdit && editingTx?.categoryId && editingTx.type === type) {
       const currentId = editingTx.categoryId as string;
       if (!options.some((o) => o.id === currentId)) {
@@ -237,11 +293,13 @@ export default function TransactionForm() {
           label: editingTx.category?.name ?? "Archived category",
           icon: editingTx.category?.icon,
           archived: archivedIds.has(currentId),
+          remainingText: null,
+          remainingDanger: false,
         });
       }
     }
     return options;
-  }, [categoryResult, type, isEdit, editingTx]);
+  }, [categoryResult, type, isEdit, editingTx, remainingByCategory, amountValue, hasAmount, oldAbsAmount, isSameType]);
 
   useEffect(() => {
     if (categoryResult === undefined) return;
@@ -323,18 +381,6 @@ export default function TransactionForm() {
     },
     [categoryId, show],
   );
-
-  // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
-  const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
-  const parsedAmount = amountText.replace(/,/g, "");
-  const amountValue =
-    evalValue !== null
-      ? evalValue
-      : parsedAmount === "" || parsedAmount === "-"
-        ? null
-        : Number(parsedAmount);
-  const signedAmount =
-    type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
   const handleAccountSelect = useCallback((id: string) => {
     setAccountId(id);
@@ -741,11 +787,6 @@ export default function TransactionForm() {
     archivedAccounts.find((a) => a._id === toAccountId) ??
     null;
 
-  const hasAmount =
-    amountValue !== null && Number.isFinite(amountValue) && amountValue > 0;
-  const oldAbsAmount = editingTx ? Math.abs(editingTx.amount) : undefined;
-  const isSameType = isEdit && editingTx !== undefined && editingTx.type === type;
-
   const singleProjected =
     selectedAccount !== null
       ? projectAccountBalance({
@@ -915,6 +956,29 @@ export default function TransactionForm() {
                 isOwner={categoryResult?.isOwner ?? false}
                 onAdd={handleAddCategory}
               />
+              {type === "expense" && categoryId !== null
+                ? (() => {
+                    const info = remainingByCategory.get(categoryId);
+                    if (info === undefined || info.spent === undefined) return null;
+                    const projected = projectBudgetRemaining({
+                      budgetAmount: info.amount,
+                      spent: info.spent,
+                      amount: amountValue,
+                      oldAbsAmount,
+                      isSameCategory:
+                        isSameType && categoryId === editingTx?.categoryId && editingTx?.type === "expense",
+                    });
+                    return (
+                      <Text className="px-4 pt-1 text-xs tabular-nums text-text-secondary dark:text-text-secondary-dark">
+                        Budget {formatNumber(info.amount)} • Terpakai {formatNumber(info.spent)} • Sisa{" "}
+                        <Text style={{ color: projected < 0 ? C.error : C.textPrimary }}>
+                          {formatNumber(info.amount - (isSameType && categoryId === editingTx?.categoryId && editingTx?.type === "expense" && oldAbsAmount !== undefined ? info.spent - oldAbsAmount : info.spent))}
+                          {hasAmount ? ` → ${formatNumber(projected)}` : ""}
+                        </Text>
+                      </Text>
+                    );
+                  })()
+                : null}
             </>
           ) : (
             <TransferDual
