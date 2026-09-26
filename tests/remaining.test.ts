@@ -84,4 +84,15 @@ describe("projectBudgetRemaining", () => {
       projectBudgetRemaining({ budgetAmount: 50000, spent: 48000, amount: 5000 }),
     ).toBe(-3000);
   });
+  it("returns raw current remaining when amount is empty even for the same category", () => {
+    expect(
+      projectBudgetRemaining({
+        budgetAmount: 50000,
+        spent: 45000,
+        amount: null,
+        oldAbsAmount: 5000,
+        isSameCategory: true,
+      }),
+    ).toBe(5000);
+  });
 });

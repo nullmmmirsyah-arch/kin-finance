@@ -198,6 +198,12 @@ export default function TransactionForm() {
     amountValue !== null && Number.isFinite(amountValue) && amountValue > 0;
   const oldAbsAmount = editingTx ? Math.abs(editingTx.amount) : undefined;
   const isSameType = isEdit && editingTx !== undefined && editingTx.type === type;
+  // The old transaction is only inside the queried budget spent when its date
+  // still falls in the selected-date period (user may have moved the date).
+  const oldTxInBudgetPeriod =
+    editingTx !== undefined &&
+    editingTx.date >= budgetPeriod.start &&
+    editingTx.date < budgetPeriod.end;
 
   const seeded = useRef(false);
   useEffect(() => {
@@ -268,7 +274,7 @@ export default function TransactionForm() {
               spent: info.spent,
               amount: amountValue,
               oldAbsAmount,
-              isSameCategory: isSameType && c._id === editingTx?.categoryId && editingTx?.type === "expense",
+              isSameCategory: isSameType && oldTxInBudgetPeriod && c._id === editingTx?.categoryId && editingTx?.type === "expense",
             })
           : null;
       return {
@@ -299,7 +305,7 @@ export default function TransactionForm() {
       }
     }
     return options;
-  }, [categoryResult, type, isEdit, editingTx, remainingByCategory, amountValue, hasAmount, oldAbsAmount, isSameType]);
+  }, [categoryResult, type, isEdit, editingTx, remainingByCategory, amountValue, hasAmount, oldAbsAmount, isSameType, oldTxInBudgetPeriod]);
 
   useEffect(() => {
     if (categoryResult === undefined) return;
@@ -787,6 +793,11 @@ export default function TransactionForm() {
     archivedAccounts.find((a) => a._id === toAccountId) ??
     null;
 
+  // Archived accounts show no remaining captions (same rule as the picker rows).
+  const selectedIsActive =
+    selectedAccount !== null && !(selectedAccount.isArchived ?? false);
+  const toIsActive = toAcc !== null && !(toAcc.isArchived ?? false);
+
   const singleProjected =
     selectedAccount !== null
       ? projectAccountBalance({
@@ -966,13 +977,13 @@ export default function TransactionForm() {
                       amount: amountValue,
                       oldAbsAmount,
                       isSameCategory:
-                        isSameType && categoryId === editingTx?.categoryId && editingTx?.type === "expense",
+                        isSameType && oldTxInBudgetPeriod && categoryId === editingTx?.categoryId && editingTx?.type === "expense",
                     });
                     return (
                       <Text className="px-4 pt-1 text-xs tabular-nums text-text-secondary dark:text-text-secondary-dark">
                         Budget {formatNumber(info.amount)} • Terpakai {formatNumber(info.spent)} • Sisa{" "}
                         <Text style={{ color: projected < 0 ? C.error : C.textPrimary }}>
-                          {formatNumber(info.amount - (isSameType && categoryId === editingTx?.categoryId && editingTx?.type === "expense" && oldAbsAmount !== undefined ? info.spent - oldAbsAmount : info.spent))}
+                          {formatNumber(info.amount - info.spent)}
                           {hasAmount ? ` → ${formatNumber(projected)}` : ""}
                         </Text>
                       </Text>
@@ -993,9 +1004,9 @@ export default function TransactionForm() {
                 setShowAccountSheet(true);
               }}
               onSwap={handleSwap}
-              fromSubLabel={selectedAccount ? formatProjection(selectedAccount.balance, fromProjected) : null}
+              fromSubLabel={selectedAccount && selectedIsActive ? formatProjection(selectedAccount.balance, fromProjected) : null}
               fromSubLabelDanger={hasAmount && (fromProjected ?? 0) < 0}
-              toSubLabel={toAcc ? formatProjection(toAcc.balance, toProjected) : null}
+              toSubLabel={toAcc && toIsActive ? formatProjection(toAcc.balance, toProjected) : null}
               toSubLabelDanger={hasAmount && (toProjected ?? 0) < 0}
             />
           )}
@@ -1015,7 +1026,7 @@ export default function TransactionForm() {
             <AccountPill
               label="Select account"
               account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
-              subLabel={singleSubLabel}
+              subLabel={selectedIsActive ? singleSubLabel : null}
               subLabelDanger={hasAmount && (singleProjected ?? 0) < 0}
               onPress={() => {
                 setAccountSheetTarget("single");

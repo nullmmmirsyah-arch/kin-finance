@@ -43,11 +43,11 @@ export interface ProjectBudgetInput {
 
 export function projectBudgetRemaining(input: ProjectBudgetInput): number {
   const { budgetAmount, spent, amount } = input;
+  const current = budgetAmount - spent;
+  if (amount === null || !Number.isFinite(amount) || amount <= 0) return current;
   const effectiveSpent =
     input.isSameCategory === true && input.oldAbsAmount !== undefined
       ? spent - input.oldAbsAmount
       : spent;
-  const current = budgetAmount - effectiveSpent;
-  if (amount === null || !Number.isFinite(amount) || amount <= 0) return current;
-  return current - amount;
+  return budgetAmount - effectiveSpent - amount;
 }
