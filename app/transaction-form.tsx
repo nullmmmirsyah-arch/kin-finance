@@ -45,6 +45,8 @@ import { formatDateShortTz, getDayBounds } from "@/utils/date";
 import { resolveTimezone } from "@/constants/timezones";
 import { evaluateKeypadExpression } from "@/utils/keypadEval";
 import { getConvexErrorMessage } from "@/lib/errors";
+import { getPeriodBounds } from "@/utils/period";
+import { projectAccountBalance, projectBudgetRemaining } from "@/utils/remaining";
 import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import {
   getLastTransaction,
@@ -161,6 +163,47 @@ export default function TransactionForm() {
     () => (isEdit ? getResult?.transaction : undefined),
     [isEdit, getResult],
   );
+  const budgetPeriod = useMemo(
+    () => getPeriodBounds(date.getTime(), tz, "monthly"),
+    [date, tz],
+  );
+  const budgetResult = useQuery(
+    api.budgets.list,
+    type === "expense"
+      ? { periodStart: budgetPeriod.start, periodEnd: budgetPeriod.end }
+      : "skip",
+  );
+  const remainingByCategory = useMemo(() => {
+    const map = new Map<string, { amount: number; spent: number | undefined }>();
+    for (const b of budgetResult?.budgets ?? []) {
+      map.set(b.categoryId, { amount: b.amount, spent: b.spent });
+    }
+    return map;
+  }, [budgetResult]);
+
+  // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
+  // Hoisted above categoryOptions: the budget captions project `amountValue`.
+  const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
+  const parsedAmount = amountText.replace(/,/g, "");
+  const amountValue =
+    evalValue !== null
+      ? evalValue
+      : parsedAmount === "" || parsedAmount === "-"
+        ? null
+        : Number(parsedAmount);
+  const signedAmount =
+    type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
+
+  const hasAmount =
+    amountValue !== null && Number.isFinite(amountValue) && amountValue > 0;
+  const oldAbsAmount = editingTx ? Math.abs(editingTx.amount) : undefined;
+  const isSameType = isEdit && editingTx !== undefined && editingTx.type === type;
+  // The old transaction is only inside the queried budget spent when its date
+  // still falls in the selected-date period (user may have moved the date).
+  const oldTxInBudgetPeriod =
+    editingTx !== undefined &&
+    editingTx.date >= budgetPeriod.start &&
+    editingTx.date < budgetPeriod.end;
 
   const seeded = useRef(false);
   useEffect(() => {
@@ -222,12 +265,32 @@ export default function TransactionForm() {
     const categories = (categoryResult?.categories ?? []).filter((c) => c.type === type);
     const archivedOfType = (categoryResult?.archived ?? []).filter((c) => c.type === type);
     const archivedIds = new Set<string>(archivedOfType.map((a) => a._id));
-    const options = categories.map((c) => ({
-      id: c._id,
-      label: c.name,
-      icon: c.icon,
-      archived: false,
-    }));
+    const options = categories.map((c) => {
+      const info = remainingByCategory.get(c._id);
+      const projected =
+        info !== undefined && info.spent !== undefined
+          ? projectBudgetRemaining({
+              budgetAmount: info.amount,
+              spent: info.spent,
+              amount: amountValue,
+              oldAbsAmount,
+              isSameCategory: isSameType && oldTxInBudgetPeriod && c._id === editingTx?.categoryId && editingTx?.type === "expense",
+            })
+          : null;
+      return {
+        id: c._id,
+        label: c.name,
+        icon: c.icon,
+        archived: false,
+        remainingText:
+          info !== undefined && info.spent !== undefined && projected !== null
+            ? hasAmount
+              ? `sisa ${formatNumber(projected)}`
+              : `sisa ${formatNumber(info.amount - info.spent)}`
+            : null,
+        remainingDanger: projected !== null && projected < 0,
+      };
+    });
     if (isEdit && editingTx?.categoryId && editingTx.type === type) {
       const currentId = editingTx.categoryId as string;
       if (!options.some((o) => o.id === currentId)) {
@@ -236,11 +299,13 @@ export default function TransactionForm() {
           label: editingTx.category?.name ?? "Archived category",
           icon: editingTx.category?.icon,
           archived: archivedIds.has(currentId),
+          remainingText: null,
+          remainingDanger: false,
         });
       }
     }
     return options;
-  }, [categoryResult, type, isEdit, editingTx]);
+  }, [categoryResult, type, isEdit, editingTx, remainingByCategory, amountValue, hasAmount, oldAbsAmount, isSameType, oldTxInBudgetPeriod]);
 
   useEffect(() => {
     if (categoryResult === undefined) return;
@@ -322,18 +387,6 @@ export default function TransactionForm() {
     },
     [categoryId, show],
   );
-
-  // Keypad-aware amount value: evaluate expression if possible, else fallback to numeric parse
-  const evalValue = useMemo(() => evaluateKeypadExpression(amountText), [amountText]);
-  const parsedAmount = amountText.replace(/,/g, "");
-  const amountValue =
-    evalValue !== null
-      ? evalValue
-      : parsedAmount === "" || parsedAmount === "-"
-        ? null
-        : Number(parsedAmount);
-  const signedAmount =
-    type === "expense" ? -1 * (amountValue ?? 0) : (amountValue ?? 0);
 
   const handleAccountSelect = useCallback((id: string) => {
     setAccountId(id);
@@ -740,6 +793,56 @@ export default function TransactionForm() {
     archivedAccounts.find((a) => a._id === toAccountId) ??
     null;
 
+  // Archived accounts show no remaining captions (same rule as the picker rows).
+  const selectedIsActive =
+    selectedAccount !== null && !(selectedAccount.isArchived ?? false);
+  const toIsActive = toAcc !== null && !(toAcc.isArchived ?? false);
+
+  const singleProjected =
+    selectedAccount !== null
+      ? projectAccountBalance({
+          balance: selectedAccount.balance,
+          type,
+          side: "single",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && accountId === editingTx?.accountId,
+        })
+      : null;
+  const singleSubLabel =
+    selectedAccount !== null
+      ? hasAmount
+        ? `${formatNumber(selectedAccount.balance)} → ${formatNumber(singleProjected ?? selectedAccount.balance)}`
+        : formatNumber(selectedAccount.balance)
+      : null;
+
+  const fromProjected =
+    selectedAccount !== null && type === "transfer"
+      ? projectAccountBalance({
+          balance: selectedAccount.balance,
+          type,
+          side: "from",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && accountId === editingTx?.accountId,
+        })
+      : null;
+  const toProjected =
+    toAcc !== null && type === "transfer"
+      ? projectAccountBalance({
+          balance: toAcc.balance,
+          type,
+          side: "to",
+          amount: amountValue,
+          oldAbsAmount,
+          isSameAccount: isSameType && toAccountId === editingTx?.toAccountId,
+        })
+      : null;
+  const formatProjection = (balance: number, projected: number | null) =>
+    hasAmount && projected !== null
+      ? `${formatNumber(balance)} → ${formatNumber(projected)}`
+      : formatNumber(balance);
+
   const handleSwap = () => {
     const prevFrom = accountId;
     const prevTo = toAccountId;
@@ -864,6 +967,29 @@ export default function TransactionForm() {
                 isOwner={categoryResult?.isOwner ?? false}
                 onAdd={handleAddCategory}
               />
+              {type === "expense" && categoryId !== null
+                ? (() => {
+                    const info = remainingByCategory.get(categoryId);
+                    if (info === undefined || info.spent === undefined) return null;
+                    const projected = projectBudgetRemaining({
+                      budgetAmount: info.amount,
+                      spent: info.spent,
+                      amount: amountValue,
+                      oldAbsAmount,
+                      isSameCategory:
+                        isSameType && oldTxInBudgetPeriod && categoryId === editingTx?.categoryId && editingTx?.type === "expense",
+                    });
+                    return (
+                      <Text className="px-4 pt-1 text-xs tabular-nums text-text-secondary dark:text-text-secondary-dark">
+                        Budget {formatNumber(info.amount)} • Terpakai {formatNumber(info.spent)} • Sisa{" "}
+                        <Text style={{ color: projected < 0 ? C.error : C.textPrimary }}>
+                          {formatNumber(info.amount - info.spent)}
+                          {hasAmount ? ` → ${formatNumber(projected)}` : ""}
+                        </Text>
+                      </Text>
+                    );
+                  })()
+                : null}
             </>
           ) : (
             <TransferDual
@@ -878,6 +1004,10 @@ export default function TransactionForm() {
                 setShowAccountSheet(true);
               }}
               onSwap={handleSwap}
+              fromSubLabel={selectedAccount && selectedIsActive ? formatProjection(selectedAccount.balance, fromProjected) : null}
+              fromSubLabelDanger={hasAmount && (fromProjected ?? 0) < 0}
+              toSubLabel={toAcc && toIsActive ? formatProjection(toAcc.balance, toProjected) : null}
+              toSubLabelDanger={hasAmount && (toProjected ?? 0) < 0}
             />
           )}
           {type !== "transfer" && categoryError ? (
@@ -896,6 +1026,8 @@ export default function TransactionForm() {
             <AccountPill
               label="Select account"
               account={selectedAccount ? { name: selectedAccount.name, type: selectedAccount.type, subType: selectedAccount.subType } : null}
+              subLabel={selectedIsActive ? singleSubLabel : null}
+              subLabelDanger={hasAmount && (singleProjected ?? 0) < 0}
               onPress={() => {
                 setAccountSheetTarget("single");
                 setShowAccountSheet(true);
@@ -1105,6 +1237,21 @@ export default function TransactionForm() {
                     (accountSheetTarget === "single" && accountId === item.id) ||
                     (accountSheetTarget === "from" && accountId === item.id) ||
                     (accountSheetTarget === "to" && toAccountId === item.id);
+                  const projected =
+                    item.archived || acc === null
+                      ? null
+                      : projectAccountBalance({
+                          balance: acc.balance,
+                          type,
+                          side: accountSheetTarget === "to" ? "to" : accountSheetTarget === "from" ? "from" : "single",
+                          amount: amountValue,
+                          oldAbsAmount,
+                          isSameAccount:
+                            isSameType &&
+                            (accountSheetTarget === "to"
+                              ? item.id === editingTx?.toAccountId
+                              : item.id === editingTx?.accountId),
+                        });
                   return (
                     <Pressable
                       onPress={() => {
@@ -1122,6 +1269,22 @@ export default function TransactionForm() {
                       <Text className="flex-1 text-sm" style={{ color: C.textPrimary }}>
                         {item.label}
                       </Text>
+                      {item.archived || acc === null ? null : (
+                        <Text
+                          numberOfLines={1}
+                          className="text-xs tabular-nums"
+                          style={{
+                            color:
+                              hasAmount && (projected ?? 0) < 0
+                                ? C.error
+                                : C.textSecondary,
+                          }}
+                        >
+                          {hasAmount && projected !== null
+                            ? `${formatNumber(acc.balance)} → ${formatNumber(projected)}`
+                            : formatNumber(acc.balance)}
+                        </Text>
+                      )}
                       {item.archived ? (
                         <Text className="text-xs" style={{ color: C.textSecondary }}>
                           Archived

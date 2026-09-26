@@ -1,4 +1,4 @@
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { AccountIcon } from "@/components/AccountIcon";
 import { Shadow, useThemeColors } from "@/constants/theme";
 
@@ -12,9 +12,11 @@ type Props = {
   label: string;
   account: AccountRef;
   onPress: () => void;
+  subLabel?: string | null;
+  subLabelDanger?: boolean;
 };
 
-export function AccountPill({ label, account, onPress }: Props) {
+export function AccountPill({ label, account, onPress, subLabel, subLabelDanger }: Props) {
   const C = useThemeColors();
   return (
     <Pressable
@@ -37,13 +39,24 @@ export function AccountPill({ label, account, onPress }: Props) {
       ]}
     >
       <AccountIcon subType={account?.subType ?? "other"} size={20} />
-      <Text
-        numberOfLines={1}
-        className="flex-1 text-sm font-medium"
-        style={{ color: C.textPrimary }}
-      >
-        {account?.name ?? label}
-      </Text>
+      <View className="flex-1" style={{ minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          className="text-sm font-medium"
+          style={{ color: C.textPrimary }}
+        >
+          {account?.name ?? label}
+        </Text>
+        {subLabel ? (
+          <Text
+            numberOfLines={1}
+            className="text-xs tabular-nums"
+            style={{ color: subLabelDanger ? C.error : C.textSecondary }}
+          >
+            {subLabel}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
