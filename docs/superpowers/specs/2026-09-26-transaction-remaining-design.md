@@ -72,3 +72,22 @@ tidak spam tiap ketikan).
   expense/income/transfer, amount kosong, edit-mode same-account vs ganti
   account, redacted/no-budget → undefined.
 - Verifikasi: `npx tsc --noEmit`, `npm run lint`.
+
+## Implementation Notes (post-review, 2026-09-26)
+
+Tiga koreksi dari review, di-commit `ff19ab9` di atas implementasi plan:
+
+- **Pill archived tanpa caption:** `selectedAccount`/`toAcc` yang ter-resolve ke
+  dokumen archived (edit transaksi legacy) kini `subLabel`-nya null — aturan
+  yang sama dengan baris picker.
+- **Koreksi old-amount terikat periode:** `isSameCategory` kini mensyaratkan
+  `editingTx.date` masih di dalam periode budget yang di-query
+  (`oldTxInBudgetPeriod`); edit yang tanggalnya dipindah ke bulan lain tidak
+  lagi menggelembungkan sisa.
+- **Sisa mentah saat amount kosong:** `projectBudgetRemaining` mengembalikan
+  `budget − spent` tanpa koreksi saat amount invalid; baris ringkasan
+  menampilkan angka mentah sebelum panah.
+
+Dilewati dengan alasan: reversal kontribusi lama per-account lintas tipe
+(edit + ganti tipe/swap) — edge sempit pada label warning-only, menuntut
+redesign interface helper yang sudah dites; follow-up terpisah bila perlu.

@@ -193,7 +193,7 @@ Core records of financial activity: income, expense, or transfer.
 - **Transfer:** links two Accounts (from → to), no category; amount is a positive magnitude.
 - **Balance auto-update:** create applies; update reverses old + applies new (handles account changes); delete reverses.
 - Members cannot create on hidden accounts/categories or reassign to them, but can edit existing transactions referencing hidden accounts.
-- **Sheet UX:** header X + tabs Expenses/Income/Transfer, grid kategori scroll 4 kolom filtered by type, Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare whole number, keypad custom 4×4, date pill opens calendar modal, Note 200 + auto-suggest, duplicate 24h Alert, discard guard.
+- **Sheet UX:** header X + tabs Expenses/Income/Transfer, grid kategori scroll 4 kolom filtered by type, Transfer dual card + swap, pill akun tappable default lastTransaction, amount bare whole number, keypad custom 4×4, date pill opens calendar modal, Note 200 + auto-suggest, duplicate 24h Alert, discard guard. **Live remaining projections:** tiap baris sheet akun + pill terpilih menampilkan `balance → proyeksi` (transfer: From berkurang, To bertambah); tiap tile kategori berbudget menampilkan `sisa X`; kategori terpilih menampilkan baris `Budget • Terpakai • Sisa → proyeksi` mengikuti periode tanggal transaksi (expense only). Merah saat proyeksi < 0; warning visual saja, tidak memblokir Save. Archived/redacted (member+hidden) tampil tanpa caption sisa.
 - **Day-grouped net totals:** the Transactions list shows a net total per day header (income − expense; transfers excluded), colored by sign.
 
 **Filtering:** server-side by **type** (income/expense/transfer), **accounts**, and **categories**, with the date range consolidated behind a single Date chip. Account and Category are multi-select. Interactions inside the filter sheet edit a local draft; filters apply only when the user taps Done.
@@ -285,9 +285,9 @@ Accounts tab → "+" → fill name/type/opening balance
 
 ```text
 Home → "+" → sheet (Expenses/Income/Transfer tabs)
-  → pick category from scroll grid (or transfer: Payment/Receive cards + swap)
-  → amount via custom keypad (+ - × ÷ live eval)
-  → account pill, date pill, note with auto-suggest
+  → pick category from scroll grid (tiles show live `sisa` for budgeted categories; or transfer: Payment/Receive cards + swap)
+  → amount via custom keypad (+ - × ÷ live eval; account/budget captions project live)
+  → account pill (shows `balance → proyeksi`), date pill, note with auto-suggest
   → Save → transactions.create → balances auto-updated → back
 ```
 
