@@ -75,6 +75,16 @@ export default {
     "@react-native-community/datetimepicker",
     "expo-localization",
     [
+      "expo-share-intent",
+      {
+        iosActivationRules: {
+          NSExtensionActivationSupportsText: true,
+          NSExtensionActivationSupportsImageWithMaxCount: 1,
+        },
+        androidIntentFilters: ["text/*", "image/*"],
+      },
+    ],
+    [
       "expo-dev-client",
       {
         // Only generate dev-client scheme for dev variant so QR codes / EAS Update
