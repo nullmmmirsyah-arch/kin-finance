@@ -113,6 +113,24 @@ export default defineSchema({
     .index("by_category_period", ["categoryId", "periodStart"])
     .index("by_household_period", ["householdId", "periodStart"]),
 
+  receiptTemplates: defineTable({
+    householdId: v.id("households"),
+    label: v.string(),
+    icon: v.optional(v.string()),
+    keywords: v.array(v.string()),
+    amountStrategy: v.union(v.literal("largest"), v.literal("afterKeyword")),
+    amountKeyword: v.optional(v.string()),
+    noteStrategy: v.union(v.literal("firstLine"), v.literal("afterKeyword"), v.literal("merchantLine")),
+    noteKeyword: v.optional(v.string()),
+    defaultAccountId: v.optional(v.id("accounts")),
+    defaultType: v.union(v.literal("expense"), v.literal("income"), v.literal("transfer")),
+    defaultCategoryId: v.optional(v.id("categories")),
+    keywordRules: v.array(v.object({ keyword: v.string(), categoryId: v.id("categories") })),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_householdId", ["householdId"]),
+
   invitations: defineTable({
     householdId: v.id("households"),
     codeHash: v.string(),
