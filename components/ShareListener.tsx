@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { useShareIntent } from "expo-share-intent";
 import { api } from "@/convex/_generated/api";
-import { fingerprintScore, pickAmount, pickNote } from "@/utils/receiptParser";
+import { fingerprintScore, pickAmount, pickNote, resolveCategory } from "@/utils/receiptParser";
 import { recognizeImageText } from "@/lib/ocr";
 import { useSnackbar } from "@/components/Snackbar";
 import { getConvexErrorMessage } from "@/lib/errors";
@@ -83,8 +83,13 @@ export function ShareListener() {
           if (note) params.prefillNote = note;
           if (best.defaultAccountId)
             params.prefillAccountId = best.defaultAccountId;
-          if (best.defaultCategoryId)
-            params.prefillCategoryId = best.defaultCategoryId;
+          const categoryId = resolveCategory(rawText, {
+            keywordRules: best.keywordRules ?? [],
+            ...(best.defaultCategoryId
+              ? { defaultCategoryId: best.defaultCategoryId }
+              : {}),
+          });
+          if (categoryId) params.prefillCategoryId = categoryId;
           if (imageUri) params.receiptImageUri = imageUri;
           params.receiptLabel = best.label;
           router.push({ pathname: "/transaction-form", params });

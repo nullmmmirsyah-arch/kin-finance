@@ -53,6 +53,21 @@ export function pickAmount(text: string, strategy: "largest" | "afterKeyword", k
   return all.length === 0 ? null : Math.max(...all);
 }
 
+export function resolveCategory(
+  rawText: string,
+  template: {
+    keywordRules: { keyword: string; categoryId: string }[];
+    defaultCategoryId?: string;
+  },
+): string | null {
+  const lower = rawText.toLowerCase();
+  for (const rule of template.keywordRules) {
+    const kw = rule.keyword.trim().toLowerCase();
+    if (kw !== "" && lower.includes(kw)) return rule.categoryId;
+  }
+  return template.defaultCategoryId ?? null;
+}
+
 export function pickNote(lines: string[], strategy: "firstLine" | "afterKeyword" | "merchantLine", keyword?: string): string {
   const clean = lines.map((l) => l.trim()).filter(Boolean);
   if (clean.length === 0) return "";

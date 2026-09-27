@@ -168,6 +168,10 @@ export default function ReceiptMap() {
   const [defaultType, setDefaultType] = useState<DefaultType>("expense");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [rules, setRules] = useState<
+    { keyword: string; categoryId: string | null }[]
+  >([]);
+  const [ruleError, setRuleError] = useState<string | null>(null);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [keywordError, setKeywordError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -186,11 +190,32 @@ export default function ReceiptMap() {
     setDefaultType(t);
     if (t === "transfer") {
       setCategoryId(null);
+      setRules([]);
+      setRuleError(null);
     } else if (categoryId !== null) {
       const stillVisible = (categoryResult?.categories ?? []).some(
         (c) => c._id === categoryId && c.type === t,
       );
       if (!stillVisible) setCategoryId(null);
+      setRules((prev) =>
+        prev.filter(
+          (r) =>
+            r.categoryId === null ||
+            (categoryResult?.categories ?? []).some(
+              (c) => c._id === r.categoryId && c.type === t,
+            ),
+        ),
+      );
+    } else {
+      setRules((prev) =>
+        prev.filter(
+          (r) =>
+            r.categoryId === null ||
+            (categoryResult?.categories ?? []).some(
+              (c) => c._id === r.categoryId && c.type === t,
+            ),
+        ),
+      );
     }
   };
 
@@ -198,6 +223,7 @@ export default function ReceiptMap() {
     setLabelError(null);
     setKeywordError(null);
     setAmountError(null);
+    setRuleError(null);
     const labelErr = validateTemplateLabel(label);
     if (labelErr) {
       setLabelError(labelErr);
@@ -215,6 +241,20 @@ export default function ReceiptMap() {
       setAmountError("Pick an amount from the receipt or type one.");
       void hapticError();
       return;
+    }
+    if (defaultType !== "transfer") {
+      for (const r of rules) {
+        if (r.keyword.trim() === "") {
+          setRuleError("Rule keyword must not be empty.");
+          void hapticError();
+          return;
+        }
+        if (r.categoryId === null) {
+          setRuleError("Pick a category for every rule.");
+          void hapticError();
+          return;
+        }
+      }
     }
     const now = Date.now();
     const date = selectedDate > now ? now : selectedDate;
@@ -234,7 +274,13 @@ export default function ReceiptMap() {
         ...(categoryId === null || defaultType === "transfer"
           ? {}
           : { defaultCategoryId: categoryId as Id<"categories"> }),
-        keywordRules: [],
+        keywordRules:
+          defaultType === "transfer"
+            ? []
+            : rules.map((r) => ({
+                keyword: r.keyword.trim(),
+                categoryId: r.categoryId as Id<"categories">,
+              })),
       });
       void hapticSuccess();
       show("Receipt template saved");
@@ -495,6 +541,122 @@ export default function ReceiptMap() {
                 )}
               />
             )}
+          </View>
+        ) : null}
+
+        {defaultType !== "transfer" ? (
+          <View className="gap-2">
+            <SectionTitle>Category rules (optional)</SectionTitle>
+            {rules.map((rule, idx) => (
+              <View
+                key={idx}
+                className="gap-2 rounded-xl border p-3"
+                style={{ borderColor: C.border }}
+              >
+                <Input
+                  label={`Keyword ${idx + 1}`}
+                  placeholder="e.g. QRIS"
+                  value={rule.keyword}
+                  onChangeText={(t) => {
+                    setRules((prev) =>
+                      prev.map((r, i) =>
+                        i === idx ? { ...r, keyword: t } : r,
+                      ),
+                    );
+                    if (ruleError) setRuleError(null);
+                  }}
+                  autoCapitalize="none"
+                />
+                <Text className="text-xs" style={{ color: C.textSecondary }}>
+                  Category
+                </Text>
+                {categoryResult === undefined ? (
+                  <Text
+                    className="text-sm"
+                    style={{ color: C.textSecondary }}
+                  >
+                    Loading categories…
+                  </Text>
+                ) : categories.length === 0 ? (
+                  <Text
+                    className="text-sm"
+                    style={{ color: C.textSecondary }}
+                  >
+                    No categories of this type.
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={categories}
+                    keyExtractor={(c) => c._id}
+                    scrollEnabled={false}
+                    ItemSeparatorComponent={() => (
+                      <View style={{ height: 8 }} />
+                    )}
+                    renderItem={({ item }) => (
+                      <RadioRow
+                        selected={rule.categoryId === item._id}
+                        label={item.name}
+                        onPress={() =>
+                          setRules((prev) =>
+                            prev.map((r, i) =>
+                              i === idx
+                                ? {
+                                    ...r,
+                                    categoryId:
+                                      r.categoryId === item._id
+                                        ? null
+                                        : item._id,
+                                  }
+                                : r,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                  />
+                )}
+                <Pressable
+                  onPress={() =>
+                    setRules((prev) => prev.filter((_, i) => i !== idx))
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove rule ${idx + 1}`}
+                  className="flex-row items-center gap-2 self-start px-1 py-2"
+                >
+                  <Feather name="trash-2" size={16} color={C.textSecondary} />
+                  <Text
+                    className="text-sm"
+                    style={{ color: C.textSecondary }}
+                  >
+                    Remove
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+            {ruleError ? (
+              <Text className="text-sm" style={{ color: C.error }}>
+                {ruleError}
+              </Text>
+            ) : null}
+            <Pressable
+              onPress={() =>
+                setRules((prev) => [
+                  ...prev,
+                  { keyword: "", categoryId: null },
+                ])
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Add rule"
+              className="flex-row items-center gap-2 self-start px-1 py-2"
+            >
+              <Feather name="plus" size={16} color={C.primary} />
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: C.primary }}
+              >
+                Add rule
+              </Text>
+            </Pressable>
           </View>
         ) : null}
       </ScrollView>
