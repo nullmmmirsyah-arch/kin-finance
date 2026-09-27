@@ -41,6 +41,7 @@ export function ShareListener() {
       !shareIntent ||
       shareIntent.type === null ||
       tpl === undefined ||
+      tpl.templates === null ||
       processingRef.current
     ) {
       return;

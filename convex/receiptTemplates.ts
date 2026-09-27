@@ -104,6 +104,9 @@ export const create = mutation({
       }
     }
 
+    if (args.defaultType === "transfer" && args.keywordRules.length > 0) {
+      throw new ConvexError("Transfer templates cannot have category rules.");
+    }
     for (const rule of args.keywordRules) {
       if (rule.keyword.trim().length === 0) {
         throw new ConvexError("Keyword rule keyword is required.");
@@ -266,21 +269,27 @@ export const update = mutation({
       }
     }
 
-    if (args.keywordRules !== undefined) {
-      for (const rule of args.keywordRules) {
-        if (rule.keyword.trim().length === 0) {
-          throw new ConvexError("Keyword rule keyword is required.");
-        }
-        const ruleCat = await getScopedDoc(
-          ctx,
-          rule.categoryId,
-          membership.householdId,
-          "Category",
-        );
-        if (ruleCat.type !== effectiveType && effectiveType !== "transfer") {
-          throw new ConvexError("Category type must match transaction type.");
-        }
+    // Revalidate the effective rules: explicit update wins, otherwise the
+    // stored rules must still match when defaultType changes.
+    const effectiveRules = args.keywordRules ?? template.keywordRules;
+    if (effectiveType === "transfer" && effectiveRules.length > 0) {
+      throw new ConvexError("Transfer templates cannot have category rules.");
+    }
+    for (const rule of effectiveRules) {
+      if (rule.keyword.trim().length === 0) {
+        throw new ConvexError("Keyword rule keyword is required.");
       }
+      const ruleCat = await getScopedDoc(
+        ctx,
+        rule.categoryId,
+        membership.householdId,
+        "Category",
+      );
+      if (ruleCat.type !== effectiveType && effectiveType !== "transfer") {
+        throw new ConvexError("Category type must match transaction type.");
+      }
+    }
+    if (args.keywordRules !== undefined) {
       patch.keywordRules = args.keywordRules;
     }
 

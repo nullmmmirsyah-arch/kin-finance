@@ -33,6 +33,11 @@ describe("extractDates", () => {
   it("rejects out-of-range day/month", () => {
     expect(extractDates("99/99/2026")).toEqual([]);
   });
+
+  it("rejects calendar dates rolled over by JS Date", () => {
+    expect(extractDates("31/02/2026")).toEqual([]);
+    expect(extractDates("31 Februari 2026")).toEqual([]);
+  });
 });
 
 describe("pickAmount afterKeyword", () => {

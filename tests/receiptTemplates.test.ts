@@ -234,3 +234,100 @@ describe("receiptTemplates household isolation + rule type check", () => {
     ).rejects.toThrow("Category type must match transaction type.");
   });
 });
+
+describe("receiptTemplates transfer rules", () => {
+  let t: ReturnType<typeof convexTest>;
+
+  beforeEach(() => {
+    t = convexTest(schema, import.meta.glob("../convex/**/*.*s"));
+  });
+
+  async function setupTemplateWithRule() {
+    return await t.run(async (ctx) => {
+      const householdId = await ctx.db.insert("households", {
+        name: "Rule HH",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const userId = await ctx.db.insert("users", {
+        tokenIdentifier: TOKEN,
+        clerkUserId: "clerk-owner-rule",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId,
+        role: "owner",
+      });
+      const expenseCat = await ctx.db.insert("categories", {
+        householdId,
+        name: "Food",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const templateId = await ctx.db.insert("receiptTemplates", {
+        householdId,
+        label: "Kopi",
+        keywords: ["kopi"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "expense",
+        keywordRules: [{ keyword: "kopi", categoryId: expenseCat }],
+        createdBy: userId,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return { templateId, expenseCat };
+    });
+  }
+
+  function ownerA() {
+    return t.withIdentity({ tokenIdentifier: TOKEN, subject: "owner" });
+  }
+
+  it("rejects create transfer with non-empty rules", async () => {
+    const { expenseCat } = await setupTemplateWithRule();
+    await expect(
+      ownerA().mutation(api.receiptTemplates.create, {
+        label: "Transfer tpl",
+        keywords: ["bank"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "transfer",
+        keywordRules: [{ keyword: "bank", categoryId: expenseCat }],
+      }),
+    ).rejects.toThrow("Transfer templates cannot have category rules.");
+  });
+
+  it("rejects type change to transfer while rules remain", async () => {
+    const { templateId } = await setupTemplateWithRule();
+    await expect(
+      ownerA().mutation(api.receiptTemplates.update, {
+        templateId,
+        defaultType: "transfer",
+      }),
+    ).rejects.toThrow("Transfer templates cannot have category rules.");
+  });
+
+  it("rejects type change that orphans existing rule types", async () => {
+    const { templateId } = await setupTemplateWithRule();
+    await expect(
+      ownerA().mutation(api.receiptTemplates.update, {
+        templateId,
+        defaultType: "income",
+      }),
+    ).rejects.toThrow("Category type must match transaction type.");
+  });
+
+  it("allows type change to transfer when rules cleared together", async () => {
+    const { templateId } = await setupTemplateWithRule();
+    const updated = await ownerA().mutation(api.receiptTemplates.update, {
+      templateId,
+      defaultType: "transfer",
+      keywordRules: [],
+    });
+    expect(updated?.defaultType).toBe("transfer");
+    expect(updated?.keywordRules).toEqual([]);
+  });
+});

@@ -27,6 +27,7 @@ import { hapticError, hapticSuccess } from "@/lib/haptics";
 import {
   extractAmounts,
   extractDates,
+  resolveCategory,
 } from "@/utils/receiptParser";
 import { formatNumber } from "@/utils/format";
 
@@ -293,8 +294,19 @@ export default function ReceiptMap() {
       const note = firstNoteLine(rawText);
       if (note) params.prefillNote = note;
       if (accountId !== null) params.prefillAccountId = accountId;
-      if (categoryId !== null && defaultType !== "transfer")
-        params.prefillCategoryId = categoryId;
+      if (defaultType !== "transfer") {
+        const mappedRules = rules.map((r) => ({
+          keyword: r.keyword.trim(),
+          categoryId: r.categoryId as Id<"categories">,
+        }));
+        const resolved = resolveCategory(rawText, {
+          keywordRules: mappedRules,
+          ...(categoryId === null
+            ? {}
+            : { defaultCategoryId: categoryId }),
+        });
+        if (resolved !== null) params.prefillCategoryId = resolved;
+      }
       if (imageUri) params.receiptImageUri = imageUri;
       router.replace({ pathname: "/transaction-form", params });
     } catch (e) {
