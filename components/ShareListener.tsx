@@ -1,12 +1,32 @@
 import { useEffect, useRef } from "react";
+import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { useShareIntent } from "expo-share-intent";
 import { api } from "@/convex/_generated/api";
-import { fingerprintScore, pickAmount, pickNote, resolveCategory } from "@/utils/receiptParser";
+import {
+  extractDates,
+  fingerprintScore,
+  pickAmount,
+  pickNote,
+  resolveCategory,
+} from "@/utils/receiptParser";
 import { recognizeImageText } from "@/lib/ocr";
 import { useSnackbar } from "@/components/Snackbar";
 import { getConvexErrorMessage } from "@/lib/errors";
+
+type Template = {
+  label: string;
+  keywords: string[];
+  amountStrategy: "largest" | "afterKeyword";
+  amountKeyword?: string | undefined;
+  noteStrategy: "firstLine" | "afterKeyword" | "merchantLine";
+  noteKeyword?: string | undefined;
+  defaultAccountId?: string;
+  defaultType: "expense" | "income" | "transfer";
+  defaultCategoryId?: string;
+  keywordRules?: { keyword: string; categoryId: string }[];
+};
 
 export function ShareListener() {
   const router = useRouter();
@@ -54,45 +74,82 @@ export function ShareListener() {
         }
         if (!rawText && !imageUri) return;
         const templates = tpl.templates ?? [];
-        let best: (typeof templates)[number] | null = null;
         let bestScore = 0;
+        let top: Template[] = [];
         for (const t of templates) {
           const s = fingerprintScore(t.keywords, rawText);
-          if (s > bestScore) {
+          if (s > 0 && s > bestScore) {
             bestScore = s;
-            best = t;
+            top = [t];
+          } else if (s > 0 && s === bestScore) {
+            top.push(t);
           }
         }
-        if (!best) {
-          const params: Record<string, string> = { rawText };
-          if (imageUri) params.imageUri = imageUri;
-          router.push({ pathname: "/receipt-map", params });
-        } else {
+        const applyTemplate = (
+          best: Template,
+          text: string,
+          imgUri: string | undefined,
+        ) => {
           const amount = pickAmount(
-            rawText,
+            text,
             best.amountStrategy,
             best.amountKeyword ?? undefined,
           );
           const note = pickNote(
-            rawText.split("\n"),
+            text.split("\n"),
             best.noteStrategy,
             best.noteKeyword ?? undefined,
           );
+          const now = Date.now();
+          const parsed = extractDates(text)[0];
           const params: Record<string, string> = {};
           if (amount !== null) params.prefillAmount = String(amount);
           if (note) params.prefillNote = note;
+          params.prefillType = best.defaultType;
+          if (
+            parsed !== undefined &&
+            Number.isFinite(parsed) &&
+            parsed <= now
+          ) {
+            params.prefillDate = String(parsed);
+          }
           if (best.defaultAccountId)
             params.prefillAccountId = best.defaultAccountId;
-          const categoryId = resolveCategory(rawText, {
+          const categoryId = resolveCategory(text, {
             keywordRules: best.keywordRules ?? [],
             ...(best.defaultCategoryId
               ? { defaultCategoryId: best.defaultCategoryId }
               : {}),
           });
           if (categoryId) params.prefillCategoryId = categoryId;
-          if (imageUri) params.receiptImageUri = imageUri;
+          if (imgUri) params.receiptImageUri = imgUri;
           params.receiptLabel = best.label;
           router.push({ pathname: "/transaction-form", params });
+        };
+        if (top.length === 0) {
+          const params: Record<string, string> = { rawText };
+          if (imageUri) params.imageUri = imageUri;
+          router.push({ pathname: "/receipt-map", params });
+        } else if (top.length === 1 && top[0]) {
+          applyTemplate(top[0], rawText, imageUri);
+        } else {
+          const shown = top.slice(0, 3);
+          const buttons = shown.map((t) => ({
+            text: t.label,
+            onPress: () => applyTemplate(t, rawText, imageUri),
+          }));
+          if (top.length > 3) {
+            buttons.push({
+              text: "Lainnya…",
+              onPress: () => {
+                const params: Record<string, string> = { rawText };
+                if (imageUri) params.imageUri = imageUri;
+                router.push({ pathname: "/receipt-map", params });
+              },
+            });
+          }
+          buttons.push({ text: "Batal", onPress: () => {} });
+          Alert.alert("Pilih sumber", "Beberapa template cocok.", buttons);
         }
       } finally {
         resetShareIntent();

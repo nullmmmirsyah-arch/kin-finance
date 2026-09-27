@@ -70,14 +70,16 @@ export const create = mutation({
     const label = args.label.trim();
     const keywords = args.keywords.map((k) => k.trim()).filter(Boolean);
 
-    const dup = await ctx.db
+    const dupes = await ctx.db
       .query("receiptTemplates")
       .withIndex("by_householdId", (q) =>
         q.eq("householdId", membership.householdId),
       )
-      .filter((q) => q.eq(q.field("label"), label))
-      .first();
-    if (dup !== null) {
+      .collect();
+    const dup = dupes.find(
+      (t) => t.label.toLowerCase() === label.toLowerCase(),
+    );
+    if (dup !== undefined) {
       throw new ConvexError("Template label already exists.");
     }
 
@@ -106,12 +108,15 @@ export const create = mutation({
       if (rule.keyword.trim().length === 0) {
         throw new ConvexError("Keyword rule keyword is required.");
       }
-      await getScopedDoc(
+      const ruleCat = await getScopedDoc(
         ctx,
         rule.categoryId,
         membership.householdId,
         "Category",
       );
+      if (ruleCat.type !== args.defaultType && args.defaultType !== "transfer") {
+        throw new ConvexError("Category type must match transaction type.");
+      }
     }
 
     const now = Date.now();
@@ -181,19 +186,18 @@ export const update = mutation({
       const labelErr = validateTemplateLabel(args.label);
       if (labelErr) throw new ConvexError(labelErr);
       const label = args.label.trim();
-      const dup = await ctx.db
+      const dupes = await ctx.db
         .query("receiptTemplates")
         .withIndex("by_householdId", (q) =>
           q.eq("householdId", membership.householdId),
         )
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("label"), label),
-            q.neq(q.field("_id"), args.templateId),
-          ),
-        )
-        .first();
-      if (dup !== null) {
+        .collect();
+      const dup = dupes.find(
+        (t) =>
+          t.label.toLowerCase() === label.toLowerCase() &&
+          t._id !== args.templateId,
+      );
+      if (dup !== undefined) {
         throw new ConvexError("Template label already exists.");
       }
       patch.label = label;
@@ -267,12 +271,15 @@ export const update = mutation({
         if (rule.keyword.trim().length === 0) {
           throw new ConvexError("Keyword rule keyword is required.");
         }
-        await getScopedDoc(
+        const ruleCat = await getScopedDoc(
           ctx,
           rule.categoryId,
           membership.householdId,
           "Category",
         );
+        if (ruleCat.type !== effectiveType && effectiveType !== "transfer") {
+          throw new ConvexError("Category type must match transaction type.");
+        }
       }
       patch.keywordRules = args.keywordRules;
     }

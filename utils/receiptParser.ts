@@ -21,12 +21,17 @@ export function extractDates(text: string): number[] {
   const reNum = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/g;
   let m: RegExpExecArray | null;
   while ((m = reNum.exec(text)) !== null) {
-    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    if (day < 1 || day > 31 || month < 1 || month > 12) continue;
+    const d = new Date(Number(m[3]), month - 1, day);
     if (!Number.isNaN(d.getTime())) out.push(d.getTime());
   }
   const reId = /(\d{1,2})\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\s+(\d{4})/gi;
   while ((m = reId.exec(text)) !== null) {
-    const d = new Date(Number(m[3]), BULAN[m[2].toLowerCase()], Number(m[1]));
+    const day = Number(m[1]);
+    if (day < 1 || day > 31) continue;
+    const d = new Date(Number(m[3]), BULAN[m[2].toLowerCase()], day);
     if (!Number.isNaN(d.getTime())) out.push(d.getTime());
   }
   return out;

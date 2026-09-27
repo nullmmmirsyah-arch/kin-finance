@@ -64,6 +64,7 @@ export default function TransactionForm() {
     prefillNote?: string;
     prefillAccountId?: string;
     prefillCategoryId?: string;
+    prefillType?: string;
     receiptImageUri?: string;
     receiptLabel?: string;
   }>();
@@ -74,6 +75,7 @@ export default function TransactionForm() {
   const prefillNote = params.prefillNote;
   const prefillAccountId = params.prefillAccountId;
   const prefillCategoryId = params.prefillCategoryId;
+  const prefillType = params.prefillType;
   const receiptImageUri = params.receiptImageUri;
   const receiptLabel = params.receiptLabel;
   const C = useThemeColors();
@@ -239,27 +241,30 @@ export default function TransactionForm() {
   // Receipt-share prefill: applied once on mount, create mode only.
   // Separate ref from `seeded` (edit seeding) so the two never interfere.
   // Only fills fields that are still at their defaults.
+  // Order matters: setType FIRST so the type-mismatch clear effect does not
+  // wipe a correctly-typed prefill category applied later.
   const prefillApplied = useRef(false);
   useEffect(() => {
     if (isEdit || prefillApplied.current) return;
     prefillApplied.current = true;
+    if (
+      prefillType === "expense" ||
+      prefillType === "income" ||
+      prefillType === "transfer"
+    ) {
+      setType(prefillType);
+    }
+    if (prefillDate !== undefined) {
+      const ts = Number(prefillDate);
+      if (Number.isFinite(ts) && ts > 0 && ts <= Date.now()) {
+        setDate(new Date(ts));
+      }
+    }
     if (prefillAmount !== undefined && amountText === "") {
       setAmountText(prefillAmount);
     }
     if (prefillNote !== undefined && note === "") {
       setNote(prefillNote);
-    }
-    if (prefillAccountId !== undefined && accountId === null) {
-      setAccountId(prefillAccountId);
-    }
-    if (prefillCategoryId !== undefined && categoryId === null) {
-      setCategoryId(prefillCategoryId);
-    }
-    if (prefillDate !== undefined) {
-      const ts = Number(prefillDate);
-      if (Number.isFinite(ts) && ts > 0) {
-        setDate(new Date(ts));
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit]);
@@ -363,6 +368,36 @@ export default function TransactionForm() {
       setCategoryId(null);
     }
   }, [categoryResult, type, categoryId, categoryOptions, isEdit, editingTx]);
+
+  // Stale-prefill guard (create mode only): apply account/category IDs only
+  // when they still exist in the visible, type-matching options. Deferred
+  // until the list queries resolve so async loading can't drop a valid ID.
+  const prefillAccountApplied = useRef(false);
+  const prefillCategoryApplied = useRef(false);
+  useEffect(() => {
+    if (isEdit) return;
+    if (
+      prefillAccountId !== undefined &&
+      !prefillAccountApplied.current &&
+      accountResult !== undefined
+    ) {
+      prefillAccountApplied.current = true;
+      if (accountId === null && accountOptions.some((o) => o.id === prefillAccountId)) {
+        setAccountId(prefillAccountId);
+      }
+    }
+    if (
+      prefillCategoryId !== undefined &&
+      !prefillCategoryApplied.current &&
+      categoryResult !== undefined
+    ) {
+      prefillCategoryApplied.current = true;
+      if (categoryId === null && categoryOptions.some((o) => o.id === prefillCategoryId)) {
+        setCategoryId(prefillCategoryId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, prefillAccountId, prefillCategoryId, accountResult, categoryResult, accountOptions, categoryOptions]);
 
   // Auto-select a category created via the Add tile: snapshot option IDs on
   // focus; when returning with a fresh ID (and nothing selected), pick it.

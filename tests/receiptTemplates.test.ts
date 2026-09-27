@@ -74,4 +74,163 @@ describe("receiptTemplates.create duplicate label", () => {
       }),
     ).rejects.toThrow("Template label already exists.");
   });
+
+  it("rejects case-insensitive duplicate label", async () => {
+    const owner = t.withIdentity({
+      tokenIdentifier: TOKEN,
+      subject: "owner",
+    });
+    await t.run(async (ctx) => {
+      const householdId = await ctx.db.insert("households", {
+        name: "Receipt HH",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const userId = await ctx.db.insert("users", {
+        tokenIdentifier: TOKEN,
+        clerkUserId: "clerk-owner-receipt",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId,
+        userId,
+        role: "owner",
+      });
+    });
+
+    await owner.mutation(api.receiptTemplates.create, {
+      label: "BCA",
+      keywords: ["BCA"],
+      amountStrategy: "largest",
+      noteStrategy: "firstLine",
+      defaultType: "expense",
+      keywordRules: [],
+    });
+
+    await expect(
+      owner.mutation(api.receiptTemplates.create, {
+        label: "bca",
+        keywords: ["BCA"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "expense",
+        keywordRules: [],
+      }),
+    ).rejects.toThrow("Template label already exists.");
+  });
+});
+
+describe("receiptTemplates household isolation + rule type check", () => {
+  let t: ReturnType<typeof convexTest>;
+  const TOKEN_B = "owner|receipt-template-test-b";
+
+  beforeEach(() => {
+    t = convexTest(schema, import.meta.glob("../convex/**/*.*s"));
+  });
+
+  async function setupTwoHouseholds() {
+    return await t.run(async (ctx) => {
+      const householdA = await ctx.db.insert("households", {
+        name: "HH A",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const householdB = await ctx.db.insert("households", {
+        name: "HH B",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const userA = await ctx.db.insert("users", {
+        tokenIdentifier: TOKEN,
+        clerkUserId: "clerk-owner-a",
+      });
+      const userB = await ctx.db.insert("users", {
+        tokenIdentifier: TOKEN_B,
+        clerkUserId: "clerk-owner-b",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId: householdA,
+        userId: userA,
+        role: "owner",
+      });
+      await ctx.db.insert("householdMemberships", {
+        householdId: householdB,
+        userId: userB,
+        role: "owner",
+      });
+      const expenseCat = await ctx.db.insert("categories", {
+        householdId: householdA,
+        name: "Food",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const incomeCat = await ctx.db.insert("categories", {
+        householdId: householdA,
+        name: "Salary",
+        type: "income",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const otherCat = await ctx.db.insert("categories", {
+        householdId: householdB,
+        name: "Other",
+        type: "expense",
+        hidden: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const templateA = await ctx.db.insert("receiptTemplates", {
+        householdId: householdA,
+        label: "BCA A",
+        keywords: ["BCA"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "expense",
+        keywordRules: [],
+        createdBy: userA,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return { expenseCat, incomeCat, otherCat, templateA };
+    });
+  }
+
+  it("rejects cross-household update/remove with Template not found.", async () => {
+    const { templateA } = await setupTwoHouseholds();
+    const ownerB = t.withIdentity({
+      tokenIdentifier: TOKEN_B,
+      subject: "owner-b",
+    });
+    await expect(
+      ownerB.mutation(api.receiptTemplates.update, {
+        templateId: templateA,
+        label: "Hijacked",
+      }),
+    ).rejects.toThrow("Template not found.");
+    await expect(
+      ownerB.mutation(api.receiptTemplates.remove, {
+        templateId: templateA,
+      }),
+    ).rejects.toThrow("Template not found.");
+  });
+
+  it("rejects rule with mismatched category type", async () => {
+    const { incomeCat } = await setupTwoHouseholds();
+    const ownerA = t.withIdentity({
+      tokenIdentifier: TOKEN,
+      subject: "owner",
+    });
+    await expect(
+      ownerA.mutation(api.receiptTemplates.create, {
+        label: "BCA rule",
+        keywords: ["BCA"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "expense",
+        keywordRules: [{ keyword: "gaji", categoryId: incomeCat }],
+      }),
+    ).rejects.toThrow("Category type must match transaction type.");
+  });
 });

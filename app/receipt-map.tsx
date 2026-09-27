@@ -287,6 +287,7 @@ export default function ReceiptMap() {
       const params: Record<string, string> = {
         prefillAmount: String(amount),
         prefillDate: String(date),
+        prefillType: defaultType,
         receiptLabel: label.trim(),
       };
       const note = firstNoteLine(rawText);
