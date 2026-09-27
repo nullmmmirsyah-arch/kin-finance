@@ -18,6 +18,7 @@ import {
 } from "react-native-keyboard-controller";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
+import { ShareListener } from "@/components/ShareListener";
 import { OtaUpdater } from "@/components/OtaUpdater";
 import { BrandedLoadingShell } from "@/components/BrandedLoadingShell";
 import { hapticSuccess } from "@/lib/haptics";
@@ -110,6 +111,7 @@ function RootNavigator() {
         <Stack.Screen name="categories" />
         <Stack.Screen name="category-form" />
         <Stack.Screen name="transaction-form" />
+        <Stack.Screen name="receipt-map" />
         <Stack.Screen name="budget-form" />
         <Stack.Screen name="members" />
         <Stack.Screen name="search" />
@@ -157,6 +159,7 @@ export default function RootLayout() {
               <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
                 <SnackbarProvider>
                   <OtaUpdater />
+                  <ShareListener />
                   <RootNavigator />
                 </SnackbarProvider>
               </ConvexProviderWithClerk>
