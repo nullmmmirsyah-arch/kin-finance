@@ -261,7 +261,10 @@ export default function TransactionForm() {
       }
     }
     if (prefillAmount !== undefined && amountText === "") {
-      setAmountText(prefillAmount);
+      const v = Number(prefillAmount);
+      if (Number.isSafeInteger(v) && v >= 1) {
+        setAmountText(formatNumber(v));
+      }
     }
     if (prefillNote !== undefined && note === "") {
       setNote(prefillNote);
@@ -389,7 +392,8 @@ export default function TransactionForm() {
     if (
       prefillCategoryId !== undefined &&
       !prefillCategoryApplied.current &&
-      categoryResult !== undefined
+      categoryResult !== undefined &&
+      (prefillType === undefined || type === prefillType)
     ) {
       prefillCategoryApplied.current = true;
       if (categoryId === null && categoryOptions.some((o) => o.id === prefillCategoryId)) {
@@ -397,7 +401,7 @@ export default function TransactionForm() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, prefillAccountId, prefillCategoryId, accountResult, categoryResult, accountOptions, categoryOptions]);
+  }, [isEdit, prefillAccountId, prefillCategoryId, accountResult, categoryResult, accountOptions, categoryOptions, type, prefillType]);
 
   // Auto-select a category created via the Add tile: snapshot option IDs on
   // focus; when returning with a fresh ID (and nothing selected), pick it.

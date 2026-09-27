@@ -320,6 +320,21 @@ describe("receiptTemplates transfer rules", () => {
     ).rejects.toThrow("Category type must match transaction type.");
   });
 
+  it("rejects defaultCategoryId on transfer templates", async () => {
+    const { expenseCat } = await setupTemplateWithRule();
+    await expect(
+      ownerA().mutation(api.receiptTemplates.create, {
+        label: "Transfer cat",
+        keywords: ["bank"],
+        amountStrategy: "largest",
+        noteStrategy: "firstLine",
+        defaultType: "transfer",
+        defaultCategoryId: expenseCat,
+        keywordRules: [],
+      }),
+    ).rejects.toThrow("Transfer templates cannot have a category.");
+  });
+
   it("allows type change to transfer when rules cleared together", async () => {
     const { templateId } = await setupTemplateWithRule();
     const updated = await ownerA().mutation(api.receiptTemplates.update, {

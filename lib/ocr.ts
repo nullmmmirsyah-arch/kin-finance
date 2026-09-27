@@ -8,7 +8,9 @@ export async function recognizeImageText(localUri: string): Promise<string> {
   if (recognizer) return recognizer(localUri);
   try {
     const mod = await import("@react-native-ml-kit/text-recognition").catch(() => null);
-    const rec = (mod as unknown as { TextRecognition?: { recognize: (url: string) => Promise<{ text: string }> } } | null)?.TextRecognition;
+    type Recognizer = { recognize: (url: string) => Promise<{ text: string }> };
+    const m = mod as unknown as { default?: Recognizer; TextRecognition?: Recognizer } | null;
+    const rec = m?.default ?? m?.TextRecognition;
     if (!rec) throw new Error("OCR_UNAVAILABLE");
     const res = await rec.recognize(localUri);
     return res.text ?? "";

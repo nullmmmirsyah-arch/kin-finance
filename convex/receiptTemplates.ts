@@ -92,6 +92,14 @@ export const create = mutation({
       );
     }
 
+    if (args.defaultType === "transfer") {
+      if (args.defaultCategoryId !== undefined) {
+        throw new ConvexError("Transfer templates cannot have a category.");
+      }
+      if (args.keywordRules.length > 0) {
+        throw new ConvexError("Transfer templates cannot have category rules.");
+      }
+    }
     if (args.defaultCategoryId !== undefined) {
       const cat = await getScopedDoc(
         ctx,
@@ -99,14 +107,11 @@ export const create = mutation({
         membership.householdId,
         "Category",
       );
-      if (cat.type !== args.defaultType && args.defaultType !== "transfer") {
+      if (cat.type !== args.defaultType) {
         throw new ConvexError("Category type must match transaction type.");
       }
     }
 
-    if (args.defaultType === "transfer" && args.keywordRules.length > 0) {
-      throw new ConvexError("Transfer templates cannot have category rules.");
-    }
     for (const rule of args.keywordRules) {
       if (rule.keyword.trim().length === 0) {
         throw new ConvexError("Keyword rule keyword is required.");
@@ -117,7 +122,7 @@ export const create = mutation({
         membership.householdId,
         "Category",
       );
-      if (ruleCat.type !== args.defaultType && args.defaultType !== "transfer") {
+      if (ruleCat.type !== args.defaultType) {
         throw new ConvexError("Category type must match transaction type.");
       }
     }
@@ -244,13 +249,16 @@ export const update = mutation({
     }
 
     if (args.defaultCategoryId !== undefined) {
+      if (effectiveType === "transfer") {
+        throw new ConvexError("Transfer templates cannot have a category.");
+      }
       const cat = await getScopedDoc(
         ctx,
         args.defaultCategoryId,
         membership.householdId,
         "Category",
       );
-      if (cat.type !== effectiveType && effectiveType !== "transfer") {
+      if (cat.type !== effectiveType) {
         throw new ConvexError("Category type must match transaction type.");
       }
       patch.defaultCategoryId = args.defaultCategoryId;
@@ -264,7 +272,7 @@ export const update = mutation({
         membership.householdId,
         "Category",
       );
-      if (cat.type !== effectiveType && effectiveType !== "transfer") {
+      if (cat.type !== effectiveType) {
         throw new ConvexError("Category type must match transaction type.");
       }
     }
@@ -285,7 +293,7 @@ export const update = mutation({
         membership.householdId,
         "Category",
       );
-      if (ruleCat.type !== effectiveType && effectiveType !== "transfer") {
+      if (ruleCat.type !== effectiveType) {
         throw new ConvexError("Category type must match transaction type.");
       }
     }
