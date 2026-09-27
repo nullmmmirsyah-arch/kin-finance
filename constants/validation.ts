@@ -120,3 +120,21 @@ export function validateBalanceMode(v: string | undefined): string | null {
   if (!BALANCE_MODES.includes(v as BalanceMode)) return "Balance mode must be fresh or carryOver.";
   return null;
 }
+
+export const TEMPLATE_LABEL_MIN = 2;
+export const TEMPLATE_LABEL_MAX = 30;
+
+export function validateTemplateLabel(name: string): string | null {
+  const t = name.trim();
+  if (t.length === 0) return "Template label is required.";
+  if (t.length < TEMPLATE_LABEL_MIN) return `Template label must be at least ${TEMPLATE_LABEL_MIN} characters.`;
+  if (t.length > TEMPLATE_LABEL_MAX) return `Template label must be at most ${TEMPLATE_LABEL_MAX} characters.`;
+  return null;
+}
+
+export function validateTemplateKeywords(kw: string[]): string | null {
+  const clean = kw.map((k) => k.trim()).filter(Boolean);
+  if (clean.length < 1) return "Add at least one keyword.";
+  if (clean.length > 8) return "At most 8 keywords.";
+  return null;
+}
