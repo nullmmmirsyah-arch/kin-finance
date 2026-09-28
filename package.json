@@ -91,5 +91,13 @@
     },
     "utf-8-validate": "5.0.10"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["@react-native-ml-kit/text-recognition"],
+        "listUnknownPackages": false
+      }
+    }
+  },
   "private": true
 }
