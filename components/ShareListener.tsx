@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useRootNavigationState } from "expo-router";
 import { useQuery } from "convex/react";
 import { useShareIntent } from "expo-share-intent";
 import { api } from "@/convex/_generated/api";
@@ -32,11 +32,13 @@ export function ShareListener() {
   const router = useRouter();
   const { show } = useSnackbar();
   const { shareIntent, resetShareIntent, hasShareIntent } = useShareIntent();
+  const rootState = useRootNavigationState();
   const tpl = useQuery(api.receiptTemplates.list);
   const processingRef = useRef(false);
 
   useEffect(() => {
     if (
+      !rootState?.key ||
       !hasShareIntent ||
       !shareIntent ||
       shareIntent.type === null ||
@@ -157,7 +159,7 @@ export function ShareListener() {
         processingRef.current = false;
       }
     })();
-  }, [hasShareIntent, shareIntent, tpl, resetShareIntent, router, show]);
+  }, [rootState?.key, hasShareIntent, shareIntent, tpl, resetShareIntent, router, show]);
 
   return null;
 }
