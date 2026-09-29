@@ -7,8 +7,6 @@ import { ResetFlow } from "@/components/Auth/ResetFlow";
 import { useAuthFlow } from "@/hooks/useAuthFlow";
 import { useResetFlow } from "@/hooks/useResetFlow";
 import { getLastAuthMethod } from "@/lib/auth-preference";
-import { useAuth } from "@clerk/expo";
-import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef, useState } from "react";
 import { Image, Platform, Pressable, Text, TextInput, View } from "react-native";
@@ -42,8 +40,6 @@ function Divider({ text }: { text: string }) {
 
 export default function Index() {
   useWarmUpBrowser();
-  const { isSignedIn } = useAuth();
-  const router = useRouter();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [preferred, setPreferred] = useState<"google" | "email" | null>(null);
   const [successScreen, setSuccessScreen] = useState<SuccessScreen>(null);
@@ -55,9 +51,10 @@ export default function Index() {
     onResetSuccess: () => setSuccessScreen("reset"),
   });
 
-  useEffect(() => {
-    if (isSignedIn && !successScreen) router.replace("/home");
-  }, [isSignedIn, router, successScreen]);
+  // Signed-in redirect is handled declaratively by <Stack.Protected>
+  // guards in app/_layout.tsx. Do NOT call router.replace here — navigating
+  // from inside a screen whose guard is flipping races the navigator and
+  // throws "navigate before mounting the Root Layout" on cold starts.
 
   useEffect(() => {
     void getLastAuthMethod().then((m) => {

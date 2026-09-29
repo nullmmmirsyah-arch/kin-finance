@@ -22,7 +22,11 @@ import { ShareListener } from "@/components/ShareListener";
 import { OtaUpdater } from "@/components/OtaUpdater";
 import { BrandedLoadingShell } from "@/components/BrandedLoadingShell";
 import { hapticSuccess } from "@/lib/haptics";
+import { installTempErrorCatcher } from "@/lib/error-catcher";
 import { api } from "@/convex/_generated/api";
+
+// TEMPORARY: on-device stack capture for the share redbox. Remove after diagnosis.
+installTempErrorCatcher();
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ duration: 300, fade: true });
@@ -89,37 +93,46 @@ function RootNavigator() {
     }
   }, [isLoaded, isSignedIn, household]);
 
-  if (!isLoaded || (isSignedIn && household === undefined)) {
-    return (
-      <BrandedLoadingShell
-        key={retryKey}
-        progress={progress}
-        onRetry={() => {
-          setRetryKey((k) => k + 1);
-          void hapticSuccess();
-        }}
-      />
-    );
-  }
+  // The <Stack> navigator must mount on the very first render — expo-router
+  // throws "Attempted to navigate before mounting the Root Layout component"
+  // if the first render returns anything else (e.g. a plain loading View).
+  // This bit deterministically on cold starts via Android share intent, where
+  // the initial navigation/redirect fires before auth+household resolve.
+  // So the loading shell renders as an overlay ON TOP of the navigator.
+  const showLoading = !isLoaded || (isSignedIn && household === undefined);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!isSignedIn}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="account-form" />
-        <Stack.Screen name="categories" />
-        <Stack.Screen name="category-form" />
-        <Stack.Screen name="transaction-form" />
-        <Stack.Screen name="receipt-map" />
-        <Stack.Screen name="budget-form" />
-        <Stack.Screen name="members" />
-        <Stack.Screen name="search" />
-      </Stack.Protected>
-      <Stack.Protected guard={!isSignedIn}>
-        <Stack.Screen name="index" />
-      </Stack.Protected>
-    </Stack>
+    <View className="flex-1">
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={!!isSignedIn}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="account-form" />
+          <Stack.Screen name="categories" />
+          <Stack.Screen name="category-form" />
+          <Stack.Screen name="transaction-form" />
+          <Stack.Screen name="receipt-map" />
+          <Stack.Screen name="budget-form" />
+          <Stack.Screen name="members" />
+          <Stack.Screen name="search" />
+        </Stack.Protected>
+        <Stack.Protected guard={!isSignedIn}>
+          <Stack.Screen name="index" />
+        </Stack.Protected>
+      </Stack>
+      {showLoading ? (
+        <View className="absolute inset-0">
+          <BrandedLoadingShell
+            key={retryKey}
+            progress={progress}
+            onRetry={() => {
+              setRetryKey((k) => k + 1);
+              void hapticSuccess();
+            }}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
