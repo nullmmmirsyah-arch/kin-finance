@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { useRouter, useRootNavigationState } from "expo-router";
 import { useQuery } from "convex/react";
@@ -35,6 +35,37 @@ export function ShareListener() {
   const rootState = useRootNavigationState();
   const tpl = useQuery(api.receiptTemplates.list);
   const processingRef = useRef(false);
+  const attemptsRef = useRef(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
+  const isNotReadyError = (e: unknown) =>
+    e instanceof Error && e.message.includes("before mounting");
+
+  // Returns false when the container isn't ready yet (caller retries).
+  // Defined outside the effect for readability; effect deps include router.
+  const dispatchPush = useCallback(
+    (
+      pathname: "/receipt-map" | "/transaction-form",
+      params: Record<string, string>,
+    ): boolean => {
+      try {
+        router.push({ pathname, params });
+        return true;
+      } catch (e) {
+        if (isNotReadyError(e)) return false;
+        throw e;
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     if (
@@ -92,7 +123,7 @@ export function ShareListener() {
           best: Template,
           text: string,
           imgUri: string | undefined,
-        ) => {
+        ): boolean => {
           const amount = pickAmount(
             text,
             best.amountStrategy,
@@ -127,39 +158,66 @@ export function ShareListener() {
           if (categoryId) params.prefillCategoryId = categoryId;
           if (imgUri) params.receiptImageUri = imgUri;
           params.receiptLabel = best.label;
-          router.push({ pathname: "/transaction-form", params });
+          return dispatchPush("/transaction-form", params);
         };
+        const goToMap = (text: string, imgUri: string | undefined): boolean => {
+          const params: Record<string, string> = { rawText: text };
+          if (imgUri) params.imageUri = imgUri;
+          return dispatchPush("/receipt-map", params);
+        };
+        const scheduleRetry = () => {
+          attemptsRef.current += 1;
+          processingRef.current = false;
+          retryTimer.current = setTimeout(() => {
+            retryTimer.current = null;
+            setRetryTick((t) => t + 1);
+          }, 300);
+        };
+        let dispatched: boolean;
         if (top.length === 0) {
-          const params: Record<string, string> = { rawText };
-          if (imageUri) params.imageUri = imageUri;
-          router.push({ pathname: "/receipt-map", params });
+          dispatched = goToMap(rawText, imageUri);
         } else if (top.length === 1 && top[0]) {
-          applyTemplate(top[0], rawText, imageUri);
+          dispatched = applyTemplate(top[0], rawText, imageUri);
         } else {
           const shown = top.slice(0, 3);
           const buttons = shown.map((t) => ({
             text: t.label,
-            onPress: () => applyTemplate(t, rawText, imageUri),
+            onPress: () => {
+              if (!applyTemplate(t, rawText, imageUri)) {
+                show("Navigation not ready — please try again.");
+              }
+            },
           }));
           if (top.length > 3) {
             buttons.push({
               text: "Lainnya…",
               onPress: () => {
-                const params: Record<string, string> = { rawText };
-                if (imageUri) params.imageUri = imageUri;
-                router.push({ pathname: "/receipt-map", params });
+                if (!goToMap(rawText, imageUri)) {
+                  show("Navigation not ready — please try again.");
+                }
               },
             });
           }
           buttons.push({ text: "Batal", onPress: () => {} });
           Alert.alert("Pilih sumber", "Beberapa template cocok.", buttons);
+          dispatched = true;
+        }
+        if (!dispatched && attemptsRef.current < 8) {
+          // Container raced us: keep the intent and retry shortly.
+          scheduleRetry();
+          return;
         }
       } finally {
-        resetShareIntent();
+        if (retryTimer.current !== null && attemptsRef.current < 8) {
+          // Retry scheduled: keep the intent pending.
+        } else {
+          resetShareIntent();
+          attemptsRef.current = 0;
+        }
         processingRef.current = false;
       }
     })();
-  }, [rootState?.key, hasShareIntent, shareIntent, tpl, resetShareIntent, router, show]);
+  }, [rootState?.key, hasShareIntent, shareIntent, tpl, resetShareIntent, router, show, retryTick, dispatchPush]);
 
   return null;
 }

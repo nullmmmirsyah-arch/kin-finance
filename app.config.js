@@ -82,6 +82,9 @@ export default {
           NSExtensionActivationSupportsImageWithMaxCount: 1,
         },
         androidIntentFilters: ["text/*", "image/*"],
+        androidMainActivityAttributes: {
+          "android:launchMode": "singleTask",
+        },
       },
     ],
     [
